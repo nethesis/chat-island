@@ -60,7 +60,7 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
         style={{ bottom: `calc(1.875rem + ${slot} * 3.75rem)` }}
         aria-hidden="true"
       />
-      <div className="ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3 ci-cursor-grab active:ci-cursor-grabbing ci-touch-none ci-rounded-t-3xl" onPointerDown={onDragStart}>
+      <div className={`ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3 ci-rounded-t-3xl ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
         {c.kind === 'group' ? (
           <GroupAvatar name={c.name ?? peer} size={36} avatar={c.avatar} />
         ) : (

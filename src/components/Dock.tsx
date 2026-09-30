@@ -12,7 +12,7 @@ export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: Rea
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. Press and drag anywhere here to move the island.
   return (
-    <div className="ci-flex ci-flex-col-reverse ci-items-center ci-gap-3 ci-mb-3 ci-cursor-grab active:ci-cursor-grabbing ci-touch-none" onPointerDown={onDragStart}>
+    <div className={`ci-flex ci-flex-col-reverse ci-items-center ci-gap-3 ci-mb-3 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
       {order.map((peer) => {
         const c = conversations[peer]
         const active = open === peer

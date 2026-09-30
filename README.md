@@ -11,6 +11,7 @@ import '@nethesis/chat-island/dist/index.css'
 
 Serve `dist/chat-island-sw.js` from the host for notifications with the tab closed.
 `theme`: `light`, `dark` or `system`; default follows the host's `dark` class on `<html>`.
+`drag={false}` when the host moves its own window (NethLink).
 
 ## Events
 

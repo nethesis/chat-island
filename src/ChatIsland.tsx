@@ -33,6 +33,8 @@ export interface ChatIslandProps {
   notifications?: 'auto' | 'click'
   /** Play a short chime when a message arrives and its window is not in view (default true). */
   sound?: boolean
+  /** Drag the island around the page (default true); off when the host moves its own window. */
+  drag?: boolean
 }
 
 function summarize(): ConversationSummary[] {
@@ -90,7 +92,7 @@ function parseConfig(dataConfig: string): Config | null {
 /** A one-line preview of a message: Markdown marks dropped, a code block shown as its text. */
 const plain = (t: string) => (appAttachment(t) ? 'Attachment' : emojify(t)).replace(/```[^\n]*\n?/g, '').replace(/(\*\*|__|~~|`)/g, '').replace(/(^|\s)[*_](\S[^*_]*)[*_]/g, '$1$2').replace(/\s+/g, ' ').trim()
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   const dark = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
@@ -359,7 +361,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
 
 
   if (!cfg) return null
-  const anchored = drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
+  const anchored = draggable && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
   const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
   return (
     <div
@@ -370,9 +372,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       data-status={status}
     >
       <Boundary>
-        {open && <ChatWindow peer={open} actions={actions} onDragStart={drag.start} />}
+        {open && <ChatWindow peer={open} actions={actions} onDragStart={draggable ? drag.start : undefined} />}
         {picker && <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} />}
-        <Dock onDragStart={drag.start} pushButton={notifications !== 'auto'} />
+        <Dock onDragStart={draggable ? drag.start : undefined} pushButton={notifications !== 'auto'} />
       </Boundary>
     </div>
   )
