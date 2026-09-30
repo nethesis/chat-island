@@ -13,6 +13,7 @@ import { NewChat } from './components/NewChat'
 import { appAttachment } from './components/MessageList'
 import { emojify } from './shortcodes'
 import type { Config, ConversationSummary, Message } from './types'
+import { useDark, type Theme } from './theme'
 import './index.css'
 
 export interface ChatIslandProps {
@@ -20,8 +21,8 @@ export interface ChatIslandProps {
   dataConfig: string
   /** Where the island sits; default bottom-right. */
   position?: 'bottom-right' | 'bottom-left'
-  /** Force dark theme; by default follows a `dark` class on <html>. */
-  dark?: boolean
+  /** 'light', 'dark' or 'system'; default follows the host's `dark` class on <html>. */
+  theme?: Theme
   /** URL of chat-island-sw.js served by the host app; enables notifications when the tab is closed. */
   serviceWorker?: string
   /** How many chat heads the dock keeps; older ones drop off. Default 5. */
@@ -89,8 +90,9 @@ function parseConfig(dataConfig: string): Config | null {
 /** A one-line preview of a message: Markdown marks dropped, a code block shown as its text. */
 const plain = (t: string) => (appAttachment(t) ? 'Attachment' : emojify(t)).replace(/```[^\n]*\n?/g, '').replace(/(\*\*|__|~~|`)/g, '').replace(/(^|\s)[*_](\S[^*_]*)[*_]/g, '$1$2').replace(/\s+/g, ' ').trim()
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', dark, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
+  const dark = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
   const soundRef = useRef(sound)
@@ -364,7 +366,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', dark, servic
       ref={rootRef}
       style={anchored}
       onClickCapture={drag.onClickCapture}
-      className={`chat-island-root ${dark ? 'dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ci-items-end ci-gap-3 ci-font-sans ci-select-none`}
+      className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ci-items-end ci-gap-3 ci-font-sans ci-select-none`}
       data-status={status}
     >
       <Boundary>

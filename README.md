@@ -10,6 +10,7 @@ import '@nethesis/chat-island/dist/index.css'
 ```
 
 Serve `dist/chat-island-sw.js` from the host for notifications with the tab closed.
+`theme`: `light`, `dark` or `system`; default follows the host's `dark` class on `<html>`.
 
 ## Events
 
@@ -21,6 +22,7 @@ Serve `dist/chat-island-sw.js` from the host for notifications with the tab clos
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |
 | `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number |
 | `chat-island-conversations-request` | in | ask for the list |
+| `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-conversations` | out | `{ conversations }` newest first |
 | `chat-island-unread` | out | `{ total }` |
 | `chat-island-message` | out | every new message |
