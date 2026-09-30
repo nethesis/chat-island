@@ -12,7 +12,7 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   const name = contact?.name || username
   const style = { width: size, height: size, fontSize: size / 2.6 }
   return contact?.avatar ? (
-    <img src={contact.avatar} alt={name} style={style} className="ci-rounded-full ci-object-cover ci-shrink-0" />
+    <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
     <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900">
       {initials(name)}
@@ -29,7 +29,7 @@ export function PresenceDot({ online, presence, mobile }: { online?: boolean; pr
 /** A group: its initials on the island's accent colour, so it never looks like a person. */
 export function GroupAvatar({ name, size = 40, avatar }: { name: string; size?: number; avatar?: string }) {
   const style = { width: size, height: size, fontSize: size / 2.8 }
-  if (avatar) return <img src={avatar} alt={name} style={style} className="ci-rounded-full ci-object-cover ci-shrink-0" />
+  if (avatar) return <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   return (
     <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-iconSecondary dark:ci-bg-iconSecondaryDark ci-text-white">
       {initials(name || 'G')}

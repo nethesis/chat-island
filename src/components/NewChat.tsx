@@ -100,7 +100,7 @@ export function NewChat({ onOpen, onCreateGroup }: { onOpen: (peer: string) => v
             <>
               <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then(setAvatar).catch(() => {})} />
               <button type="button" title="Group picture" onClick={() => picture.current?.click()} className="ci-w-10 ci-h-10 ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-overflow-hidden ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-500 dark:ci-text-gray-400 ci-flex ci-items-center ci-justify-center">
-                {avatar ? <img src={avatar} alt="" className="ci-w-full ci-h-full ci-object-cover" /> : Icon.camera}
+                {avatar ? <img src={avatar} alt="" draggable={false} className="ci-w-full ci-h-full ci-object-cover" /> : Icon.camera}
               </button>
               <input
                 value={name}
