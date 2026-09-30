@@ -1,0 +1,35 @@
+name: Chat-Island Release and Publish on tags
+
+on:
+  push:
+    tags:
+      - '**'
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - name: Prepare node setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+      - name: Install dependencies
+        run: npm ci
+      - name: Type check
+        run: npm test
+      - name: Publish module
+        run: npm run release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
+      - name: Create Release
+        run: gh release create ${{ github.ref_name }} --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

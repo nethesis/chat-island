@@ -1,0 +1,49 @@
+{
+  "name": "@nethesis/chat-island",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open /dev/index.html",
+    "build": "vite build && npm run build:types",
+    "build:widget": "BUILD=widget vite build",
+    "build:types": "tsc -p tsconfig.lib.json",
+    "test": "tsc --noEmit -p tsconfig.app.json",
+    "prepublishOnly": "npm run build && npm run build:widget",
+    "release": "npm publish"
+  },
+  "dependencies": {
+    "@xmpp/client": "^0.14.0",
+    "zustand": "^4.5.7",
+    "use-sync-external-store": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "autoprefixer": "^10.6.1",
+    "oxlint": "^1.81.0",
+    "postcss": "^8.5.28",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "description": "NethVoice chat island: a stand-alone chat widget (XMPP) embeddable in nethvoice-cti, NethLink and any web app",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "dist-widget"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chat-island dev</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f1f5f9; color: #0f172a; }
+      form { display: grid; gap: 8px; max-width: 520px; }
+      input, button { padding: 8px 10px; font: inherit; }
+      pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; max-height: 240px; overflow: auto; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>chat-island</h1>
+    <p>Log in to a NethVoice CTI to get a JWT, or paste one. The island mounts bottom-right.</p>
+    <form id="f">
+      <input name="host" placeholder="CTI host (cti1.example.com)" required />
+      <input name="username" placeholder="username" required />
+      <input name="password" type="password" placeholder="password (to log in)" />
+      <input name="token" placeholder="or paste a JWT" />
+      <button type="submit">Mount island</button>
+    </form>
+    <h3>Open a chat from the host page</h3>
+    <form id="open" style="display:flex;gap:8px;max-width:520px">
+      <input name="peer" placeholder="colleague username" style="flex:1" />
+      <button type="submit">chat-island-open</button>
+      <button type="button" id="new">chat-island-new</button>
+    </form>
+    <h3>Events from the island</h3>
+    <pre id="log"></pre>
+    <div id="island"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

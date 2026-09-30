@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scoped reset: preflight is off, so the island resets only itself. Same font as phone-island. */
+.chat-island-root, .chat-island-root * { box-sizing: border-box; }
+.chat-island-root { font-family: 'Poppins', 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
+.chat-island-root button { font: inherit; cursor: pointer; }
+.chat-island-root textarea, .chat-island-root input { font: inherit; }
+.chat-island-root ::-webkit-scrollbar { width: 6px; }
+.chat-island-root ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 9999px; }
