@@ -266,9 +266,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? peer
       const text = m.oob ? 'Attachment' : emojify(m.body)
-      const body = conv?.kind === 'group' && m.nick ? `${st.contacts[m.nick]?.name ?? m.nick}: ${text}` : text
+      const group = conv?.kind === 'group'
+      const author = group && m.nick ? st.contacts[m.nick]?.name ?? m.nick : name
+      const body = group && m.nick ? `${author}: ${text}` : text
       if (soundRef.current) chime()
-      emit('chat-island-notify', { peer, name, body })
+      const avatar = group ? conv?.avatar : st.contacts[peer]?.avatar
+      emit('chat-island-notify', { peer, name, body, kind: group ? 'group' : 'chat', author, text, attachment: !!m.oob, avatar, ts: m.ts })
       if (!visible && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         try {
           const n = new Notification(name, { body, tag: `chat-${peer}` })

@@ -8,7 +8,10 @@ export function emit(name: 'chat-island-error', detail: { scope: string; message
 export function emit(name: 'chat-island-push', detail: { enabled: boolean }): void
 export function emit(name: 'chat-island-conversations', detail: { conversations: ConversationSummary[] }): void
 export function emit(name: 'chat-island-call', detail: { username: string; number: string }): void
-export function emit(name: 'chat-island-notify', detail: { peer: string; name: string; body: string }): void
+export function emit(
+  name: 'chat-island-notify',
+  detail: { peer: string; name: string; body: string; kind: 'chat' | 'group'; author: string; text: string; attachment: boolean; avatar?: string; ts: number },
+): void
 export function emit(name: string, detail: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }))
 }

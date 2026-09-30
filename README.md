@@ -31,7 +31,7 @@ Serve `dist/chat-island-sw.js` from the host for notifications with the tab clos
 | `chat-island-error` | out | `{ scope, message }` |
 | `chat-island-push` | out | `{ enabled }` |
 | `chat-island-call` | out | `{ username, number }` |
-| `chat-island-notify` | out | `{ peer, name, body }` message not in view |
+| `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
 
 ## Develop
 
