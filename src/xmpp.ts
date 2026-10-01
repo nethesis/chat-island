@@ -218,7 +218,7 @@ export class Chat {
 
   // ---- outgoing ----
 
-  /** Send to a colleague (username) or to a group (room address); a reply quotes its target in the body too, for other clients. */
+  /** Send to an operator (username) or to a group (room address); a reply quotes its target in the body too, for other clients. */
   async send(peer: string, body: string, oob?: string, reply?: Reply): Promise<Message> {
     const id = crypto.randomUUID()
     const group = this.isGroup(peer)
@@ -247,7 +247,7 @@ export class Chat {
     )
   }
 
-  /** Tell these colleagues I am here (directed presence). Those online answer, so both sides see each other. */
+  /** Tell these operators I am here (directed presence). Those online answer, so both sides see each other. */
   async announce(peers: string[]) {
     for (const peer of peers) {
       await this.xmpp.send(xml('presence', { to: `${peer}@${this.domain}` }, xml('x', { xmlns: NS.hello }))).catch(() => {})
@@ -276,7 +276,7 @@ export class Chat {
     return this.mam(undefined, undefined, max)
   }
 
-  /** History with one colleague or group, newest page first; pass `before` (archive id) to page back. */
+  /** History with one operator or group, newest page first; pass `before` (archive id) to page back. */
   history(peer: string, before?: string, max = 30): Promise<HistoryPage> {
     return this.mam(peer, before, max)
   }

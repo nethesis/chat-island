@@ -27,7 +27,7 @@ export interface ChatIslandProps {
   serviceWorker?: string
   /** How many chat heads the dock keeps; older ones drop off. Default 5. */
   maxHeads?: number
-  /** Show the "new chat" button with the colleague picker. Off when the host has its own list. Default true. */
+  /** Show the "new chat" button with the operator picker. Off when the host has its own list. Default true. */
   newChatButton?: boolean
   /** Notification permission: 'auto' asks once online, 'click' waits for the bell. Default 'click'. */
   notifications?: 'auto' | 'click'
@@ -348,7 +348,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     }
   }, [cfg, serviceWorker, epoch])
 
-  // Once online and with the colleague list in hand, greet everyone: that is how presence works here.
+  // Once online and with the operator list in hand, greet everyone: that is how presence works here.
   const contactKeys = useStore((st) => Object.keys(st.contacts).join(','))
   useEffect(() => {
     if (status === 'online' && contactKeys) chat.current?.announce(contactKeys.split(','))

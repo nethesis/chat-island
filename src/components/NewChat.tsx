@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { Avatar, PresenceDot } from './Avatar'
 import { Button, Icon } from './Button'
 
-/** Pick one colleague for a chat, or several for a group. */
+/** Pick one operator for a chat, or several for a group. */
 /** A picture for the group: whatever was chosen, squared and shrunk so it travels in the room's vCard. */
 async function shrink(file: File): Promise<string> {
   const img = await createImageBitmap(file)
@@ -48,7 +48,7 @@ export function NewChat({ onOpen, onCreateGroup }: { onOpen: (peer: string) => v
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search colleagues"
+            placeholder="Search operators"
             className="ci-flex-1 ci-bg-transparent ci-border-0 ci-outline-none ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400"
           />
         </div>
@@ -68,7 +68,7 @@ export function NewChat({ onOpen, onCreateGroup }: { onOpen: (peer: string) => v
       )}
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       <ul className="ci-overflow-y-auto ci-py-1 ci-m-0 ci-p-0 ci-list-none ci-flex-1">
-        {list.length === 0 && <li className="ci-px-4 ci-py-6 ci-text-center ci-text-sm ci-text-gray-500 dark:ci-text-gray-400">No colleagues found</li>}
+        {list.length === 0 && <li className="ci-px-4 ci-py-6 ci-text-center ci-text-sm ci-text-gray-500 dark:ci-text-gray-400">No operators found</li>}
         {list.map((c) => {
           const on = selected.includes(c.username)
           return (

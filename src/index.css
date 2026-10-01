@@ -5,7 +5,22 @@
 /* Scoped reset: preflight is off, so the island resets only itself. Same font as phone-island. */
 .chat-island-root, .chat-island-root * { box-sizing: border-box; }
 .chat-island-root { font-family: 'Poppins', 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
-.chat-island-root button { font: inherit; cursor: pointer; }
-.chat-island-root textarea, .chat-island-root input { font: inherit; }
+/* Form controls: stronger than the host page's own button/input/textarea rules (0,0,2),
+   weaker than the island's classes (0,1,0), so any page leaves them as the island draws them. */
+:where(.chat-island-root) button:not(z),
+:where(.chat-island-root) input:not(z),
+:where(.chat-island-root) textarea:not(z) {
+  margin: 0; padding: 0; border: 0 solid transparent; border-radius: 0; background: none; box-shadow: none;
+  color: inherit; font: inherit; line-height: inherit; letter-spacing: inherit; text-align: inherit; text-transform: none;
+  width: auto; height: auto; min-width: 0; min-height: 0; max-width: none; outline-offset: 0;
+}
+:where(.chat-island-root) button:not(z) { cursor: pointer; }
+/* The bits of Tailwind's preflight the island is drawn with (the CTI and NethLink have it page-wide),
+   so a page without it shows the same borders, lists and images. */
+:where(.chat-island-root), :where(.chat-island-root) *:not(z), :where(.chat-island-root) ::before, :where(.chat-island-root) ::after { border-width: 0; border-style: solid; border-color: #e5e7eb; }
+:where(.chat-island-root) :is(h1, h2, h3, h4, h5, h6, p, blockquote, figure, pre, ol, ul):not(z) { margin: 0; }
+:where(.chat-island-root) :is(ol, ul):not(z) { list-style: none; padding: 0; }
+:where(.chat-island-root) :is(img, svg, video, audio, canvas):not(z) { display: block; vertical-align: middle; }
+:where(.chat-island-root) :is(img, video):not(z) { max-width: 100%; height: auto; }
 .chat-island-root ::-webkit-scrollbar { width: 6px; }
 .chat-island-root ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 9999px; }

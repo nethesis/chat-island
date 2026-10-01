@@ -32,7 +32,7 @@ export interface Reaction {
 }
 
 export interface Conversation {
-  peer: string               // colleague username, or the group address (room@conference.host)
+  peer: string               // operator username, or the group address (room@conference.host)
   kind: 'chat' | 'group'
   name?: string              // group name
   avatar?: string            // group picture, data URL
@@ -61,7 +61,7 @@ export interface Config {
   token: string     // CTI JWT, used as the XMPP password
 }
 
-/** What the host app gets for its conversation list: one row per colleague or group. */
+/** What the host app gets for its conversation list: one row per operator or group. */
 export interface ConversationSummary {
   peer: string
   kind: 'chat' | 'group'

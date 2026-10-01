@@ -23,7 +23,7 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void }) {
-  // Only what this window shows: a message elsewhere, or a colleague's presence, must not re-render it.
+  // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
   const { c, contacts, online, mobile, status, closeChat, openChat, markRead, order, me } = useStore(
     useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me })),
   )

@@ -23,14 +23,14 @@ export async function fetchContacts(host: string, token: string, me: string, onM
   return contactsFromOperators(users, avatars, me).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Colleagues with the mobile app registered for push: a message reaches their phone even when they are not in the chat. */
+/** Operators with the mobile app registered for push: a message reaches their phone even when they are not in the chat. */
 export async function fetchMobile(host: string, token: string): Promise<string[]> {
   const r = await fetch(`https://${host}/chat-gw/push/mobile`, { headers: { Authorization: `Bearer ${token}` } })
   if (!r.ok) throw new Error(`push/mobile: HTTP ${r.status}`)
   return ((await r.json()) as { users: string[] }).users
 }
 
-/** Forget a conversation on the server: my archive with that colleague or group is purged. */
+/** Forget a conversation on the server: my archive with that operator or group is purged. */
 export async function deleteHistory(host: string, token: string, peer: string): Promise<void> {
   const r = await fetch(`https://${host}/chat-gw/conversations/${encodeURIComponent(peer)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
   if (!r.ok) throw new Error(`delete: HTTP ${r.status}`)

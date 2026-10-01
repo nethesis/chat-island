@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat Island - live demo</title>
+    <link rel="stylesheet" href="./dist-widget/index.widget.css" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef3f8; --accent: rgba(58, 123, 213, 0.16); --surface: rgba(255, 255, 255, 0.9); --surface-soft: #f5f8fb;
+        --border: rgba(148, 163, 184, 0.24); --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        --text: #16202a; --soft: #516071; --primary: #2563eb; --primary-strong: #1d4ed8; --danger: #e11d48; --ok: #16a34a;
+      }
+      :root.dark {
+        color-scheme: dark;
+        --bg: #0b1220; --accent: rgba(37, 99, 235, 0.18); --surface: rgba(17, 24, 39, 0.88); --surface-soft: #111827;
+        --border: rgba(148, 163, 184, 0.18); --shadow: 0 24px 60px rgba(0, 0, 0, 0.45); --text: #e5e7eb; --soft: #9ca3af;
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; max-width: 1100px; margin: 0 auto; padding: 24px 20px 120px;
+        background: radial-gradient(circle at top left, var(--accent), transparent 34%), var(--bg); color: var(--text); min-height: 100vh;
+      }
+      h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); margin: 0 0 6px; }
+      h2 { font-size: 1.1rem; margin: 0 0 12px; }
+      p, label, small { color: var(--soft); }
+      .panel { background: var(--surface); padding: 22px; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 18px; backdrop-filter: blur(12px); }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+      .demo input, .demo textarea, .demo select {
+        font: inherit; color: var(--text); background: var(--surface-soft); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-width: 0;
+      }
+      .demo textarea { width: 100%; height: 4.5rem; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+      .demo button {
+        font: inherit; font-weight: 600; border: 1px solid var(--border); border-radius: 999px; padding: 9px 16px; cursor: pointer;
+        background: var(--surface-soft); color: var(--text);
+      }
+      .demo button.primary { background: linear-gradient(135deg, var(--primary), var(--primary-strong)); border-color: transparent; color: white; }
+      .demo button.danger { background: var(--danger); border-color: transparent; color: white; }
+      .demo button.active { outline: 2px solid var(--primary); }
+      .demo .tabs button { border-radius: 10px; }
+      .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--surface-soft); border: 1px solid var(--border); font-size: 0.85rem; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; }
+      .dot.online { background: var(--ok); } .dot.error, .dot.unauthorized { background: var(--danger); } .dot.connecting { background: #f59e0b; }
+      #log { font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap; background: var(--surface-soft); border-radius: 12px; padding: 12px; height: 16rem; overflow: auto; margin: 0; }
+      #list { list-style: none; padding: 0; margin: 0; }
+      #list li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; margin: 0 -8px; border-bottom: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: background-color 0.15s ease; }
+      #list li:hover { background: var(--surface-soft); }
+      #list li.empty { cursor: default; } #list li.empty:hover { background: none; }
+      #list li:last-child { border-bottom: 0; }
+      #list .preview { color: var(--soft); font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .unread { background: var(--primary); color: white; border-radius: 999px; padding: 0 8px; font-size: 0.8rem; align-self: center; }
+      .hidden { display: none !important; }
+      code { font-size: 0.9em; }
+    </style>
+  </head>
+  <body>
+    <div class="demo">
+    <div class="row" style="justify-content: space-between">
+      <div>
+        <h1>💬 Chat Island</h1>
+        <p>Live demo of the stand-alone widget: the NethVoice chat on any web page.</p>
+      </div>
+      <div class="row">
+        <button data-theme="light" class="theme active">☀️ Light</button>
+        <button data-theme="dark" class="theme">🌙 Dark</button>
+        <button data-theme="system" class="theme">🖥️ System</button>
+      </div>
+    </div>
+
+    <!-- Login: a CTI token, or NethVoice credentials exchanged for one -->
+    <section id="login" class="panel">
+      <h2>Connect to your NethVoice</h2>
+      <div class="row tabs" style="margin-bottom: 14px">
+        <button id="tabPassword" class="active">Username and password</button>
+        <button id="tabToken">Token</button>
+      </div>
+      <div id="byPassword" class="grid">
+        <input id="host" placeholder="CTI host, e.g. cti.example.com" autocomplete="url" />
+        <input id="username" placeholder="Username" autocomplete="username" />
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" />
+      </div>
+      <div id="byToken" class="hidden">
+        <textarea id="token" placeholder="Base64 of <cti_host>:<cti_username>:<cti_token>"></textarea>
+      </div>
+      <div class="row" style="margin-top: 14px">
+        <button id="connect" class="primary">🔐 Connect</button>
+        <small id="loginError"></small>
+      </div>
+      <p><small>The chat must be on in NethVoice and the user's CTI profile must have the Chat permission. Accounts with two-factor authentication: paste a token. Nothing leaves this page except the calls to your NethVoice.</small></p>
+    </section>
+
+    <section id="main" class="hidden">
+      <div class="panel row" style="justify-content: space-between">
+        <div class="row">
+          <span class="badge"><span id="statusDot" class="dot"></span><span id="status">connecting</span></span>
+          <span class="badge">Unread <b id="unread">0</b></span>
+          <span class="badge" id="who"></span>
+        </div>
+        <button id="logout" class="danger">🚪 Logout</button>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>Commands</h2>
+          <p>The page talks to the widget with browser events.</p>
+          <div class="row">
+            <button id="newChat" class="primary">✏️ New chat</button>
+            <input id="peer" placeholder="operator's username" />
+            <button id="open">Open chat</button>
+            <button id="close">Close</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Conversations</h2>
+          <ul id="list"><li class="empty"><span class="preview">No conversations yet</span></li></ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="justify-content: space-between">
+          <h2>Events</h2>
+          <button id="clear">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </div>
+    </section>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const send = (name, detail = {}) => window.dispatchEvent(new CustomEvent(name, { detail }))
+      const KEY = 'chat-island-demo-token'
+      const log = (line) => ($('log').textContent = `${new Date().toLocaleTimeString()}  ${line}\n` + $('log').textContent)
+
+      // Theme: the page and the widget follow the same choice.
+      const setTheme = (theme) => {
+        const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+        document.querySelectorAll('.theme').forEach((b) => b.classList.toggle('active', b.dataset.theme === theme))
+        send('chat-island-theme-change', { theme })
+      }
+      document.querySelectorAll('.theme').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.theme)))
+
+      // Login tabs.
+      const tab = (password) => {
+        $('tabPassword').classList.toggle('active', password); $('tabToken').classList.toggle('active', !password)
+        $('byPassword').classList.toggle('hidden', !password); $('byToken').classList.toggle('hidden', password)
+      }
+      $('tabPassword').onclick = () => tab(true)
+      $('tabToken').onclick = () => tab(false)
+
+      // NethVoice credentials -> CTI token, through the middleware the CTI uses.
+      async function tokenFromPassword() {
+        const host = $('host').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+        const username = $('username').value.trim()
+        const r = await fetch(`https://${host}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: $('password').value }) })
+        if (!r.ok) throw new Error(r.status === 401 ? 'wrong username or password' : `login failed (HTTP ${r.status})`)
+        const { token } = await r.json()
+        return btoa(`${host}:${username}:${token}`)
+      }
+
+      // The widget mounts on the .chat-island elements present when its script runs.
+      function start(config) {
+        const [host, username] = atob(config).split(':')
+        $('who').textContent = `${username} @ ${host}`
+        $('login').classList.add('hidden'); $('main').classList.remove('hidden')
+        const div = document.createElement('div')
+        div.className = 'chat-island'
+        div.dataset.config = config
+        div.dataset.theme = document.querySelector('.theme.active')?.dataset.theme || 'light'
+        div.dataset.serviceWorker = './dist-widget/chat-island-sw.js'
+        document.body.appendChild(div)
+        const script = document.createElement('script')
+        script.src = './dist-widget/index.widget.js'
+        document.body.appendChild(script)
+      }
+
+      $('connect').onclick = async () => {
+        $('loginError').textContent = ''
+        try {
+          const config = $('byToken').classList.contains('hidden') ? await tokenFromPassword() : $('token').value.trim()
+          atob(config).split(':')[2] || (() => { throw new Error('the token is not <host>:<user>:<token> in Base64') })()
+          sessionStorage.setItem(KEY, config)
+          start(config)
+        } catch (e) {
+          $('loginError').textContent = `⚠️ ${e.message}`
+        }
+      }
+      $('logout').onclick = () => { sessionStorage.removeItem(KEY); location.reload() }
+
+      // Commands.
+      $('newChat').onclick = () => send('chat-island-new')
+      $('open').onclick = () => $('peer').value.trim() && send('chat-island-open', { username: $('peer').value.trim() })
+      $('close').onclick = () => send('chat-island-close')
+      $('clear').onclick = () => ($('log').textContent = '')
+
+      // What the widget tells the page.
+      window.addEventListener('chat-island-status', (e) => {
+        $('status').textContent = e.detail.status
+        $('statusDot').className = `dot ${e.detail.status}`
+      })
+      window.addEventListener('chat-island-unread', (e) => ($('unread').textContent = e.detail.total))
+      window.addEventListener('chat-island-conversations', (e) => {
+        const items = e.detail.conversations
+        $('list').innerHTML = ''
+        if (!items.length) $('list').innerHTML = '<li class="empty"><span class="preview">No conversations yet</span></li>'
+        for (const c of items) {
+          const li = document.createElement('li')
+          const text = document.createElement('div')
+          text.style.minWidth = '0'
+          text.innerHTML = `<b></b><div class="preview"></div>`
+          text.querySelector('b').textContent = `${c.kind === 'group' ? '👥 ' : ''}${c.name}`
+          text.querySelector('.preview').textContent = c.last ? `${c.last.mine ? 'You: ' : ''}${c.last.body}` : ''
+          li.append(text)
+          if (c.unread) li.insertAdjacentHTML('beforeend', `<span class="unread">${c.unread}</span>`)
+          li.onclick = () => send('chat-island-open', { username: c.peer })
+          $('list').append(li)
+        }
+      })
+      for (const name of ['chat-island-status', 'chat-island-unread', 'chat-island-notify', 'chat-island-message', 'chat-island-call', 'chat-island-error', 'chat-island-push']) {
+        window.addEventListener(name, (e) => log(`${name} ${JSON.stringify(e.detail)}`))
+      }
+
+      // A reload keeps the session of this tab.
+      const saved = sessionStorage.getItem(KEY)
+      if (saved) start(saved)
+    </script>
+  </body>
+</html>

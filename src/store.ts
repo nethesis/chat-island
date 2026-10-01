@@ -8,8 +8,8 @@ interface State {
   status: Status
   error?: string
   contacts: Record<string, Contact>
-  online: Record<string, boolean>   // colleagues connected to the chat, from XMPP presence
-  mobile: Record<string, boolean>   // colleagues reachable through the mobile app
+  online: Record<string, boolean>   // operators connected to the chat, from XMPP presence
+  mobile: Record<string, boolean>   // operators reachable through the mobile app
   conversations: Record<string, Conversation>
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
   open: string | null      // the conversation whose window is open
