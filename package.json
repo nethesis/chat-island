@@ -9,7 +9,12 @@
     "build:types": "tsc -p tsconfig.lib.json",
     "test": "tsc --noEmit -p tsconfig.app.json",
     "prepublishOnly": "npm run build && npm run build:widget",
-    "release": "npm publish"
+    "release": "npm publish",
+    "publish:patch": "node check-publish.cjs patch && npm version patch -m v%s",
+    "publish:minor": "node check-publish.cjs minor && npm version minor -m v%s",
+    "publish:major": "node check-publish.cjs major && npm version major -m v%s",
+    "preversion": "npm test",
+    "postversion": "git push origin main --tags"
   },
   "dependencies": {
     "@xmpp/client": "^0.14.0",

@@ -160,4 +160,4 @@ npm run dev
 npm run build && npm run build:widget
 ```
 
-A tag publishes the package to npm; jsDelivr serves the widget from it.
+Release with `npm run publish:patch` (or `:minor`, `:major`): it checks the version is free on npm, type checks, commits and tags `vX.Y.Z`, and pushes. The tag publishes the package to npm; jsDelivr serves the widget from it.
