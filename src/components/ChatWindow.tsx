@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store'
 import { emit } from '../events'
@@ -7,6 +7,7 @@ import { Button, Icon } from './Button'
 import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import type { Message, Reply } from '../types'
+import type { Theme } from '../theme'
 
 export interface WindowActions {
   send: (peer: string, text: string, reply?: Reply) => Promise<void>
@@ -22,7 +23,7 @@ export interface WindowActions {
 const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy', 'ringing', 'onhold'].includes(presence)
 
 /** The floating conversation: phone-island surface, radius and buttons. */
-export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void }) {
+export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
   const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me } = useStore(
     useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me })),
@@ -31,6 +32,7 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
   const slot = Math.max(0, order.indexOf(peer))
   const contact = contacts[peer]
   const [showMembers, setShowMembers] = useState(false)
+  const [menu, setMenu] = useState(false)
   // The message being answered, and a tick that puts the cursor in the composer.
   const [reply, setReply] = useState<Reply | null>(null)
   const [focusTick, setFocusTick] = useState(0)
@@ -47,6 +49,7 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
 
   useEffect(() => {
     setShowMembers(false)
+    setMenu(false)
     setReply(null)
   }, [peer])
 
@@ -63,7 +66,8 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Escape') return
     e.stopPropagation()
-    if (reply) setReply(null)
+    if (menu) setMenu(false)
+    else if (reply) setReply(null)
     else if (showMembers) setShowMembers(false)
     else closeChat()
   }
@@ -121,10 +125,15 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
         <Button variant="small" onClick={() => closeChat()} aria-label="Minimize" title="Minimize">
           {Icon.minus}
         </Button>
+        {/* Window menu: the theme now, more entries later. */}
+        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label="Menu" title="Menu" aria-expanded={menu}>
+          {Icon.dots}
+        </Button>
       </div>
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
+      {menu && <WindowMenu theme={theme} onClose={() => setMenu(false)} />}
       {showMembers && c.kind === 'group' && (
-        <div className="ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-p-2">
+        <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-p-2">
           {members.map((m) => (
             <div key={m} className="ci-flex ci-items-center ci-gap-3 ci-px-2 ci-py-1.5 ci-text-sm">
               <span className="ci-relative">
@@ -182,6 +191,44 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
         onFile={(f) => actions.upload(peer, f)}
       />
       </div>
+    </div>
+  )
+}
+
+const THEMES: { value: Theme; label: string; icon: React.ReactNode }[] = [
+  { value: 'light', label: 'Light', icon: Icon.sun },
+  { value: 'dark', label: 'Dark', icon: Icon.moon },
+  { value: 'system', label: 'System', icon: Icon.monitor },
+]
+
+/** The header menu; a click elsewhere closes it. */
+function WindowMenu({ theme, onClose }: { theme?: Theme; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[aria-label="Menu"]') && onClose()
+    document.addEventListener('pointerdown', away, true)
+    return () => document.removeEventListener('pointerdown', away, true)
+  }, [onClose])
+  return (
+    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-w-44 ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-text-sm">
+      <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>
+      {THEMES.map((t) => (
+        <button
+          key={t.value}
+          type="button"
+          role="menuitemradio"
+          aria-checked={theme === t.value}
+          onClick={() => {
+            emit('chat-island-theme-change', { theme: t.value })
+            onClose()
+          }}
+          className="ci-w-full ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700"
+        >
+          <span className="ci-w-4 ci-text-green-600 dark:ci-text-green-400">{theme === t.value && Icon.check}</span>
+          <span className="ci-text-gray-600 dark:ci-text-gray-100">{t.icon}</span>
+          {t.label}
+        </button>
+      ))}
     </div>
   )
 }

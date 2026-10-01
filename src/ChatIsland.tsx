@@ -95,9 +95,22 @@ function parseConfig(dataConfig: string): Config | null {
 /** A one-line preview of a message: Markdown marks dropped, a code block shown as its text. */
 const plain = (t: string) => (appAttachment(t) ? 'Attachment' : emojify(t)).replace(/```[^\n]*\n?/g, '').replace(/(\*\*|__|~~|`)/g, '').replace(/(^|\s)[*_](\S[^*_]*)[*_]/g, '$1$2').replace(/\s+/g, ' ').trim()
 
+/** Keeps a panel mounted until it has shrunk back into the dock; skip drops it at once. */
+function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEvent) => void] {
+  const [kept, setKept] = useState(value)
+  useEffect(() => {
+    if (value || skip) return setKept(value)
+    // Fallback for when no animation runs: reduced motion, a hidden tab.
+    const t = window.setTimeout(() => setKept(value), matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 400)
+    return () => window.clearTimeout(t)
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+  const onEnd = (e: React.AnimationEvent) => !value && e.target === e.currentTarget && setKept(value)
+  return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
+}
+
 export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
-  const dark = useDark(theme)
+  const [dark, themeChoice] = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
   const soundRef = useRef(sound)
@@ -375,6 +388,18 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   useEffect(() => emit('chat-island-unread', { total: unread }), [unread])
 
 
+  // New chat -> chat is a view change, like phone-island: one panel resizing from the picker's height, not two side by side.
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const prevOpen = useRef(open)
+  const morph = useRef<number | null>(null)
+  const swap = !picker && !!open && open !== prevOpen.current && !!pickerRef.current
+  if (swap) morph.current = pickerRef.current!.offsetHeight
+  useEffect(() => {
+    prevOpen.current = open
+    if (!open) morph.current = null
+  }, [open])
+  const [shownPeer, closing, closed] = useExit(open)
+  const [shownPicker, pickerClosing, pickerClosed] = useExit(picker, swap)
   if (!cfg) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
   const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
@@ -387,8 +412,16 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       data-status={status}
     >
       <Boundary>
-        {open && <ChatWindow peer={open} actions={actions} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />}
-        {picker && <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />}
+        {shownPeer && (
+          <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={morph.current ? ({ '--ci-from': `${morph.current}px` } as React.CSSProperties) : undefined} onAnimationEnd={closed}>
+            <ChatWindow peer={shownPeer} actions={actions} theme={themeChoice} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
+          </div>
+        )}
+        {shownPicker && (
+          <div ref={pickerRef} className={pickerClosing ? 'ci-anim-close' : 'ci-anim-open'} onAnimationEnd={pickerClosed}>
+            <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
+          </div>
+        )}
         <Dock onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} pushButton={notifications !== 'auto'} />
       </Boundary>
     </div>

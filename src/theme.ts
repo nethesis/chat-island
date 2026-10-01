@@ -13,7 +13,7 @@ const stored = (): Theme | undefined => {
 }
 
 /** Dark or not: the chosen theme, else the host's `dark` class on <html>, like phone-island. */
-export function useDark(prop?: Theme): boolean {
+export function useDark(prop?: Theme): [boolean, Theme | undefined] {
   const [theme, setTheme] = useState<Theme | undefined>(() => prop ?? stored())
   const [dark, setDark] = useState(false)
 
@@ -55,5 +55,5 @@ export function useDark(prop?: Theme): boolean {
     return () => obs.disconnect()
   }, [theme])
 
-  return dark
+  return [dark, theme]
 }
