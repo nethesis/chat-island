@@ -1,7 +1,7 @@
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useDrag } from './drag'
-import { Chat } from './xmpp'
+import { Chat, DOMAIN } from './xmpp'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
 import { deleteHistory, fetchContacts, fetchInactive, fetchMobile } from './api'
@@ -214,7 +214,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     if (!cfg) return
     const s = useStore.getState()
     s.reset() // another account may have been here before (logout, then login as someone else)
-    useStore.setState({ me: cfg.username, mucHost: `conference.${cfg.host}`, maxHeads, newChatButton }) // eslint-disable-line react-hooks/exhaustive-deps
+    useStore.setState({ me: cfg.username, mucHost: `conference.${DOMAIN}`, maxHeads, newChatButton }) // eslint-disable-line react-hooks/exhaustive-deps
     const c = new Chat(cfg, {
       status: (st, err) => {
         s.setStatus(st, err)
@@ -384,7 +384,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     >
       <Boundary>
         {open && <ChatWindow peer={open} actions={actions} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />}
-        {picker && <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} />}
+        {picker && <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />}
         <Dock onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} pushButton={notifications !== 'auto'} />
       </Boundary>
     </div>

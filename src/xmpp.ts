@@ -4,6 +4,10 @@ import { client, xml, type Client } from '@xmpp/client'
 import type { Element } from '@xmpp/xml'
 import type { Config, Message, Reaction, Reply } from './types'
 
+/** The XMPP domain of every NethVoice chat: fixed, so addresses survive a change of the CTI host,
+ *  which only reaches the server. No federation, so the same name in every tenant is fine. */
+export const DOMAIN = 'chat.internal'
+
 const NS = {
   carbons: 'urn:xmpp:carbons:2',
   forward: 'urn:xmpp:forward:0',
@@ -84,12 +88,12 @@ export class Chat {
   constructor(cfg: Config, h: Handlers) {
     this.cfg = cfg
     this.h = h
-    this.domain = cfg.host
-    this.mucHost = `conference.${cfg.host}`
-    this.me = `${cfg.username}@${cfg.host}`
+    this.domain = DOMAIN
+    this.mucHost = `conference.${DOMAIN}`
+    this.me = `${cfg.username}@${DOMAIN}`
     this.xmpp = client({
       service: `wss://${cfg.host}/xmpp-websocket`,
-      domain: cfg.host,
+      domain: DOMAIN,
       username: cfg.username,
       password: cfg.token,
       resource: 'chat-island.' + Math.random().toString(36).slice(2, 8),
@@ -590,7 +594,18 @@ export class Chat {
   /** Flatten a message stanza; a MucSub wrapper is unwrapped to the group message inside. */
   private toMessage(st: Element, archiveId: string | undefined, ts: number): Message | undefined {
     const m = this.parseMessage(st, archiveId, ts)
+    if (m?.oob) {
+      // Uploads are served by this CTI host, whatever host the link was made under.
+      const local = this.uploadUrl(m.oob)
+      m.body = m.body === m.oob ? local : m.body
+      m.oob = local
+    }
     return m && withReply(m, findChild(st, 'reply') ? (st.getChild('event', NS.pubsubEvent) ? findMessage(st.getChild('event', NS.pubsubEvent)!) : st) : undefined)
+  }
+
+  private uploadUrl(link: string): string {
+    const i = link.indexOf('/upload/')
+    return /^https:\/\/[^/]+\/upload\//.test(link) ? `https://${this.cfg.host}${link.slice(i)}` : link
   }
 
   private parseMessage(st: Element, archiveId: string | undefined, ts: number): Message | undefined {
