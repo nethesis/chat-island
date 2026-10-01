@@ -96,8 +96,9 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
             {Icon.phone}
           </Button>
         )}
-        <Button variant="small" onClick={() => closeChat()} aria-label="Close">
-          {Icon.close}
+        {/* Minimize: the head stays in the dock; its X closes the conversation. */}
+        <Button variant="small" onClick={() => closeChat()} aria-label="Minimize" title="Minimize">
+          {Icon.minus}
         </Button>
       </div>
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
