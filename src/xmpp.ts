@@ -26,6 +26,8 @@ const NS = {
   mucsub: 'urn:xmpp:mucsub:0',
   pubsubEvent: 'http://jabber.org/protocol/pubsub#event',
   mucsubMessages: 'urn:xmpp:mucsub:nodes:messages',
+  mucsubConfig: 'urn:xmpp:mucsub:nodes:config',
+  mucUser: 'http://jabber.org/protocol/muc#user',
   conference: 'jabber:x:conference',
   vcard: 'vcard-temp',
   ping: 'urn:xmpp:ping',
@@ -56,6 +58,7 @@ type Handlers = {
   typing: (peer: string, composing: boolean) => void
   status: (s: 'connecting' | 'online' | 'offline' | 'error' | 'unauthorized', err?: string) => void
   groupInvite: (room: string) => void
+  groupDestroyed: (room: string) => void
 }
 
 export class Chat {
@@ -328,10 +331,10 @@ export class Chat {
     )
     for (const u of others) {
       await this.xmpp.iqCaller
-        .request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, jid: `${u}@${this.domain}`, nick: u }, xml('event', { node: NS.mucsubMessages }))), 15000)
+        .request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, jid: `${u}@${this.domain}`, nick: u }, xml('event', { node: NS.mucsubMessages }), xml('event', { node: NS.mucsubConfig }))), 15000)
         .catch(() => {})
     }
-    await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, nick }, xml('event', { node: NS.mucsubMessages }))), 15000)
+    await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, nick }, xml('event', { node: NS.mucsubMessages }), xml('event', { node: NS.mucsubConfig }))), 15000)
     // 4. Leave the room: subscribers get messages without being in it.
     await this.xmpp.send(xml('presence', { to: `${room}/${nick}`, type: 'unavailable' }))
     // 5. Tell the members now, so their open clients pick the group up at once.
@@ -510,6 +513,13 @@ export class Chat {
       if (inner) this.deliver(inner)
       return
     }
+    // A group its owner destroyed: ejabberd tells subscribers on the config node.
+    const ev = st.getChild('event', NS.pubsubEvent)
+    if (ev?.getChild('items')?.attrs.node === NS.mucsubConfig) {
+      const room = bare(st.attrs.from)
+      if (this.isGroup(room) && findChild(ev, 'presence')?.getChild('x', NS.mucUser)?.getChild('destroy')) this.h.groupDestroyed(room)
+      return
+    }
     // A group I was added to.
     const invite = st.getChild('x', NS.conference)
     if (invite) {
@@ -627,12 +637,14 @@ const stampOf = (el?: Element | null) => {
   return stamp ? Date.parse(stamp) : Date.now()
 }
 /** The <message> nested anywhere inside a MucSub event. */
-function findMessage(el: Element): Element | undefined {
+function findChild(el: Element, name: string): Element | undefined {
   for (const c of el.children) {
     if (typeof c === 'string') continue
-    if (c.name === 'message') return c
-    const deeper = findMessage(c)
+    if (c.name === name) return c
+    const deeper = findChild(c, name)
     if (deeper) return deeper
   }
   return undefined
 }
+
+const findMessage = (el: Element) => findChild(el, 'message')

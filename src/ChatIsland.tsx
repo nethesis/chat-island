@@ -238,6 +238,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       typing: (peer, composing) => s.setTyping(peer, composing),
       reaction: (r) => s.applyReactions([r]),
       presence: (peer, online) => s.setOnline(peer, online),
+      // The owner destroyed the group: it leaves the list here and in the host.
+      groupDestroyed: (room) => s.removeConversation(room),
       // Anybody can send an invitation: the group shows only once the server says I am in it.
       groupInvite: (room) => {
         c.subscribed(room)
