@@ -203,7 +203,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
               submit()
             }
           }}
-          className="ci-block ci-w-full ci-resize-none ci-max-h-32 ci-pl-11 ci-pr-4 ci-py-2.5 ci-rounded-3xl ci-border-0 ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-ring-2 focus:ci-ring-gray-400 dark:focus:ci-ring-gray-500 ci-text-sm"
+          className={`${disabled ? 'ci-overflow-hidden' : ''} ci-block ci-w-full ci-resize-none ci-max-h-32 ci-pl-11 ci-pr-4 ci-py-2.5 ci-rounded-3xl ci-border-0 ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-ring-2 focus:ci-ring-gray-400 dark:focus:ci-ring-gray-500 ci-text-sm`}
           style={{ height: Math.min(128, 40 + 20 * (text.split('\n').length - 1)) }}
         />
       </div>

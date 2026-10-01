@@ -63,6 +63,9 @@ const withHead = (order: string[], peer: string, max: number, open: string | nul
   return next.filter((p) => p !== evicted)
 }
 
+/** One message, whether it carries the archive id or the sender's own (oid). */
+const same = (a: Message, b: Message) => a.id === b.id || (!!a.oid && a.oid === b.oid)
+
 export const useStore = create<State>((set, get) => ({
   me: '',
   myName: '',
@@ -112,7 +115,7 @@ export const useStore = create<State>((set, get) => ({
         const peer = peerOf(m)
         if (!peer || peer === me) continue
         const c = conversations[peer] ?? empty(peer, s.mucHost)
-        if (c.messages.some((x) => x.id === m.id)) continue
+        if (c.messages.some((x) => same(x, m))) continue
         if (c.loaded) {
           conversations[peer] = { ...c, messages: [...c.messages, m].sort((a, b) => a.ts - b.ts) }
           continue
@@ -127,7 +130,7 @@ export const useStore = create<State>((set, get) => ({
     set((s) => {
       const c = s.conversations[peer] ?? empty(peer, s.mucHost)
       // Replace the pending copy of my own message with the archived one, dedupe by id.
-      const messages = c.messages.filter((x) => x.id !== m.id && !(x.pending && m.mine && x.body === m.body && x.oob === m.oob))
+      const messages = c.messages.filter((x) => !same(x, m) && !(x.pending && m.mine && x.body === m.body && x.oob === m.oob))
       // Nearly always the newest: insert in place instead of sorting the whole history.
       let at = messages.length
       while (at > 0 && messages[at - 1].ts > m.ts) at--
@@ -141,8 +144,8 @@ export const useStore = create<State>((set, get) => ({
   prependHistory: (peer, msgs, complete, oldest) =>
     set((s) => {
       const c = s.conversations[peer] ?? empty(peer, s.mucHost)
-      const known = new Set(c.messages.map((m) => m.id))
-      const messages = [...msgs.filter((m) => !known.has(m.id)), ...c.messages].sort((a, b) => a.ts - b.ts)
+      // The archive copy of a message sent while the history loads has another id, the same oid.
+      const messages = [...msgs.filter((m) => !c.messages.some((x) => same(x, m))), ...c.messages].sort((a, b) => a.ts - b.ts)
       return { conversations: { ...s.conversations, [peer]: { ...c, messages, loaded: true, complete, oldest: oldest ?? c.oldest } } }
     }),
 

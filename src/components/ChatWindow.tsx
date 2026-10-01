@@ -176,7 +176,7 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
         key={peer}
         focusKey={focusTick}
         disabled={status !== 'online' || gone}
-        disabledText={gone ? 'This operator is no longer active' : undefined}
+        disabledText={gone ? 'No longer active' : undefined}
         onSend={(t) => actions.send(peer, t, reply ?? undefined).then(() => setReply(null))}
         onTyping={(v) => actions.typing(peer, v)}
         onFile={(f) => actions.upload(peer, f)}
