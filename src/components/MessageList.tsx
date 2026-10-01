@@ -141,6 +141,33 @@ function Chips({ forMsg, me, onReact, nameOf, mine }: { forMsg?: Record<string, 
   )
 }
 
+/** The quoted message on top of a reply; a click goes back to it. */
+function Quote({ reply, messages, mine, name }: { reply: NonNullable<Message['reply']>; messages: Message[]; mine: boolean; name: (u: string) => string }) {
+  const original = messages.find((x) => x.oid === reply.id)
+  const text = original ? (original.oob ? 'Attachment' : original.body) : reply.quote?.replace(/^[^:]*: /, '') ?? ''
+  const jump = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const el = document.querySelector<HTMLElement>(`.chat-island-root [data-oid="${CSS.escape(reply.id)}"]`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 900 })
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={jump}
+      onKeyDown={(e) => e.key === 'Enter' && jump(e as unknown as React.MouseEvent)}
+      className={`ci-mb-1.5 ci-px-2.5 ci-py-1 ci-rounded-xl ci-cursor-pointer ci-border-0 ci-border-l-4 ci-border-solid ci-text-xs ${
+        mine ? 'ci-bg-black/20 dark:ci-bg-black/10 ci-border-gray-400 dark:ci-border-gray-600' : 'ci-bg-black/5 dark:ci-bg-white/10 ci-border-iconSecondary dark:ci-border-iconSecondaryDark'
+      }`}
+    >
+      <div className="ci-font-medium">{name(reply.author)}</div>
+      <div className="ci-line-clamp-2 ci-break-words ci-opacity-80">{text}</div>
+    </div>
+  )
+}
+
 export function MessageList({
   messages,
   typing,
@@ -150,6 +177,7 @@ export function MessageList({
   reactions,
   me = '',
   onReact,
+  onReply,
 }: {
   messages: Message[]
   typing: boolean
@@ -159,6 +187,7 @@ export function MessageList({
   reactions?: Reactions
   me?: string
   onReact?: (target: string, emoji: string) => void
+  onReply?: (m: Message) => void
 }) {
   const contacts = useStore((s) => s.contacts)
   const box = useRef<HTMLDivElement>(null)
@@ -222,8 +251,22 @@ export function MessageList({
               {Icon.react}
             </button>
           )
+          const replyButton = !!onReply && !!target && !m.pending && (
+            <button
+              type="button"
+              title="Reply"
+              aria-label="Reply to this message"
+              onClick={(e) => {
+                e.stopPropagation()
+                onReply(m)
+              }}
+              className="ci-self-center ci-h-7 ci-w-7 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-text-gray-500 dark:ci-text-gray-400 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-opacity-100 ci-opacity-0 group-hover:ci-opacity-100"
+            >
+              {Icon.reply}
+            </button>
+          )
           return (
-            <div key={m.id}>
+            <div key={m.id} data-oid={m.oid}>
               {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
               <div className={`ci-group ci-flex ci-items-start ci-gap-1.5 ${m.mine ? 'ci-justify-end' : 'ci-justify-start'} ${grouped ? 'ci-mt-0.5' : 'ci-mt-2'}`}>
                 {sender && (
@@ -231,6 +274,7 @@ export function MessageList({
                     {!grouped && <Avatar contact={contacts[m.nick!]} username={m.nick!} size={28} />}
                   </span>
                 )}
+                {m.mine && replyButton}
                 {m.mine && reactButton}
                 <div className={`ci-relative ci-flex ci-flex-col ci-max-w-[80%] ${m.mine ? 'ci-items-end' : 'ci-items-start'}`}>
                   {menuFor === target && target && (
@@ -276,6 +320,7 @@ export function MessageList({
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-bl-lg'
                     } ${m.pending ? 'ci-opacity-60' : ''}`}
                   >
+                    {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
                     {m.oob ? <Attachment url={m.oob} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
                     {m.oob && m.body && m.body !== m.oob && m.body !== fileName(m.oob) && <div className="ci-text-xs ci-opacity-80 ci-mt-1">{m.body}</div>}
                     <span className="ci-block ci-text-right ci-text-[10px] ci-leading-none ci-opacity-60 ci-mt-1">{time(m.ts)}</span>
@@ -283,6 +328,7 @@ export function MessageList({
                   {target && <Chips forMsg={reactions?.[target]} me={me} mine={m.mine} nameOf={nameOf} onReact={(e) => canReact && react(target, e)} />}
                 </div>
                 {!m.mine && reactButton}
+                {!m.mine && replyButton}
               </div>
             </div>
           )

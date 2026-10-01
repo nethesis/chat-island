@@ -23,7 +23,7 @@ async function voiceFile(chunks: Blob[], mime: string): Promise<File> {
 const extOf = (mime: string) => (/mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm')
 const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`
 
-export function Composer({ onSend, onTyping, onFile, disabled }: { onSend: (text: string) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean }) {
+export function Composer({ onSend, onTyping, onFile, disabled, focusKey }: { onSend: (text: string) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; focusKey?: number }) {
   const [text, setText] = useState('')
   const [emoji, setEmoji] = useState(false)
   const cursor = useRef<number | null>(null) // where the cursor goes once the converted text is on screen
@@ -61,6 +61,11 @@ export function Composer({ onSend, onTyping, onFile, disabled }: { onSend: (text
     const id = window.setInterval(() => setElapsed(Date.now() - rec.since), 250)
     return () => window.clearInterval(id)
   }, [rec])
+
+  // Replying puts the cursor here.
+  useEffect(() => {
+    if (focusKey) box.current?.focus()
+  }, [focusKey])
 
   const setComposing = (v: boolean) => {
     if (composing.current !== v) {

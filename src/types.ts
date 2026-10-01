@@ -13,6 +13,14 @@ export interface Message {
   room?: string     // group address when the message belongs to a group
   nick?: string     // sender's username inside a group
   oid?: string      // the id its sender gave it: the same on every side, what reactions point to
+  reply?: Reply     // the message this one answers (XEP-0461)
+}
+
+/** A reply: the oid of the quoted message, its author, and the quote carried in the body for other clients. */
+export interface Reply {
+  id: string
+  author: string   // username of the quoted message's author
+  quote?: string   // the fallback text ("Name: …"), shown when the original is not loaded
 }
 
 /** Someone's reactions to one message (XEP-0444): the whole set, an empty one takes them back. */

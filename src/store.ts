@@ -3,6 +3,7 @@ import type { Contact, Conversation, Message, Reaction, Status } from './types'
 
 interface State {
   me: string
+  myName: string
   mucHost: string
   status: Status
   error?: string
@@ -62,6 +63,7 @@ const withHead = (order: string[], peer: string, max: number, open: string | nul
 
 export const useStore = create<State>((set, get) => ({
   me: '',
+  myName: '',
   mucHost: '',
   status: 'connecting',
   contacts: {},

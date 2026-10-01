@@ -7,7 +7,7 @@ async function get<T>(host: string, token: string, path: string): Promise<T> {
   return (await r.json()) as T
 }
 
-export async function fetchContacts(host: string, token: string, me: string): Promise<Contact[]> {
+export async function fetchContacts(host: string, token: string, me: string, onMe?: (name: string) => void): Promise<Contact[]> {
   type User = { username: string; name?: string; mainPresence?: string }
   const users = await get<Record<string, User>>(host, token, '/user/endpoints/all')
   let avatars: Record<string, string> = {}
@@ -16,6 +16,9 @@ export async function fetchContacts(host: string, token: string, me: string): Pr
   } catch {
     /* avatars are optional */
   }
+  // My own name: replies quote it for clients that only see the text.
+  const mine = Object.values(users).find((u) => u.username === me)?.name
+  if (mine) onMe?.(mine)
   return Object.values(users)
     .filter((u) => u.username && u.username !== me)
     .map((u) => ({ username: u.username, name: u.name || u.username, avatar: avatars[u.username], presence: u.mainPresence }))

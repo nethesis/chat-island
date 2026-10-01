@@ -2,7 +2,7 @@
 // members are subscribed, so messages reach their archive and push without joining.
 import { client, xml, type Client } from '@xmpp/client'
 import type { Element } from '@xmpp/xml'
-import type { Config, Message, Reaction } from './types'
+import type { Config, Message, Reaction, Reply } from './types'
 
 const NS = {
   carbons: 'urn:xmpp:carbons:2',
@@ -32,6 +32,8 @@ const NS = {
   vcard: 'vcard-temp',
   ping: 'urn:xmpp:ping',
   reactions: 'urn:xmpp:reactions:0',
+  reply: 'urn:xmpp:reply:0',
+  fallback: 'urn:xmpp:fallback:0',
 }
 
 const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
@@ -216,18 +218,24 @@ export class Chat {
 
   // ---- outgoing ----
 
-  /** Send to a colleague (username) or to a group (room address). */
-  async send(peer: string, body: string, oob?: string): Promise<Message> {
+  /** Send to a colleague (username) or to a group (room address); a reply quotes its target in the body too, for other clients. */
+  async send(peer: string, body: string, oob?: string, reply?: Reply): Promise<Message> {
     const id = crypto.randomUUID()
-    const children: Element[] = [xml('body', {}, body), xml('origin-id', { xmlns: NS.sid, id }), xml('store', { xmlns: NS.hints })]
+    const group = this.isGroup(peer)
+    const fallback = reply ? `> ${reply.quote ?? ''}\n` : ''
+    const children: Element[] = [xml('body', {}, fallback + body), xml('origin-id', { xmlns: NS.sid, id }), xml('store', { xmlns: NS.hints })]
     if (oob) children.push(xml('x', { xmlns: NS.oob }, xml('url', {}, oob)))
-    if (this.isGroup(peer)) {
+    if (reply) {
+      children.push(xml('reply', { xmlns: NS.reply, id: reply.id, to: group ? `${peer}/${reply.author}` : `${reply.author}@${this.domain}` }))
+      children.push(xml('fallback', { xmlns: NS.fallback, for: NS.reply }, xml('body', { start: '0', end: String([...fallback].length) })))
+    }
+    if (group) {
       await this.xmpp.send(xml('message', { to: peer, type: 'groupchat', id }, ...children))
-      return { id, oid: id, from: peer, to: this.cfg.username, body, ts: Date.now(), mine: true, oob, room: peer, nick: this.cfg.username }
+      return { id, oid: id, from: peer, to: this.cfg.username, body, ts: Date.now(), mine: true, oob, room: peer, nick: this.cfg.username, reply }
     }
     children.push(xml('active', { xmlns: NS.chatstates }))
     await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id }, ...children))
-    return { id, oid: id, from: this.cfg.username, to: peer, body, ts: Date.now(), mine: true, oob }
+    return { id, oid: id, from: this.cfg.username, to: peer, body, ts: Date.now(), mine: true, oob, reply }
   }
 
   /** XEP-0444: my whole set of reactions to one message; an empty set takes them back. Archived like a message. */
@@ -579,6 +587,11 @@ export class Chat {
 
   /** Flatten a message stanza; a MucSub wrapper is unwrapped to the group message inside. */
   private toMessage(st: Element, archiveId: string | undefined, ts: number): Message | undefined {
+    const m = this.parseMessage(st, archiveId, ts)
+    return m && withReply(m, findChild(st, 'reply') ? (st.getChild('event', NS.pubsubEvent) ? findMessage(st.getChild('event', NS.pubsubEvent)!) : st) : undefined)
+  }
+
+  private parseMessage(st: Element, archiveId: string | undefined, ts: number): Message | undefined {
     // ejabberd hands a subscriber the group message as a pubsub event:
     // <event xmlns="…/pubsub#event"><items node="urn:xmpp:mucsub:nodes:messages"><item><message type="groupchat">…
     const event = st.getChild('event', NS.pubsubEvent)
@@ -629,6 +642,21 @@ export class Chat {
 }
 
 const bare = (jid = '') => jid.split('/')[0]
+
+/** XEP-0461 reply on a parsed message: the target, and the body without the quote (XEP-0428 fallback range). */
+function withReply(m: Message, el?: Element): Message {
+  const r = el?.getChild('reply', NS.reply)
+  if (!r?.attrs.id) return m
+  const to: string = r.attrs.to ?? ''
+  const author = m.room ? to.split('/')[1] ?? '' : local(bare(to))
+  const range = el!.getChildren('fallback', NS.fallback).find((f: Element) => f.attrs.for === NS.reply)?.getChild('body')
+  const chars = [...m.body]
+  const start = Number(range?.attrs.start ?? 0)
+  const end = Number(range?.attrs.end ?? 0)
+  if (!range || !(end > start) || end > chars.length) return { ...m, reply: { id: r.attrs.id, author } }
+  const quote = chars.slice(start, end).join('').replace(/^> ?/gm, '').trim()
+  return { ...m, body: (chars.slice(0, start).join('') + chars.slice(end).join('')).trim(), reply: { id: r.attrs.id, author, quote } }
+}
 /** SASL refused the token: an expired or revoked CTI session, not a network problem. */
 const isAuthError = (e: Error & { condition?: string }) => e.name === 'SASLError' || e.condition === 'not-authorized'
 const local = (jid = '') => jid.split('@')[0]

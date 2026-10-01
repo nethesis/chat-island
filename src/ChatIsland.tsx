@@ -125,11 +125,11 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const actions: WindowActions = useMemo(
     () => ({
       // A failure is thrown back to the composer, which gives the text back to the person.
-      send: async (peer, text) => {
+      send: async (peer, text, reply) => {
         const c = chat.current
         if (!c) throw new Error('not connected')
         try {
-          useStore.getState().addMessage(peer, await c.send(peer, emojify(text)))
+          useStore.getState().addMessage(peer, await c.send(peer, emojify(text), undefined, reply))
         } catch (e) {
           emit('chat-island-error', { scope: 'send', message: (e as Error).message })
           throw e
@@ -321,7 +321,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const mobile = () => fetchMobile(cfg.host, cfg.token).then(s.setMobile).catch(() => {})
     mobile()
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
-    fetchContacts(cfg.host, cfg.token, cfg.username)
+    fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
       .then(s.setContacts)
       .catch((e) => emit('chat-island-error', { scope: 'contacts', message: (e as Error).message }))
     const offOpen = listen<{ username: string }>('chat-island-open', ({ username }) => username && s.openChat(username))

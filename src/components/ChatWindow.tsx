@@ -6,9 +6,10 @@ import { Avatar, GroupAvatar, PresenceDot } from './Avatar'
 import { Button, Icon } from './Button'
 import { MessageList } from './MessageList'
 import { Composer } from './Composer'
+import type { Message, Reply } from '../types'
 
 export interface WindowActions {
-  send: (peer: string, text: string) => Promise<void>
+  send: (peer: string, text: string, reply?: Reply) => Promise<void>
   createGroup: (name: string, members: string[], avatar?: string) => Promise<void>
   typing: (peer: string, composing: boolean) => void
   upload: (peer: string, file: File) => void
@@ -30,6 +31,9 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
   const slot = Math.max(0, order.indexOf(peer))
   const contact = contacts[peer]
   const [showMembers, setShowMembers] = useState(false)
+  // The message being answered, and a tick that puts the cursor in the composer.
+  const [reply, setReply] = useState<Reply | null>(null)
+  const [focusTick, setFocusTick] = useState(0)
   const nameOf = (u: string) => (u === me ? 'You' : contacts[u]?.name ?? u)
   const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
 
@@ -41,13 +45,26 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
     markRead(peer)
   }, [peer, c?.messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => setShowMembers(false), [peer])
+  useEffect(() => {
+    setShowMembers(false)
+    setReply(null)
+  }, [peer])
+
+  const startReply = (m: Message) => {
+    if (!m.oid) return
+    const author = c?.kind === 'group' ? m.nick ?? '' : m.mine ? me : peer
+    const text = m.oob ? 'Attachment' : m.body.replace(/```/g, '').replace(/\s+/g, ' ').trim().slice(0, 100)
+    const name = author === me ? useStore.getState().myName || me : contacts[author]?.name ?? author
+    setReply({ id: m.oid, author, quote: `${name}: ${text}` })
+    setFocusTick((t) => t + 1)
+  }
 
   // Escape closes the members list first, then the window.
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Escape') return
     e.stopPropagation()
-    if (showMembers) setShowMembers(false)
+    if (reply) setReply(null)
+    else if (showMembers) setShowMembers(false)
     else closeChat()
   }
 
@@ -138,11 +155,24 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
         reactions={c.reactions}
         me={me}
         onReact={(target, emoji) => actions.react(peer, target, emoji)}
+        onReply={startReply}
       />
+      {reply && (
+        <div className="ci-mx-3 ci-mt-1 ci-flex ci-items-center ci-gap-2 ci-pl-3 ci-pr-1 ci-py-1.5 ci-rounded-2xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-border-0 ci-border-l-4 ci-border-solid ci-border-iconSecondary dark:ci-border-iconSecondaryDark">
+          <div className="ci-flex-1 ci-min-w-0 ci-text-xs">
+            <div className="ci-font-medium ci-text-gray-900 dark:ci-text-white">{reply.author === me ? 'You' : contacts[reply.author]?.name ?? reply.author}</div>
+            <div className="ci-truncate ci-text-gray-500 dark:ci-text-gray-400">{reply.quote?.replace(/^[^:]*: /, '')}</div>
+          </div>
+          <Button variant="small" onClick={() => setReply(null)} aria-label="Cancel reply" title="Cancel reply">
+            {Icon.close}
+          </Button>
+        </div>
+      )}
       <Composer
         key={peer}
+        focusKey={focusTick}
         disabled={status !== 'online'}
-        onSend={(t) => actions.send(peer, t)}
+        onSend={(t) => actions.send(peer, t, reply ?? undefined).then(() => setReply(null))}
         onTyping={(v) => actions.typing(peer, v)}
         onFile={(f) => actions.upload(peer, f)}
       />
