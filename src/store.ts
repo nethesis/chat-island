@@ -10,6 +10,7 @@ interface State {
   contacts: Record<string, Contact>
   online: Record<string, boolean>   // operators connected to the chat, from XMPP presence
   mobile: Record<string, boolean>   // operators reachable through the mobile app
+  inactive: Record<string, string>  // operators gone from the CTI: username -> last name
   conversations: Record<string, Conversation>
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
   open: string | null      // the conversation whose window is open
@@ -24,6 +25,7 @@ interface State {
   setContacts(list: Contact[]): void
   setOnline(peer: string, online: boolean): void
   setMobile(users: string[]): void
+  setInactive(users: Record<string, string>): void
   ensure(peer: string): Conversation
   setGroup(peer: string, name: string, members: string[], avatar?: string, owner?: boolean): void
   removeConversation(peer: string): void
@@ -69,6 +71,7 @@ export const useStore = create<State>((set, get) => ({
   contacts: {},
   online: {},
   mobile: {},
+  inactive: {},
   conversations: {},
   order: [],
   open: null,
@@ -79,10 +82,11 @@ export const useStore = create<State>((set, get) => ({
   newChatButton: true,
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, conversations: {}, order: [], open: null, picker: false }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false }),
   // The host may send partial entries: a name is always there, the username at worst.
   setContacts: (list) => set({ contacts: Object.fromEntries(list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username }])) }),
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),
+  setInactive: (inactive) => set({ inactive }),
   setOnline: (peer, online) => set((s) => (s.online[peer] === online ? {} : { online: { ...s.online, [peer]: online } })),
 
   ensure: (peer) => {

@@ -24,8 +24,8 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, status, closeChat, openChat, markRead, order, me } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me })),
+  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -69,8 +69,10 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
   }
 
   if (!c) return null
+  // An operator gone from the CTI: the chat stays to read, nothing more to send.
+  const gone = c.kind !== 'group' && !!inactive[peer]
   return (
-    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? peer} onKeyDown={onKeyDown} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white">
+    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white">
       {/* The tail slides to the head this window belongs to. */}
       <span
         className="ci-absolute ci--right-1.5 ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-transition-all ci-duration-200"
@@ -92,9 +94,11 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
           {...(c.kind === 'group' ? { role: 'button', tabIndex: 0, 'aria-expanded': showMembers, onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setShowMembers((v) => !v)) } : {})}
           onClick={() => c.kind === 'group' && setShowMembers((v) => !v)}
         >
-          <div className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? peer}</div>
+          <div className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
-            {status !== 'online'
+            {gone
+              ? 'No longer active'
+              : status !== 'online'
               ? status
               : c.kind === 'group'
                 ? members.map(nameOf).join(', ')
@@ -108,7 +112,7 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
           </div>
         </div>
         {/* Call when the CTI says the person is reachable on a phone (webrtc, desk phone, NethLink, mobile): being in the chat alone is not enough. */}
-        {c.kind !== 'group' && contact?.number && callable(contact.presence) && (
+        {!gone && c.kind !== 'group' && contact?.number && callable(contact.presence) && (
           <Button variant="call" title={`Call ${contact.number}`} aria-label="Call" onClick={() => emit('chat-island-call', { username: peer, number: contact.number! })}>
             {Icon.phone}
           </Button>
@@ -171,7 +175,8 @@ export function ChatWindow({ peer, actions, onDragStart }: { peer: string; actio
       <Composer
         key={peer}
         focusKey={focusTick}
-        disabled={status !== 'online'}
+        disabled={status !== 'online' || gone}
+        disabledText={gone ? 'This operator is no longer active' : undefined}
         onSend={(t) => actions.send(peer, t, reply ?? undefined).then(() => setReply(null))}
         onTyping={(v) => actions.typing(peer, v)}
         onFile={(f) => actions.upload(peer, f)}

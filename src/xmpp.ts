@@ -333,8 +333,10 @@ export class Chat {
     if (avatar) await this.setGroupAvatar(room, avatar).catch(() => {})
     // 3. Members, then their subscriptions (an owner may subscribe others), then mine.
     const others = members.filter((m) => m && m !== this.cfg.username)
+    // The order members were added, kept in their affiliation: the first one inherits the group when the owner leaves the company.
+    const added = Date.now()
     await this.xmpp.iqCaller.request(
-      xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucAdmin }, ...others.map((u) => xml('item', { affiliation: 'member', jid: `${u}@${this.domain}` })))),
+      xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucAdmin }, ...others.map((u, i) => xml('item', { affiliation: 'member', jid: `${u}@${this.domain}` }, xml('reason', {}, String(added + i)))))),
       15000,
     )
     for (const u of others) {

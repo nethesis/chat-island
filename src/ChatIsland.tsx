@@ -4,7 +4,7 @@ import { useDrag } from './drag'
 import { Chat } from './xmpp'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
-import { deleteHistory, fetchContacts, fetchMobile } from './api'
+import { deleteHistory, fetchContacts, fetchInactive, fetchMobile } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -48,7 +48,8 @@ function summarize(): ConversationSummary[] {
       return {
         peer: c.peer,
         kind: c.kind,
-        name: c.kind === 'group' ? c.name ?? c.peer.split('@')[0] : contact?.name ?? c.peer,
+        name: c.kind === 'group' ? c.name ?? c.peer.split('@')[0] : contact?.name ?? st.inactive[c.peer] ?? c.peer,
+        inactive: c.kind === 'group' ? undefined : !!st.inactive[c.peer],
         avatar: c.kind === 'group' ? c.avatar : contact?.avatar,
         online: c.kind === 'group' ? false : !!st.online[c.peer],
         mobile: c.kind === 'group' ? false : !!st.mobile[c.peer],
@@ -266,7 +267,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       const visible = document.visibilityState === 'visible'
       if (visible && st.open === peer) return
       const conv = st.conversations[peer]
-      const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? peer
+      const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
       const text = m.oob ? 'Attachment' : emojify(m.body)
       const group = conv?.kind === 'group'
       const author = group && m.nick ? st.contacts[m.nick]?.name ?? m.nick : name
@@ -318,7 +319,10 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     window.addEventListener('pagehide', bye)
     c.start()
     // Who has the mobile app: refreshed now and then, it is not a live presence.
-    const mobile = () => fetchMobile(cfg.host, cfg.token).then(s.setMobile).catch(() => {})
+    const mobile = () => {
+      fetchMobile(cfg.host, cfg.token).then(s.setMobile).catch(() => {})
+      fetchInactive(cfg.host, cfg.token).then(s.setInactive).catch(() => {})
+    }
     mobile()
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
@@ -358,7 +362,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length,
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length,
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize() }), [listKey])
 

@@ -1,6 +1,6 @@
 {
   "name": "@nethesis/chat-island",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "scripts": {
     "dev": "vite --open /dev/index.html",

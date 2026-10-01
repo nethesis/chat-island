@@ -69,6 +69,7 @@ export interface ConversationSummary {
   avatar?: string
   online: boolean
   mobile?: boolean
+  inactive?: boolean // no longer in the CTI: read-only
   owner?: boolean // a group I created: deleting it removes it for everyone
   unread: number
   members?: string[]

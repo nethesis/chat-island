@@ -23,7 +23,7 @@ async function voiceFile(chunks: Blob[], mime: string): Promise<File> {
 const extOf = (mime: string) => (/mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm')
 const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`
 
-export function Composer({ onSend, onTyping, onFile, disabled, focusKey }: { onSend: (text: string) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; focusKey?: number }) {
+export function Composer({ onSend, onTyping, onFile, disabled, disabledText, focusKey }: { onSend: (text: string) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; disabledText?: string; focusKey?: number }) {
   const [text, setText] = useState('')
   const [emoji, setEmoji] = useState(false)
   const cursor = useRef<number | null>(null) // where the cursor goes once the converted text is on screen
@@ -193,7 +193,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, focusKey }: { onS
           value={text}
           disabled={disabled}
           rows={1}
-          placeholder={disabled ? 'Connecting…' : 'Write a message'}
+          placeholder={disabled ? disabledText ?? 'Connecting…' : 'Write a message'}
           onChange={(e) => change(e.target.value)}
           onKeyDown={(e) => {
             // Enter sends; Shift+Enter, or Enter inside an open ``` block, adds a line.
