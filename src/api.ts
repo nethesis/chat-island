@@ -1,4 +1,5 @@
 // Names and avatars come from the CTI, through the middleware, with the same JWT.
+import { contactsFromOperators } from './contacts'
 import type { Contact } from './types'
 
 async function get<T>(host: string, token: string, path: string): Promise<T> {
@@ -19,10 +20,7 @@ export async function fetchContacts(host: string, token: string, me: string, onM
   // My own name: replies quote it for clients that only see the text.
   const mine = Object.values(users).find((u) => u.username === me)?.name
   if (mine) onMe?.(mine)
-  return Object.values(users)
-    .filter((u) => u.username && u.username !== me)
-    .map((u) => ({ username: u.username, name: u.name || u.username, avatar: avatars[u.username], presence: u.mainPresence }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  return contactsFromOperators(users, avatars, me).sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /** Colleagues with the mobile app registered for push: a message reaches their phone even when they are not in the chat. */
