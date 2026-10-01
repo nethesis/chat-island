@@ -332,6 +332,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offClose = listen('chat-island-close', () => s.closeChat())
     const offNew = listen('chat-island-new', () => s.setPicker(true))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
+    const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
+    const offGroup = listen<{ name: string; members: string[] }>('chat-island-group-create', ({ name, members }) => name && members?.length && actions.createGroup(name, members))
     const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
     const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize() }))
     return () => {
@@ -340,6 +342,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offList()
       offNew()
       offDelete()
+      offSend()
+      offGroup()
       offOpen()
       offClose()
       offContacts()

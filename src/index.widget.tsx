@@ -6,7 +6,8 @@ import { ChatIsland } from './ChatIsland'
 
 document.querySelectorAll<HTMLElement>('.chat-island').forEach((div) => {
   const d = div.dataset
-  createRoot(div).render(
+  const root = createRoot(div)
+  const render = () => root.render(
     <React.StrictMode>
       <ChatIsland
         dataConfig={d.config ?? ''}
@@ -18,4 +19,7 @@ document.querySelectorAll<HTMLElement>('.chat-island').forEach((div) => {
       />
     </React.StrictMode>,
   )
+  render()
+  // A new token in data-config reconnects the island in place.
+  new MutationObserver(render).observe(div, { attributes: true, attributeFilter: ['data-config'] })
 })

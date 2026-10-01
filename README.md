@@ -110,6 +110,8 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-close` | in | |
 | `chat-island-new` | in | open the new chat panel |
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |
+| `chat-island-send` | in | `{ username, text }` send a text to an operator or group |
+| `chat-island-group-create` | in | `{ name, members }` create a group with these usernames and open it |
 | `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
@@ -121,6 +123,24 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-push` | out | `{ enabled }` |
 | `chat-island-call` | out | `{ username, number }` |
 | `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
+
+## Integrate in an existing app
+
+An app with its own users (WebTop, an intranet) embeds the widget and builds its view on the events:
+
+1. log the user in on the CTI (`/api/login`, or a QR code token with two-factor authentication) and pass `<cti_host>:<username>:<token>` as `data-config`;
+2. on `chat-island-status` `unauthorized`, log in again and set the new token in `data-config`: the island reconnects in place;
+3. keep its conversation list with `chat-island-conversations-request` / `chat-island-conversations`, badges with `chat-island-unread`;
+4. drive the island with `chat-island-open`, `chat-island-close`, `chat-island-send`, `chat-island-group-create`, `chat-island-delete`; `newChatButton: false` hides the island's own entry point;
+5. serve `chat-island-sw.js` from its own origin for notifications with the tab closed.
+
+```js
+const send = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
+window.addEventListener('chat-island-conversations', (e) => render(e.detail.conversations))
+send('chat-island-conversations-request')
+send('chat-island-group-create', { name: 'Support', members: ['mario', 'anna'] })
+send('chat-island-send', { username: 'mario', text: 'Ciao!' })
+```
 
 ## Live demo
 
