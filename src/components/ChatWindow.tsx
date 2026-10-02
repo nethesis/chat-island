@@ -76,10 +76,10 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
   // An operator gone from the CTI: the chat stays to read, nothing more to send.
   const gone = c.kind !== 'group' && !!inactive[peer]
   return (
-    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white">
+    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 ci-text-gray-900 dark:ci-text-white">
       {/* The tail slides to the head this window belongs to. */}
       <span
-        className="ci-absolute ci--right-1.5 ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-transition-all ci-duration-200"
+        className="ci-absolute ci--right-1.5 ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border-0 dark:ci-border-t dark:ci-border-r dark:ci-border-solid dark:ci-border-gray-700 ci-shadow-2xl ci-transition-all ci-duration-200"
         style={{ bottom: `calc(1.875rem + ${slot} * 3.75rem)` }}
         aria-hidden="true"
       />
@@ -133,7 +133,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       {menu && <WindowMenu theme={theme} onClose={() => setMenu(false)} />}
       {showMembers && c.kind === 'group' && (
-        <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-p-2">
+        <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (
             <div key={m} className="ci-flex ci-items-center ci-gap-3 ci-px-2 ci-py-1.5 ci-text-sm">
               <span className="ci-relative">
@@ -210,7 +210,7 @@ function WindowMenu({ theme, onClose }: { theme?: Theme; onClose: () => void }) 
     return () => document.removeEventListener('pointerdown', away, true)
   }, [onClose])
   return (
-    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-w-44 ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-text-sm">
+    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-w-44 ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
       <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>
       {THEMES.map((t) => (
         <button

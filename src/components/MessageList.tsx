@@ -281,7 +281,7 @@ export function MessageList({
                     <div
                       role="menu"
                       onClick={(e) => e.stopPropagation()}
-                      className={`ci-absolute ci-bottom-full ci-mb-1 ci-z-20 ci-flex ci-items-center ci-gap-0.5 ci-p-1 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ${m.mine ? 'ci-right-0' : 'ci-left-0'}`}
+                      className={`ci-absolute ci-bottom-full ci-mb-1 ci-z-20 ci-flex ci-items-center ci-gap-0.5 ci-p-1 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ${m.mine ? 'ci-right-0' : 'ci-left-0'}`}
                     >
                       {QUICK_REACTIONS.map((e) => (
                         <button

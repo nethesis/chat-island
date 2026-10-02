@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store'
 import { Avatar, GroupAvatar, PresenceDot } from './Avatar'
@@ -6,14 +7,14 @@ import { Button, Icon } from './Button'
 /** Messenger-style chat heads: one round avatar per conversation, plus the phone-island style buttons. */
 /** pushButton: offer the bell to enable notifications; off when the host asks at start-up like phone-island does for the microphone. */
 export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: React.PointerEvent) => void; pushButton?: boolean }) {
-  const { order, open, conversations, contacts, inactive, online, mobile, openChat, removeHead, picker, setPicker, status, push, enablePush, newChatButton } = useStore(
-    useShallow((s) => ({ order: s.order, open: s.open, conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton })),
+  const { order, open, conversations, contacts, inactive, online, mobile, openChat, removeHead, picker, setPicker, status, push, enablePush, newChatButton, maxHeads } = useStore(
+    useShallow((s) => ({ order: s.order, open: s.open, conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton, maxHeads: s.maxHeads })),
   )
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. Press and drag anywhere here to move the island.
   return (
     <div className={`ci-flex ci-flex-col-reverse ci-items-center ci-gap-3 ci-mb-3 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
-      {order.map((peer) => {
+      {order.slice(0, maxHeads).map((peer) => {
         const c = conversations[peer]
         const active = open === peer
         return (
@@ -49,6 +50,7 @@ export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: Rea
           </div>
         )
       })}
+      {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} />}
       {newChatButton && (
         <Button variant="default" title={status === 'online' ? 'New chat' : `Chat ${status}`} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
           {Icon.chat}
@@ -59,6 +61,82 @@ export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: Rea
         <Button variant="neutral" title="Enable notifications when the tab is closed" onClick={enablePush} className="ci-shadow-lg ci-bg-gray-50 dark:ci-bg-gray-950">
           {Icon.bell}
         </Button>
+      )}
+    </div>
+  )
+}
+
+/** +N: the chats past the dock's heads, in a list to bring one back. */
+function Overflow({ peers }: { peers: string[] }) {
+  const { conversations, contacts, inactive, online, mobile, openChat, removeHead } = useStore(
+    useShallow((s) => ({ conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead })),
+  )
+  const [show, setShow] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const unread = peers.reduce((n, p) => n + (conversations[p]?.unread ?? 0), 0)
+  const nameOf = (p: string) => (conversations[p]?.kind === 'group' ? conversations[p]?.name ?? p : contacts[p]?.name ?? inactive[p] ?? p)
+
+  useEffect(() => {
+    if (!show) return
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && setShow(false)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setShow(false)
+    document.addEventListener('pointerdown', away, true)
+    document.addEventListener('keydown', esc, true)
+    return () => {
+      document.removeEventListener('pointerdown', away, true)
+      document.removeEventListener('keydown', esc, true)
+    }
+  }, [show])
+
+  return (
+    <div ref={box} className="ci-relative">
+      <Button variant="default" title={`${peers.length} more chats`} aria-expanded={show} onClick={() => setShow((v) => !v)} className="ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950">
+        +{peers.length}
+        {unread > 0 && (
+          <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+      </Button>
+      {show && (
+        <div role="menu" onPointerDown={(e) => e.stopPropagation()} className="ci-anim-drop ci-absolute ci-right-full ci-mr-3 ci-top-0 ci-z-30 ci-w-64 ci-max-h-80 ci-overflow-y-auto ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-gray-900 dark:ci-text-white ci-text-sm ci-cursor-default">
+          {peers.map((p) => {
+            const c = conversations[p]
+            return (
+              <div key={p} className="ci-group ci-flex ci-items-center ci-pr-2 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setShow(false)
+                    openChat(p)
+                  }}
+                  className="ci-flex-1 ci-min-w-0 ci-flex ci-items-center ci-gap-3 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-inherit"
+                >
+                  <span className="ci-relative">
+                    {c?.kind === 'group' ? (
+                      <GroupAvatar name={nameOf(p)} size={32} avatar={c.avatar} />
+                    ) : (
+                      <>
+                        <Avatar contact={contacts[p]} username={p} size={32} />
+                        <PresenceDot online={online[p]} presence={contacts[p]?.presence} mobile={mobile[p]} />
+                      </>
+                    )}
+                  </span>
+                  <span className="ci-flex-1 ci-truncate">{nameOf(p)}</span>
+                  {(c?.unread ?? 0) > 0 && (
+                    <span className="ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
+                      {c!.unread > 99 ? '99+' : c!.unread}
+                    </span>
+                  )}
+                </button>
+                <Button variant="small" aria-label={`Remove ${nameOf(p)} from the dock`} title="Remove from the dock" onClick={() => removeHead(p)} className="ci-opacity-0 group-hover:ci-opacity-100 focus:ci-opacity-100">
+                  {Icon.close}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )

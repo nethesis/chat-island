@@ -55,12 +55,14 @@ const empty = (peer: string, mucHost: string): Conversation => ({
 })
 
 /** Heads keep their place: a new one goes at the bottom, past the limit the topmost not-open one leaves. */
+// Beyond max a head waits behind the +N bubble; one coming back takes the bottom, never pushing the open chat out.
 const withHead = (order: string[], peer: string, max: number, open: string | null): string[] => {
-  if (order.includes(peer)) return order
-  const next = [peer, ...order]
-  if (next.length <= max) return next
-  const evicted = [...next].reverse().find((p) => p !== open)
-  return next.filter((p) => p !== evicted)
+  const i = order.indexOf(peer)
+  if (i >= 0 && i < max) return order
+  const next = [peer, ...order.filter((p) => p !== peer)].slice(0, 100)
+  if (!open || next.indexOf(open) < max) return next
+  const rest = next.filter((p) => p !== open)
+  return [...rest.slice(0, max - 1), open, ...rest.slice(max - 1)]
 }
 
 /** One message, whether it carries the archive id or the sender's own (oid). */

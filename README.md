@@ -38,7 +38,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `serviceWorker` | | URL of `chat-island-sw.js` on the host: notifications with the tab closed |
 | `notifications` | `click` | `auto` asks for permission once online |
 | `newChatButton` | `true` | `false` when the host has its own list |
-| `maxHeads` | `5` | chat heads kept in the dock |
+| `maxHeads` | `5` | chat heads in the dock; the others wait behind a +N bubble |
 | `sound` | `true` | chime for a message not in view |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
 

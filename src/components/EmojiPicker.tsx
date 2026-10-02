@@ -62,7 +62,7 @@ export function EmojiPicker({ onPick, onClose, className = '' }: { onPick: (emoj
       ref={box}
       role="dialog"
       aria-label="Emoji"
-      className={`ci-z-30 ci-w-[21rem] ci-max-w-full ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-ring-1 ci-ring-gray-300 dark:ci-ring-gray-700 ci-select-none ${className}`}
+      className={`ci-z-30 ci-w-[21rem] ci-max-w-full ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-select-none ${className}`}
     >
       <div className="ci-flex ci-gap-1 ci-px-2 ci-pt-2 ci-border-b ci-border-gray-300 dark:ci-border-gray-700">
         {CATEGORIES.map((c, i) => (
