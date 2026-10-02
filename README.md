@@ -40,6 +40,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `newChatButton` | `true` | `false` when the host has its own list |
 | `maxHeads` | `5` | chat heads in the dock; the others wait behind a +N bubble |
 | `sound` | `true` | chime for a message not in view |
+| `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
 
 `contactsFromOperators(operators, avatars, me)` turns the CTI operators into the contacts the island takes with `chat-island-contacts`.

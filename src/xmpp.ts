@@ -38,13 +38,24 @@ const NS = {
   reactions: 'urn:xmpp:reactions:0',
   reply: 'urn:xmpp:reply:0',
   fallback: 'urn:xmpp:fallback:0',
+  markers: 'urn:xmpp:chat-markers:0',
 }
 
 const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
 
+/** XEP-0333 chat marker on a one-to-one message: the peer received or read it; mine = sent by another client of mine. */
+export interface Marker {
+  peer: string
+  kind: 'received' | 'displayed'
+  id: string // the marked message's origin-id
+  ts: number
+  mine: boolean
+}
+
 export interface HistoryPage {
   messages: Message[]
   reactions: Reaction[] // in archive order: a later one replaces an earlier one of the same person
+  markers: Marker[]
   complete: boolean
   first?: string
 }
@@ -60,6 +71,7 @@ export interface GroupInfo {
 type Handlers = {
   message: (m: Message) => void
   reaction: (r: Reaction) => void
+  marker: (m: Marker) => void
   presence: (peer: string, online: boolean) => void
   typing: (peer: string, composing: boolean) => void
   status: (s: 'connecting' | 'online' | 'offline' | 'error' | 'unauthorized', err?: string) => void
@@ -75,6 +87,7 @@ export class Chat {
   private uploadService?: string
   private mamQueries = new Map<string, Message[]>()
   private mamReactions = new Map<string, Reaction[]>()
+  private mamMarkers = new Map<string, Marker[]>()
   private stopped = false
   private attempt = 0 // failed connections in a row, drives the retry delay
   private retryTimer?: number
@@ -237,9 +250,14 @@ export class Chat {
       await this.xmpp.send(xml('message', { to: peer, type: 'groupchat', id }, ...children))
       return { id, oid: id, from: peer, to: this.cfg.username, body, ts: Date.now(), mine: true, oob, room: peer, nick: this.cfg.username, reply }
     }
-    children.push(xml('active', { xmlns: NS.chatstates }))
+    children.push(xml('active', { xmlns: NS.chatstates }), xml('markable', { xmlns: NS.markers }))
     await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id }, ...children))
     return { id, oid: id, from: this.cfg.username, to: peer, body, ts: Date.now(), mine: true, oob, reply }
+  }
+
+  /** XEP-0333: tell the peer I received or read up to this message. Archived, so the ticks survive a reload. */
+  async marker(peer: string, kind: 'received' | 'displayed', id: string) {
+    await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id: crypto.randomUUID() }, xml(kind, { xmlns: NS.markers, id }), xml('store', { xmlns: NS.hints })))
   }
 
   /** XEP-0444: my whole set of reactions to one message; an empty set takes them back. Archived like a message. */
@@ -289,6 +307,7 @@ export class Chat {
     const queryid = crypto.randomUUID()
     this.mamQueries.set(queryid, [])
     this.mamReactions.set(queryid, [])
+    this.mamMarkers.set(queryid, [])
     const rsm = xml('set', { xmlns: NS.rsm }, xml('max', {}, String(max)), xml('before', {}, before ?? ''))
     const fields = [xml('field', { var: 'FORM_TYPE', type: 'hidden' }, xml('value', {}, NS.mam))]
     if (peer) fields.push(xml('field', { var: 'with' }, xml('value', {}, this.isGroup(peer) ? peer : `${peer}@${this.domain}`)))
@@ -296,17 +315,20 @@ export class Chat {
     let res: Element
     let messages: Message[]
     let reactions: Reaction[]
+    let markers: Marker[]
     try {
       res = await this.xmpp.iqCaller.request(xml('iq', { type: 'set', id: queryid }, xml('query', { xmlns: NS.mam, queryid }, form, rsm)), 30000)
     } finally {
       messages = this.mamQueries.get(queryid) ?? []
       reactions = this.mamReactions.get(queryid) ?? []
+      markers = this.mamMarkers.get(queryid) ?? []
       this.mamQueries.delete(queryid)
       this.mamReactions.delete(queryid)
+      this.mamMarkers.delete(queryid)
     }
     const fin = res.getChild('fin', NS.mam)
     const first = fin?.getChild('set', NS.rsm)?.getChildText('first') ?? undefined
-    return { messages, reactions, complete: fin?.attrs.complete === 'true', first }
+    return { messages, reactions, markers, complete: fin?.attrs.complete === 'true', first }
   }
 
   // ---- groups ----
@@ -512,9 +534,12 @@ export class Chat {
       const inner = result.getChild('forwarded', NS.forward)?.getChild('message')
       const list = this.mamQueries.get(result.attrs.queryid)
       if (inner && list) {
-        const r = this.reactionOf(inner)
+        const stamp = stampOf(result.getChild('forwarded', NS.forward))
+        const mk = this.markerOf(inner, stamp)
+        if (mk) this.mamMarkers.get(result.attrs.queryid)?.push(mk)
+        const r = mk ? undefined : this.reactionOf(inner)
         if (r) this.mamReactions.get(result.attrs.queryid)?.push(r)
-        const m = r ? undefined : this.toMessage(inner, result.attrs.id, stampOf(result.getChild('forwarded', NS.forward)))
+        const m = r || mk ? undefined : this.toMessage(inner, result.attrs.id, stampOf(result.getChild('forwarded', NS.forward)))
         if (m) list.push(m)
       }
       return
@@ -545,6 +570,11 @@ export class Chat {
   }
 
   private deliver(st: Element) {
+    const mk = this.markerOf(st, stampOf(st))
+    if (mk) {
+      this.h.marker(mk)
+      return
+    }
     const r = this.reactionOf(st)
     if (r) {
       this.h.reaction(r)
@@ -560,6 +590,17 @@ export class Chat {
     const peer = from === this.me ? bare(st.attrs.to) : from
     const state = st.getChildByAttr('xmlns', NS.chatstates)
     if (!st.getChild('body') && state) this.h.typing(local(peer), state.name === 'composing')
+  }
+
+  /** A chat marker on a one-to-one message, live, carbon or archived. */
+  private markerOf(st: Element, ts: number): Marker | undefined {
+    if (st.attrs.type !== 'chat') return undefined
+    const el = st.getChild('received', NS.markers) ?? st.getChild('displayed', NS.markers)
+    if (!el?.attrs.id) return undefined
+    const from = bare(st.attrs.from)
+    const mine = from === this.me || !st.attrs.from
+    const peer = mine ? local(bare(st.attrs.to)) : local(from)
+    return peer ? { peer, kind: el.name as Marker['kind'], id: el.attrs.id, ts, mine } : undefined
   }
 
   /** A reactions stanza (XEP-0444), live, carbon, archived or wrapped by MucSub; only from where it may come from. */

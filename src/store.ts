@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Contact, Conversation, Message, Reaction, Status } from './types'
+import type { Marker } from './xmpp'
 
 interface State {
   me: string
@@ -34,6 +35,7 @@ interface State {
   prependHistory(peer: string, msgs: Message[], complete: boolean, oldest?: string): void
   setTyping(peer: string, typing: boolean): void
   applyReactions(list: Reaction[]): void
+  applyMarkers(list: Marker[]): void
   openChat(peer: string): void
   closeChat(peer?: string): void
   removeHead(peer: string): void
@@ -149,6 +151,25 @@ export const useStore = create<State>((set, get) => ({
       // The archive copy of a message sent while the history loads has another id, the same oid.
       const messages = [...msgs.filter((m) => !c.messages.some((x) => same(x, m))), ...c.messages].sort((a, b) => a.ts - b.ts)
       return { conversations: { ...s.conversations, [peer]: { ...c, messages, loaded: true, complete, oldest: oldest ?? c.oldest } } }
+    }),
+
+  // A marker covers its message and every earlier one; mine come from my other clients and clear the unread.
+  applyMarkers: (list) =>
+    set((s) => {
+      if (!list.length) return {}
+      const conversations = { ...s.conversations }
+      for (const mk of list) {
+        const c = conversations[mk.peer]
+        if (!c || c.kind !== 'chat') continue
+        const ts = c.messages.find((m) => m.mine !== mk.mine && (m.oid === mk.id || m.id === mk.id))?.ts ?? mk.ts
+        if (mk.mine) {
+          if (mk.kind === 'displayed') conversations[mk.peer] = { ...c, myRead: Math.max(c.myRead ?? 0, ts), unread: 0 }
+          continue
+        }
+        const delivered = Math.max(c.delivered ?? 0, ts)
+        conversations[mk.peer] = mk.kind === 'displayed' ? { ...c, delivered, read: Math.max(c.read ?? 0, ts) } : { ...c, delivered }
+      }
+      return { conversations }
     }),
 
   // In order: each one replaces that person's earlier set for the same message.

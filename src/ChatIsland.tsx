@@ -31,6 +31,8 @@ export interface ChatIslandProps {
   newChatButton?: boolean
   /** Notification permission: 'auto' asks once online, 'click' waits for the bell. Default 'click'. */
   notifications?: 'auto' | 'click'
+  /** Connected but invisible: only the events, for a host whose chat lives elsewhere (CTI with NethLink running). No sound, notifications, push or read receipts. */
+  headless?: boolean
   /** Play a short chime when a message arrives and its window is not in view (default true). */
   sound?: boolean
   /** Drag the island around the page (default true); off when the host moves its own window. */
@@ -108,13 +110,15 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
   return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
 }
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   const [dark, themeChoice] = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
   const soundRef = useRef(sound)
   const notificationsRef = useRef(notifications)
+  const headlessRef = useRef(headless)
+  headlessRef.current = headless
   useEffect(() => {
     cfgRef.current = cfg
     soundRef.current = sound
@@ -138,6 +142,15 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
 
   const actions: WindowActions = useMemo(
     () => ({
+      // Read receipt: the newest message from the peer, once, only while the window is really in view.
+      seen: (peer) => {
+        const c = useStore.getState().conversations[peer]
+        if (headlessRef.current || document.visibilityState !== 'visible' || c?.kind !== 'chat') return
+        const last = c.messages.findLast((m) => !m.mine && m.oid)
+        if (!last || last.ts <= (c.myRead ?? 0)) return
+        useStore.setState((s) => ({ conversations: { ...s.conversations, [peer]: { ...s.conversations[peer], myRead: last.ts } } }))
+        chat.current?.marker(peer, 'displayed', last.oid!).catch(() => {})
+      },
       // A failure is thrown back to the composer, which gives the text back to the person.
       send: async (peer, text, reply) => {
         const c = chat.current
@@ -213,6 +226,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           const page = await c.history(peer, conv.oldest)
           useStore.getState().prependHistory(peer, page.messages, page.complete, page.first)
           useStore.getState().applyReactions(page.reactions)
+          useStore.getState().applyMarkers(page.markers)
         } catch (e) {
           emit('chat-island-error', { scope: 'history', message: (e as Error).message })
         } finally {
@@ -232,7 +246,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       status: (st, err) => {
         s.setStatus(st, err)
         emit('chat-island-status', { status: st, error: err })
-        if (st === 'online' && serviceWorker && !pushDone.current && typeof Notification !== 'undefined') {
+        if (st === 'online' && serviceWorker && !headlessRef.current && !pushDone.current && typeof Notification !== 'undefined') {
           const p = Notification.permission
           if (p === 'granted' || (notificationsRef.current === 'auto' && p === 'default')) enable()
         }
@@ -245,12 +259,14 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
               if (!page) return
               useStore.getState().seed(page.messages, cfg.username)
               useStore.getState().applyReactions(page.reactions)
+              useStore.getState().applyMarkers(page.markers)
             })
             .catch(() => {})
         }
       },
       typing: (peer, composing) => s.setTyping(peer, composing),
       reaction: (r) => s.applyReactions([r]),
+      marker: (mk) => s.applyMarkers([mk]),
       presence: (peer, online) => s.setOnline(peer, online),
       // The owner destroyed the group: it leaves the list here and in the host.
       groupDestroyed: (room) => s.removeConversation(room),
@@ -270,7 +286,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         s.addMessage(peer, m, { live: true })
         emit('chat-island-message', { ...m, peer })
         emit('chat-island-unread', { total: useStore.getState().totalUnread() })
-        if (!m.mine) notify(peer, m)
+        if (!m.mine && !m.room && m.oid) c.marker(peer, 'received', m.oid).catch(() => {})
+        if (!m.mine && !headlessRef.current) notify(peer, m)
       },
     })
     // A message the person is not looking at: chime, tell the host (a toast), and when the
@@ -387,6 +404,16 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const unread = useStore((st) => Object.values(st.conversations).reduce((n, c) => n + c.unread, 0))
   useEffect(() => emit('chat-island-unread', { total: unread }), [unread])
 
+  // Back on the tab with a chat open: that counts as reading it.
+  useEffect(() => {
+    const on = () => {
+      const open = useStore.getState().open
+      if (document.visibilityState === 'visible' && open) actions.seen(open)
+    }
+    document.addEventListener('visibilitychange', on)
+    return () => document.removeEventListener('visibilitychange', on)
+  }, [actions])
+
 
   // New chat -> chat is a view change, like phone-island: one panel resizing from the picker's height, not two side by side.
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -400,7 +427,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   }, [open])
   const [shownPeer, closing, closed] = useExit(open)
   const [shownPicker, pickerClosing, pickerClosed] = useExit(picker, swap)
-  if (!cfg) return null
+  if (!cfg || headless) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
   const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
   return (

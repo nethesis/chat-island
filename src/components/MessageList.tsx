@@ -175,6 +175,8 @@ export function MessageList({
   hasOlder,
   group,
   reactions,
+  delivered = 0,
+  read = 0,
   me = '',
   onReact,
   onReply,
@@ -185,6 +187,8 @@ export function MessageList({
   onLoadOlder: () => void
   group?: boolean
   reactions?: Reactions
+  delivered?: number
+  read?: number
   me?: string
   onReact?: (target: string, emoji: string) => void
   onReply?: (m: Message) => void
@@ -323,7 +327,10 @@ export function MessageList({
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
                     {m.oob ? <Attachment url={m.oob} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
                     {m.oob && m.body && m.body !== m.oob && m.body !== fileName(m.oob) && <div className="ci-text-xs ci-opacity-80 ci-mt-1">{m.body}</div>}
-                    <span className="ci-block ci-text-right ci-text-[10px] ci-leading-none ci-opacity-60 ci-mt-1">{time(m.ts)}</span>
+                    <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
+                      <span className="ci-opacity-60">{time(m.ts)}</span>
+                      {m.mine && !group && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}
+                    </span>
                   </div>
                   {target && <Chips forMsg={reactions?.[target]} me={me} mine={m.mine} nameOf={nameOf} onReact={(e) => canReact && react(target, e)} />}
                 </div>
@@ -341,5 +348,23 @@ export function MessageList({
       </div>
       {pickerFor && <EmojiPicker className="ci-absolute ci-bottom-2 ci-left-1/2 ci--translate-x-1/2" onPick={(e) => react(pickerFor, e)} onClose={() => setPickerFor(null)} />}
     </div>
+  )
+}
+
+const TICK_LABEL = { pending: 'Sending', sent: 'Sent', delivered: 'Delivered', read: 'Read' }
+
+/** WhatsApp style: one tick sent, two delivered, two in NethVoice green read (the light green on my dark bubble, and back); a clock while sending. */
+function Ticks({ state }: { state: 'pending' | 'sent' | 'delivered' | 'read' }) {
+  return (
+    <span title={TICK_LABEL[state]} aria-label={TICK_LABEL[state]} className={state === 'read' ? 'ci-text-phoneIslandCallDark dark:ci-text-phoneIslandCall' : 'ci-opacity-60'}>
+      {state === 'pending' ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+      ) : (
+        <svg width="16" height="12" viewBox="0 0 28 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 9l4 4 9-10" />
+          {state !== 'sent' && <path d="M12 12l1 1 9-10" />}
+        </svg>
+      )}
+    </span>
   )
 }

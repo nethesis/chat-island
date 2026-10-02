@@ -45,6 +45,9 @@ export interface Conversation {
   complete: boolean  // no older messages left
   oldest?: string    // archive id of the oldest message shown, for paging
   reactions?: Record<string, Record<string, string[]>> // message oid -> user -> emojis
+  delivered?: number // the peer has received my messages up to this time
+  read?: number      // the peer has read my messages up to this time
+  myRead?: number    // I told the peer I read up to this time (from any of my clients)
 }
 
 export interface Contact {

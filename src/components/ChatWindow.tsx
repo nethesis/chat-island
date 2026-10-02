@@ -17,6 +17,7 @@ export interface WindowActions {
   loadOlder: (peer: string) => void
   remove: (peer: string) => Promise<void>
   react: (peer: string, target: string, emoji: string) => Promise<void>
+  seen: (peer: string) => void
 }
 
 /** CTI main presence values under which a call can be placed to this person. */
@@ -45,6 +46,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
 
   useEffect(() => {
     markRead(peer)
+    actions.seen(peer)
   }, [peer, c?.messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -166,6 +168,8 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
         hasOlder={c.loaded && !c.complete}
         onLoadOlder={() => actions.loadOlder(peer)}
         reactions={c.reactions}
+        delivered={c.delivered}
+        read={c.read}
         me={me}
         onReact={(target, emoji) => actions.react(peer, target, emoji)}
         onReply={startReply}
