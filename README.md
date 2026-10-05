@@ -43,6 +43,8 @@ import '@nethesis/chat-island/dist/index.css'
 | `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
 
+The expand button in a chat's header doubles its width (one and a half times its height), within the viewport: a host whose window follows the island, like NethLink, lifts that cap with `--ci-max-w` / `--ci-max-h` on `.chat-island-root`.
+
 `contactsFromOperators(operators, avatars, me)` turns the CTI operators into the contacts the island takes with `chat-island-contacts`.
 
 ## Integrate in any template

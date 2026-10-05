@@ -20,14 +20,16 @@ export interface WindowActions {
   seen: (peer: string) => void
 }
 
+const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
+
 /** CTI main presence values under which a call can be placed to this person. */
 const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy', 'ringing', 'onhold'].includes(presence)
 
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me })),
+  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -78,7 +80,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
   // An operator gone from the CTI: the chat stays to read, nothing more to send.
   const gone = c.kind !== 'group' && !!inactive[peer]
   return (
-    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 ci-text-gray-900 dark:ci-text-white">
+    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} style={expanded ? EXPANDED : undefined} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-transition-[width,height] ci-duration-150 ci-ease-out ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 ci-text-gray-900 dark:ci-text-white">
       {/* The tail slides to the head this window belongs to. */}
       <span
         className="ci-absolute ci--right-1.5 ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border-0 dark:ci-border-t dark:ci-border-r dark:ci-border-solid dark:ci-border-gray-700 ci-shadow-2xl ci-transition-all ci-duration-200"
@@ -123,6 +125,10 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
             {Icon.phone}
           </Button>
         )}
+        {/* Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap). */}
+        <Button variant="small" onClick={() => useStore.getState().setExpanded(!expanded)} aria-label={expanded ? 'Reduce' : 'Expand'} title={expanded ? 'Reduce' : 'Expand'}>
+          {expanded ? Icon.shrink : Icon.expand}
+        </Button>
         {/* Minimize: the head stays in the dock; its X closes the conversation. */}
         <Button variant="small" onClick={() => closeChat()} aria-label="Minimize" title="Minimize">
           {Icon.minus}

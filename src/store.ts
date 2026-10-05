@@ -20,6 +20,7 @@ interface State {
   enablePush: () => void
   maxHeads: number
   newChatButton: boolean
+  expanded: boolean // the bigger chat window, remembered
 
   setStatus(s: Status, err?: string): void
   reset(): void // a new account in the same page: forget everything of the previous one
@@ -41,6 +42,7 @@ interface State {
   removeHead(peer: string): void
   markRead(peer: string): void
   setPicker(v: boolean): void
+  setExpanded(v: boolean): void
   totalUnread(): number
 }
 
@@ -87,6 +89,13 @@ export const useStore = create<State>((set, get) => ({
   enablePush: () => {},
   maxHeads: 5,
   newChatButton: true,
+  expanded: (() => {
+    try {
+      return localStorage.getItem('chat-island-expanded') === '1'
+    } catch {
+      return false
+    }
+  })(),
 
   setStatus: (status, error) => set({ status, error }),
   reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false }),
@@ -210,5 +219,13 @@ export const useStore = create<State>((set, get) => ({
   markRead: (peer) =>
     set((s) => (s.conversations[peer] && s.conversations[peer].unread ? { conversations: { ...s.conversations, [peer]: { ...s.conversations[peer], unread: 0 } } } : {})),
   setPicker: (picker) => set({ picker }),
+  setExpanded: (expanded) => {
+    try {
+      localStorage.setItem('chat-island-expanded', expanded ? '1' : '0')
+    } catch {
+      /* not remembered */
+    }
+    set({ expanded })
+  },
   totalUnread: () => Object.values(get().conversations).reduce((n, c) => n + c.unread, 0),
 }))
