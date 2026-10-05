@@ -21,6 +21,7 @@ interface State {
   maxHeads: number
   newChatButton: boolean
   expanded: boolean // the bigger chat window, remembered
+  place: { x: 'left' | 'right'; y: 'up' | 'down' } // where panels open beside the dock
 
   setStatus(s: Status, err?: string): void
   reset(): void // a new account in the same page: forget everything of the previous one
@@ -89,6 +90,7 @@ export const useStore = create<State>((set, get) => ({
   enablePush: () => {},
   maxHeads: 5,
   newChatButton: true,
+  place: { x: 'left', y: 'up' },
   expanded: (() => {
     try {
       return localStorage.getItem('chat-island-expanded') === '1'

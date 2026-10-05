@@ -7,13 +7,13 @@ import { Button, Icon } from './Button'
 /** Messenger-style chat heads: one round avatar per conversation, plus the phone-island style buttons. */
 /** pushButton: offer the bell to enable notifications; off when the host asks at start-up like phone-island does for the microphone. */
 export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: React.PointerEvent) => void; pushButton?: boolean }) {
-  const { order, open, conversations, contacts, inactive, online, mobile, openChat, removeHead, picker, setPicker, status, push, enablePush, newChatButton, maxHeads } = useStore(
-    useShallow((s) => ({ order: s.order, open: s.open, conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton, maxHeads: s.maxHeads })),
+  const { order, open, conversations, contacts, inactive, online, mobile, openChat, removeHead, picker, setPicker, status, push, enablePush, newChatButton, maxHeads, place } = useStore(
+    useShallow((s) => ({ order: s.order, open: s.open, conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton, maxHeads: s.maxHeads, place: s.place })),
   )
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. Press and drag anywhere here to move the island.
   return (
-    <div className={`ci-flex ci-flex-col-reverse ci-items-center ci-gap-3 ci-mb-3 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
+    <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse ci-mb-3' : 'ci-flex-col ci-mt-3'} ci-items-center ci-gap-3 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
       {order.slice(0, maxHeads).map((peer) => {
         const c = conversations[peer]
         const active = open === peer
@@ -68,8 +68,8 @@ export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: Rea
 
 /** +N: the chats past the dock's heads, in a list to bring one back. */
 function Overflow({ peers }: { peers: string[] }) {
-  const { conversations, contacts, inactive, online, mobile, openChat, removeHead } = useStore(
-    useShallow((s) => ({ conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead })),
+  const { conversations, contacts, inactive, online, mobile, openChat, removeHead, place } = useStore(
+    useShallow((s) => ({ conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
   )
   const [show, setShow] = useState(false)
   const box = useRef<HTMLDivElement>(null)
@@ -99,7 +99,7 @@ function Overflow({ peers }: { peers: string[] }) {
         )}
       </Button>
       {show && (
-        <div role="menu" onPointerDown={(e) => e.stopPropagation()} className="ci-anim-drop ci-absolute ci-right-full ci-mr-3 ci-top-0 ci-z-30 ci-w-64 ci-max-h-80 ci-overflow-y-auto ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-gray-900 dark:ci-text-white ci-text-sm ci-cursor-default">
+        <div role="menu" onPointerDown={(e) => e.stopPropagation()} className={`ci-anim-drop ci-absolute ${place.x === 'left' ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ${place.y === 'up' ? 'ci-top-0' : 'ci-bottom-0'} ci-z-30 ci-w-64 ci-max-h-80 ci-overflow-y-auto ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-gray-900 dark:ci-text-white ci-text-sm ci-cursor-default`}>
           {peers.map((p) => {
             const c = conversations[p]
             return (

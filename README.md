@@ -45,6 +45,8 @@ import '@nethesis/chat-island/dist/index.css'
 
 The expand button in a chat's header doubles its width (one and a half times its height), within the viewport: a host whose window follows the island, like NethLink, lifts that cap with `--ci-max-w` / `--ci-max-h` on `.chat-island-root`.
 
+A group's owner changes its picture, name and members from the chat menu (Group settings); each change is a quiet line in the group (no body: no push, no unread) that every member's client refreshes on.
+
 `contactsFromOperators(operators, avatars, me)` turns the CTI operators into the contacts the island takes with `chat-island-contacts`.
 
 ## Integrate in any template

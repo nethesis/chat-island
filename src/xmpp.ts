@@ -2,7 +2,7 @@
 // members are subscribed, so messages reach their archive and push without joining.
 import { client, xml, type Client } from '@xmpp/client'
 import type { Element } from '@xmpp/xml'
-import type { Config, Message, Reaction, Reply } from './types'
+import type { Config, GroupNotice, Message, Reaction, Reply } from './types'
 
 /** The XMPP domain of every NethVoice chat: fixed, so addresses survive a change of the CTI host,
  *  which only reaches the server. No federation, so the same name in every tenant is fine. */
@@ -39,6 +39,7 @@ const NS = {
   reply: 'urn:xmpp:reply:0',
   fallback: 'urn:xmpp:fallback:0',
   markers: 'urn:xmpp:chat-markers:0',
+  group: 'urn:nethesis:chat:group:0',
 }
 
 const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
@@ -357,30 +358,55 @@ export class Chat {
       15000,
     )
     if (avatar) await this.setGroupAvatar(room, avatar).catch(() => {})
-    // 3. Members, then their subscriptions (an owner may subscribe others), then mine.
-    const others = members.filter((m) => m && m !== this.cfg.username)
-    // The order members were added, kept in their affiliation: the first one inherits the group when the owner leaves the company.
-    const added = Date.now()
-    await this.xmpp.iqCaller.request(
-      xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucAdmin }, ...others.map((u, i) => xml('item', { affiliation: 'member', jid: `${u}@${this.domain}` }, xml('reason', {}, String(added + i)))))),
-      15000,
-    )
-    for (const u of others) {
-      await this.xmpp.iqCaller
-        .request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, jid: `${u}@${this.domain}`, nick: u }, xml('event', { node: NS.mucsubMessages }), xml('event', { node: NS.mucsubConfig }))), 15000)
-        .catch(() => {})
-    }
+    // 3. Members, subscribed and invited, then my own subscription.
+    await this.addMembers(room, members.filter((m) => m && m !== this.cfg.username), name)
     await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, nick }, xml('event', { node: NS.mucsubMessages }), xml('event', { node: NS.mucsubConfig }))), 15000)
     // 4. Leave the room: subscribers get messages without being in it.
     await this.xmpp.send(xml('presence', { to: `${room}/${nick}`, type: 'unavailable' }))
-    // 5. Tell the members now, so their open clients pick the group up at once.
-    for (const u of others) {
-      await this.xmpp.send(xml('message', { to: `${u}@${this.domain}` }, xml('x', { xmlns: NS.conference, jid: room, reason: name }))).catch(() => {})
-    }
     return room
   }
 
   /** Leave a group. The owner cannot just walk away: the room is destroyed, for everyone. */
+  /** Owner only: members in, subscribed (an owner may subscribe others) and told, so their open clients pick the group up. */
+  async addMembers(room: string, users: string[], name: string) {
+    // The order members were added, kept in their affiliation: the first one inherits the group when the owner leaves the company.
+    const added = Date.now()
+    await this.xmpp.iqCaller.request(
+      xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucAdmin }, ...users.map((u, i) => xml('item', { affiliation: 'member', jid: `${u}@${this.domain}` }, xml('reason', {}, String(added + i)))))),
+      15000,
+    )
+    for (const u of users) {
+      await this.xmpp.iqCaller
+        .request(xml('iq', { type: 'set', to: room }, xml('subscribe', { xmlns: NS.mucsub, jid: `${u}@${this.domain}`, nick: u }, xml('event', { node: NS.mucsubMessages }), xml('event', { node: NS.mucsubConfig }))), 15000)
+        .catch(() => {})
+    }
+    for (const u of users) {
+      await this.xmpp.send(xml('message', { to: `${u}@${this.domain}` }, xml('x', { xmlns: NS.conference, jid: room, reason: name }))).catch(() => {})
+    }
+  }
+
+  /** Owner only: out of the members (the room is members only) and of its subscribers. */
+  async removeMember(room: string, user: string) {
+    await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucAdmin }, xml('item', { affiliation: 'none', jid: `${user}@${this.domain}` }))), 15000)
+    await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('unsubscribe', { xmlns: NS.mucsub, jid: `${user}@${this.domain}` })), 15000).catch(() => {})
+  }
+
+  /** Owner only: a new name; the rest of the configuration stays. */
+  async renameGroup(room: string, name: string) {
+    const field = (v: string, value: string) => xml('field', { var: v }, xml('value', {}, value))
+    await this.xmpp.iqCaller.request(
+      xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucOwner }, xml('x', { xmlns: NS.data, type: 'submit' }, field('FORM_TYPE', 'http://jabber.org/protocol/muc#roomconfig'), field('muc#roomconfig_roomname', name)))),
+      15000,
+    )
+  }
+
+  /** Tell the members what changed. No body: no push, no line in other clients, each island words it itself. */
+  async groupNotice(room: string, notice: GroupNotice) {
+    const attrs: Record<string, string> = { xmlns: NS.group, event: notice.event, users: notice.users.join(',') }
+    if (notice.name) attrs.name = notice.name
+    await this.xmpp.send(xml('message', { to: room, type: 'groupchat', id: crypto.randomUUID() }, xml('x', attrs), xml('store', { xmlns: NS.hints })))
+  }
+
   async leaveGroup(room: string, owner: boolean) {
     if (owner) await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucOwner }, xml('destroy', {}))), 10000)
     else await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('unsubscribe', { xmlns: NS.mucsub })), 10000)
@@ -659,7 +685,7 @@ export class Chat {
       const inner = findMessage(event)
       if (!inner || bare(inner.attrs.from) !== room) return undefined
       const nick = (inner.attrs.from ?? '').split('/')[1] ?? ''
-      const body = inner.getChildText('body')
+      const body = inner.getChildText('body') ?? (noticeOf(inner) ? '' : null)
       if (body === null || body === undefined) return undefined
       return {
         // The origin-id is the one the sender chose: my own copy shown while sending is replaced by the echo.
@@ -673,16 +699,17 @@ export class Chat {
         oob: inner.getChild('x', NS.oob)?.getChildText('url') ?? undefined,
         room,
         nick,
+        notice: noticeOf(inner),
       }
     }
-    const body = st.getChildText('body')
+    const body = st.getChildText('body') ?? (st.attrs.type === 'groupchat' && noticeOf(st) ? '' : null)
     if (body === null || body === undefined) return undefined
     const from = bare(st.attrs.from)
     if (st.attrs.type === 'groupchat') {
       if (!this.isGroup(from)) return undefined
       // A live echo from a room I happen to be joined in (creation): same shape as a subscription message.
       const nick = (st.attrs.from ?? '').split('/')[1] ?? ''
-      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, oob: st.getChild('x', NS.oob)?.getChildText('url') ?? undefined, room: from, nick }
+      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, oob: st.getChild('x', NS.oob)?.getChildText('url') ?? undefined, room: from, nick, notice: noticeOf(st) }
     }
     if (st.attrs.type !== 'chat') return undefined
     const mine = from === this.me
@@ -697,6 +724,12 @@ export class Chat {
       oob: st.getChild('x', NS.oob)?.getChildText('url') ?? undefined,
     }
   }
+}
+
+const NOTICES = ['add', 'remove', 'rename', 'avatar']
+const noticeOf = (st: Element): GroupNotice | undefined => {
+  const x = st.getChild('x', NS.group)
+  return x && NOTICES.includes(x.attrs.event) ? { event: x.attrs.event as GroupNotice['event'], users: String(x.attrs.users ?? '').split(',').filter(Boolean), name: x.attrs.name || undefined } : undefined
 }
 
 const bare = (jid = '') => jid.split('/')[0]

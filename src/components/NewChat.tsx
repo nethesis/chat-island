@@ -5,7 +5,7 @@ import { Button, Icon } from './Button'
 
 /** Pick one operator for a chat, or several for a group. */
 /** A picture for the group: whatever was chosen, squared and shrunk so it travels in the room's vCard. */
-async function shrink(file: File): Promise<string> {
+export async function shrink(file: File): Promise<string> {
   const img = await createImageBitmap(file)
   const side = Math.min(img.width, img.height)
   const canvas = document.createElement('canvas')

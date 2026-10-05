@@ -14,6 +14,14 @@ export interface Message {
   nick?: string     // sender's username inside a group
   oid?: string      // the id its sender gave it: the same on every side, what reactions point to
   reply?: Reply     // the message this one answers (XEP-0461)
+  notice?: GroupNotice // a change to the group, told to its members
+}
+
+/** Who was added or removed, or a new name or picture. Sent without a body: it notifies nobody and other clients skip it. */
+export interface GroupNotice {
+  event: 'add' | 'remove' | 'rename' | 'avatar'
+  users: string[]
+  name?: string // the new name, for rename
 }
 
 /** A reply: the oid of the quoted message, its author, and the quote carried in the body for other clients. */

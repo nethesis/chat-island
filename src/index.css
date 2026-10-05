@@ -30,9 +30,9 @@
 
 /* Phone-island motion: a panel grows out of the dock and shrinks back into it, 150 ms ease-out; menus drop in 100 ms.
    The open clip reaches past the box, so shadow, ring and tail are never cut and nothing pops in at the end. */
-@keyframes ci-anim-grow { from { clip-path: inset(100% 0 0 100% round 1.5rem); } to { clip-path: inset(-1rem -3rem -4.5rem -3rem round 1.5rem); } }
+@keyframes ci-anim-grow { from { clip-path: var(--ci-closed, inset(100% 0 0 100% round 1.5rem)); } to { clip-path: inset(-1rem -3rem -4.5rem -3rem round 1.5rem); } }
 @keyframes ci-anim-shrink { from { clip-path: inset(-1rem -3rem -4.5rem -3rem round 1.5rem); } to { clip-path: inset(100% 0 0 100% round 1.5rem); } }
-@keyframes ci-anim-morph { from { clip-path: inset(calc(100% - var(--ci-from)) -3rem -4.5rem -3rem round 1.5rem); } to { clip-path: inset(-1rem -3rem -4.5rem -3rem round 1.5rem); } }
+@keyframes ci-anim-morph { from { clip-path: var(--ci-morph); } to { clip-path: inset(-1rem -3rem -4.5rem -3rem round 1.5rem); } }
 @keyframes ci-anim-drop { from { clip-path: inset(0 -3rem 100% -3rem); } to { clip-path: inset(-1rem -3rem -4.5rem -3rem); } }
 .ci-anim-open { animation: ci-anim-grow .15s ease-out; }
 .ci-anim-close { animation: ci-anim-shrink .15s ease-out forwards; pointer-events: none; }

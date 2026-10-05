@@ -5,6 +5,7 @@ import { Avatar } from './Avatar'
 import { emojify } from '../shortcodes'
 import { Icon } from './Button'
 import { EmojiPicker, QUICK_REACTIONS } from './EmojiPicker'
+import { noticeText } from '../notice'
 
 const isImage = (url: string) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(url)
 const isAudio = (url: string) => /\.(webm|ogg|oga|opus|mp3|m4a|wav)(\?|$)/i.test(url)
@@ -236,6 +237,16 @@ export function MessageList({
         {messages.map((m, i) => {
           const prev = messages[i - 1]
           const newDay = !prev || !sameDay(prev.ts, m.ts)
+          // A change to the group: one quiet line, no bubble.
+          if (m.notice)
+            return (
+              <div key={m.id}>
+                {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
+                <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">
+                  {m.mine ? 'You' : nameOf(m.nick ?? '')} {noticeText(m.notice, nameOf, me)}
+                </div>
+              </div>
+            )
           const grouped = prev && !newDay && prev.mine === m.mine && prev.nick === m.nick && m.ts - prev.ts < 120000
           // In a group, who wrote it: the avatar sits beside the first bubble of a run, the name is its tooltip.
           const sender = group && !m.mine && m.nick ? nameOf(m.nick) : null

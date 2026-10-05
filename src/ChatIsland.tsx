@@ -1,7 +1,8 @@
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useDrag } from './drag'
 import { Chat, DOMAIN } from './xmpp'
+import { noticeText } from './notice'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
 import { deleteHistory, fetchContacts, fetchInactive, fetchMobile } from './api'
@@ -58,7 +59,7 @@ function summarize(): ConversationSummary[] {
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
-        last: m ? { body: plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
+        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
       }
     })
     .filter((c) => c.last || c.kind === 'group')
@@ -174,6 +175,36 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           emit('chat-island-error', { scope: 'upload', message: (e as Error).message })
         }
       },
+      // Owner only: every change is told to the group as well, so each member's client refreshes it.
+      editGroup: async (room, change) => {
+        const c = chat.current
+        const st = useStore.getState()
+        if (!c) return
+        try {
+          if (change.add?.length) {
+            await c.addMembers(room, change.add, st.conversations[room]?.name ?? '')
+            await c.groupNotice(room, { event: 'add', users: change.add })
+          }
+          if (change.remove) {
+            // Told first, while the member still gets the group's messages.
+            await c.groupNotice(room, { event: 'remove', users: [change.remove] })
+            await c.removeMember(room, change.remove)
+          }
+          if (change.name) {
+            await c.renameGroup(room, change.name)
+            await c.groupNotice(room, { event: 'rename', users: [], name: change.name })
+          }
+          if (change.avatar) {
+            await c.setGroupAvatar(room, change.avatar)
+            await c.groupNotice(room, { event: 'avatar', users: [] })
+          }
+          const g = await c.groupInfo(room)
+          useStore.getState().setGroup(g.peer, g.name, g.members, g.avatar, g.owner)
+        } catch (e) {
+          emit('chat-island-error', { scope: 'group', message: (e as Error).message })
+          throw e
+        }
+      },
       createGroup: async (name, members, avatar) => {
         const c = chat.current
         const cfg = cfgRef.current
@@ -181,7 +212,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         try {
           const room = await c.createGroup(name, members, avatar)
           const st = useStore.getState()
-          st.setGroup(room, name, [...members, cfg.username], avatar)
+          st.setGroup(room, name, [...members, cfg.username], avatar, true)
           st.openChat(room)
         } catch (e) {
           emit('chat-island-error', { scope: 'group', message: (e as Error).message })
@@ -242,6 +273,28 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const s = useStore.getState()
     s.reset() // another account may have been here before (logout, then login as someone else)
     useStore.setState({ me: cfg.username, mucHost: `conference.${DOMAIN}`, maxHeads, newChatButton }) // eslint-disable-line react-hooks/exhaustive-deps
+    // The heads and the open chat come back after a reload, per user; a hidden island neither reads nor writes them.
+    const dockKey = `chat-island-dock:${cfg.host}:${cfg.username}`
+    let unsave = () => {}
+    if (!headlessRef.current) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(dockKey) ?? 'null') as { order?: string[]; open?: string | null } | null
+        if (saved?.order?.length) {
+          saved.order.forEach((p) => s.ensure(p))
+          useStore.setState({ order: saved.order, open: saved.open && saved.order.includes(saved.open) ? saved.open : null })
+        }
+      } catch {
+        /* nothing remembered */
+      }
+      unsave = useStore.subscribe((st, prev) => {
+        if (st.order === prev.order && st.open === prev.open) return
+        try {
+          localStorage.setItem(dockKey, JSON.stringify({ order: st.order, open: st.open }))
+        } catch {
+          /* not remembered */
+        }
+      })
+    }
     const c = new Chat(cfg, {
       status: (st, err) => {
         s.setStatus(st, err)
@@ -282,12 +335,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       },
       message: (m) => {
         const peer = peerOf(m)
-        if (m.room && !useStore.getState().conversations[m.room]?.name) c.groupInfo(m.room).then((g) => s.setGroup(g.peer, g.name, g.members, g.avatar, g.owner)).catch(() => {})
-        s.addMessage(peer, m, { live: true })
+        if (m.room && (m.notice || !useStore.getState().conversations[m.room]?.name)) c.groupInfo(m.room).then((g) => s.setGroup(g.peer, g.name, g.members, g.avatar, g.owner)).catch(() => {})
+        s.addMessage(peer, m, { live: !m.notice })
         emit('chat-island-message', { ...m, peer })
         emit('chat-island-unread', { total: useStore.getState().totalUnread() })
         if (!m.mine && !m.room && m.oid) c.marker(peer, 'received', m.oid).catch(() => {})
-        if (!m.mine && !headlessRef.current) notify(peer, m)
+        if (!m.mine && !m.notice && !headlessRef.current) notify(peer, m)
       },
     })
     // A message the person is not looking at: chime, tell the host (a toast), and when the
@@ -369,6 +422,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     return () => {
       window.removeEventListener('pagehide', bye)
       window.clearInterval(mobileTimer)
+      unsave()
       offList()
       offNew()
       offDelete()
@@ -427,6 +481,40 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   }, [open])
   const [shownPeer, closing, closed] = useExit(open)
   const [shownPicker, pickerClosing, pickerClosed] = useExit(picker, swap)
+
+  // The island places itself (no host drag): panels open beside the dock on the side with room, up or down.
+  const free = draggable && !onDragStart
+  const { expanded, place } = useStore(useShallow((st) => ({ expanded: st.expanded, place: st.place })))
+  useLayoutEffect(() => {
+    if (!free) return
+    const fit = () => {
+      const r = rootRef.current?.getBoundingClientRect()
+      if (!r) return
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const big = expanded && !!shownPeer
+      const w = ((big ? 44 : 22) + (shownPeer && shownPicker ? 22.75 : 0) + 0.75) * rem
+      const h = (big ? 45 : 30) * rem
+      const x = r.left >= w || r.left >= window.innerWidth - r.right ? 'left' : 'right'
+      const y = r.bottom >= h || r.bottom >= window.innerHeight - r.top ? 'up' : 'down'
+      const p = useStore.getState().place
+      if (p.x !== x || p.y !== y) useStore.setState({ place: { x, y } })
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [free, shownPeer, shownPicker, expanded, drag.anchor])
+  // A panel beside the dock, offset past the ones nearer to it; it grows out of, and shrinks into, the corner by the dock.
+  const beside = (offset: number): React.CSSProperties | undefined =>
+    free
+      ? ({
+          position: 'absolute',
+          [place.y === 'up' ? 'bottom' : 'top']: 0,
+          [place.x === 'left' ? 'right' : 'left']: `calc(100% + ${offset}rem)`,
+          '--ci-closed': `inset(${place.y === 'up' ? '100%' : '0'} ${place.x === 'left' ? '0' : '100%'} ${place.y === 'up' ? '0' : '100%'} ${place.x === 'left' ? '100%' : '0'} round 1.5rem)`,
+        } as React.CSSProperties)
+      : undefined
+  const morphFrom = (h: number) =>
+    place.y === 'up' ? `inset(calc(100% - ${h}px) -3rem -4.5rem -3rem round 1.5rem)` : `inset(-1rem -3rem calc(100% - ${h}px) -3rem round 1.5rem)`
   if (!cfg || headless) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
   const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
@@ -440,12 +528,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     >
       <Boundary>
         {shownPeer && (
-          <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={morph.current ? ({ '--ci-from': `${morph.current}px` } as React.CSSProperties) : undefined} onAnimationEnd={closed}>
+          <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={{ ...beside(shownPicker ? 23.5 : 0.75), ...(morph.current ? ({ '--ci-morph': morphFrom(morph.current) } as React.CSSProperties) : {}) }} onAnimationEnd={closed}>
             <ChatWindow peer={shownPeer} actions={actions} theme={themeChoice} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
           </div>
         )}
         {shownPicker && (
-          <div ref={pickerRef} className={pickerClosing ? 'ci-anim-close' : 'ci-anim-open'} onAnimationEnd={pickerClosed}>
+          <div ref={pickerRef} className={pickerClosing ? 'ci-anim-close' : 'ci-anim-open'} style={beside(0.75)} onAnimationEnd={pickerClosed}>
             <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
           </div>
         )}
