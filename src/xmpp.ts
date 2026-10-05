@@ -237,23 +237,26 @@ export class Chat {
   // ---- outgoing ----
 
   /** Send to an operator (username) or to a group (room address); a reply quotes its target in the body too, for other clients. */
-  async send(peer: string, body: string, oob?: string, reply?: Reply): Promise<Message> {
+  async send(peer: string, body: string, oob?: string | string[], reply?: Reply): Promise<Message> {
     const id = crypto.randomUUID()
     const group = this.isGroup(peer)
     const fallback = reply ? `> ${reply.quote ?? ''}\n` : ''
     const children: Element[] = [xml('body', {}, fallback + body), xml('origin-id', { xmlns: NS.sid, id }), xml('store', { xmlns: NS.hints })]
-    if (oob) children.push(xml('x', { xmlns: NS.oob }, xml('url', {}, oob)))
+    // Several attachments travel in one message: one XEP-0066 element each, the caption as the body.
+    const links = oob ? [oob].flat() : []
+    for (const l of links) children.push(xml('x', { xmlns: NS.oob }, xml('url', {}, l)))
+    const att = { oob: links[0], files: links.length > 1 ? links : undefined }
     if (reply) {
       children.push(xml('reply', { xmlns: NS.reply, id: reply.id, to: group ? `${peer}/${reply.author}` : `${reply.author}@${this.domain}` }))
       children.push(xml('fallback', { xmlns: NS.fallback, for: NS.reply }, xml('body', { start: '0', end: String([...fallback].length) })))
     }
     if (group) {
       await this.xmpp.send(xml('message', { to: peer, type: 'groupchat', id }, ...children))
-      return { id, oid: id, from: peer, to: this.cfg.username, body, ts: Date.now(), mine: true, oob, room: peer, nick: this.cfg.username, reply }
+      return { id, oid: id, from: peer, to: this.cfg.username, body, ts: Date.now(), mine: true, ...att, room: peer, nick: this.cfg.username, reply }
     }
     children.push(xml('active', { xmlns: NS.chatstates }), xml('markable', { xmlns: NS.markers }))
     await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id }, ...children))
-    return { id, oid: id, from: this.cfg.username, to: peer, body, ts: Date.now(), mine: true, oob, reply }
+    return { id, oid: id, from: this.cfg.username, to: peer, body, ts: Date.now(), mine: true, ...att, reply }
   }
 
   /** XEP-0333: tell the peer I received or read up to this message. Archived, so the ticks survive a reload. */
@@ -666,6 +669,7 @@ export class Chat {
       const local = this.uploadUrl(m.oob)
       m.body = m.body === m.oob ? local : m.body
       m.oob = local
+      if (m.files) m.files = m.files.map((f) => this.uploadUrl(f))
     }
     return m && withReply(m, findChild(st, 'reply') ? (st.getChild('event', NS.pubsubEvent) ? findMessage(st.getChild('event', NS.pubsubEvent)!) : st) : undefined)
   }
@@ -696,7 +700,7 @@ export class Chat {
         body,
         ts: stampOf(inner) !== ts && inner.getChild('delay', NS.delay) ? stampOf(inner) : ts,
         mine: nick === this.cfg.username,
-        oob: inner.getChild('x', NS.oob)?.getChildText('url') ?? undefined,
+        ...oobsOf(inner),
         room,
         nick,
         notice: noticeOf(inner),
@@ -709,7 +713,7 @@ export class Chat {
       if (!this.isGroup(from)) return undefined
       // A live echo from a room I happen to be joined in (creation): same shape as a subscription message.
       const nick = (st.attrs.from ?? '').split('/')[1] ?? ''
-      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, oob: st.getChild('x', NS.oob)?.getChildText('url') ?? undefined, room: from, nick, notice: noticeOf(st) }
+      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, ...oobsOf(st), room: from, nick, notice: noticeOf(st) }
     }
     if (st.attrs.type !== 'chat') return undefined
     const mine = from === this.me
@@ -721,9 +725,15 @@ export class Chat {
       body,
       ts,
       mine,
-      oob: st.getChild('x', NS.oob)?.getChildText('url') ?? undefined,
+      ...oobsOf(st),
     }
   }
+}
+
+/** The message's attachments: the first as oob, all of them as files when there are several. */
+const oobsOf = (st: Element): { oob?: string; files?: string[] } => {
+  const links = st.getChildren('x', NS.oob).map((x: Element) => x.getChildText('url')).filter((u: string | null): u is string => !!u)
+  return { oob: links[0], files: links.length > 1 ? links : undefined }
 }
 
 const NOTICES = ['add', 'remove', 'rename', 'avatar']

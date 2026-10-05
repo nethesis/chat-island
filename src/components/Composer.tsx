@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Icon } from './Button'
 import { EmojiPicker } from './EmojiPicker'
 import { webmOpusToOgg } from '../ogg'
@@ -23,8 +23,14 @@ async function voiceFile(chunks: Blob[], mime: string): Promise<File> {
 const extOf = (mime: string) => (/mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm')
 const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`
 
-export function Composer({ onSend, onTyping, onFile, disabled, disabledText, focusKey }: { onSend: (text: string) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; disabledText?: string; focusKey?: number }) {
+export function Composer({ onSend, onTyping, onFile, disabled, disabledText, focusKey }: { onSend: (text: string, files: File[]) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; disabledText?: string; focusKey?: number }) {
   const [text, setText] = useState('')
+  // Attachments wait here and go with the text in one message, as in WhatsApp; a voice note still goes at once.
+  const [files, setFiles] = useState<File[]>([])
+  const [busy, setBusy] = useState(false)
+  const previews = useMemo(() => files.map((f) => (f.type.startsWith('image/') ? URL.createObjectURL(f) : '')), [files])
+  useEffect(() => () => previews.forEach((u) => u && URL.revokeObjectURL(u)), [previews])
+  const addFiles = (list: FileList | File[] | null) => list && list.length && setFiles((cur) => [...cur, ...Array.from(list)].slice(0, 10))
   const [emoji, setEmoji] = useState(false)
   const cursor = useRef<number | null>(null) // where the cursor goes once the converted text is on screen
   const file = useRef<HTMLInputElement>(null)
@@ -107,10 +113,18 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
 
   const submit = () => {
     const t = text.trim()
-    if (!t) return
+    if ((!t && !files.length) || busy) return
+    const sending = files
     setText('')
-    // Not sent (the connection just dropped): give the text back rather than lose it.
-    Promise.resolve(onSend(t)).catch(() => setText((cur) => cur || t))
+    setFiles([])
+    setBusy(!!sending.length)
+    // Not sent (the connection just dropped): give the text and the attachments back rather than lose them.
+    Promise.resolve(onSend(t, sending))
+      .catch(() => {
+        setText((cur) => cur || t)
+        setFiles((cur) => (cur.length ? cur : sending))
+      })
+      .finally(() => setBusy(false))
     window.clearTimeout(typingTimer.current)
     composing.current = false
   }
@@ -170,10 +184,37 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
     )
 
   return (
+    <div
+      onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+      onDrop={(e) => {
+        if (disabled || !e.dataTransfer.files.length) return
+        e.preventDefault()
+        addFiles(e.dataTransfer.files)
+      }}
+    >
+      {files.length > 0 && (
+        <div className="ci-flex ci-gap-2 ci-px-3 ci-pt-2 ci-overflow-x-auto">
+          {files.map((f, i) => (
+            <div key={i} title={f.name} className="ci-relative ci-shrink-0 ci-w-14 ci-h-14 ci-rounded-xl ci-overflow-hidden ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-flex ci-items-center ci-justify-center">
+              {previews[i] ? (
+                <img src={previews[i]} alt={f.name} className="ci-w-full ci-h-full ci-object-cover" />
+              ) : (
+                <span className="ci-flex ci-flex-col ci-items-center ci-gap-0.5 ci-w-full ci-px-1 ci-text-[10px] ci-text-gray-600 dark:ci-text-gray-300">
+                  {Icon.clip}
+                  <span className="ci-w-full ci-truncate ci-text-center">{f.name}</span>
+                </span>
+              )}
+              <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((cur) => cur.filter((_, j) => j !== i))} className="ci-absolute ci-top-0.5 ci-right-0.5 ci-w-5 ci-h-5 ci-p-0 ci-rounded-full ci-border-0 ci-bg-gray-700/80 ci-text-white ci-flex ci-items-center ci-justify-center">
+                {Icon.close}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     <div className="ci-relative ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-3">
       {emoji && <EmojiPicker className="ci-absolute ci-bottom-full ci-left-3 ci-mb-1" onPick={insert} onClose={() => setEmoji(false)} />}
-      <input ref={file} type="file" hidden onChange={(e) => e.target.files?.[0] && (onFile(e.target.files[0]), (e.target.value = ''))} />
-      <Button variant="transparent" disabled={disabled} title="Attach a file" onClick={() => file.current?.click()} className="ci-h-10 ci-w-10">
+      <input ref={file} type="file" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
+      <Button variant="transparent" disabled={disabled || busy} title="Attach files" onClick={() => file.current?.click()} className="ci-h-10 ci-w-10">
         {Icon.clip}
       </Button>
       <div className="ci-relative ci-flex-1 ci-min-w-0">
@@ -193,8 +234,13 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
           value={text}
           disabled={disabled}
           rows={1}
-          placeholder={disabled ? disabledText ?? 'Connecting…' : 'Write a message'}
+          placeholder={disabled ? disabledText ?? 'Connecting…' : busy ? 'Sending…' : files.length ? 'Add a caption' : 'Write a message'}
           onChange={(e) => change(e.target.value)}
+          onPaste={(e) => {
+            if (!e.clipboardData.files.length) return
+            e.preventDefault()
+            addFiles(e.clipboardData.files)
+          }}
           onKeyDown={(e) => {
             // Enter sends; Shift+Enter, or Enter inside an open ``` block, adds a line.
             const inFence = (text.match(/```/g) ?? []).length % 2 === 1
@@ -207,8 +253,8 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
           style={{ height: Math.min(128, 40 + 20 * (text.split('\n').length - 1)) }}
         />
       </div>
-      {text.trim() ? (
-        <Button variant="default" disabled={disabled} onClick={submit} title="Send" className="ci-h-10 ci-w-10">
+      {text.trim() || files.length || busy ? (
+        <Button variant="default" disabled={disabled || busy} onClick={submit} title="Send" className="ci-h-10 ci-w-10">
           {Icon.send}
         </Button>
       ) : (
@@ -216,6 +262,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
           {Icon.mic}
         </Button>
       )}
+    </div>
     </div>
   )
 }

@@ -153,11 +153,15 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         chat.current?.marker(peer, 'displayed', last.oid!).catch(() => {})
       },
       // A failure is thrown back to the composer, which gives the text back to the person.
-      send: async (peer, text, reply) => {
+      // Attachments go up first, then travel in one message with the text as their caption.
+      send: async (peer, text, reply, files = []) => {
         const c = chat.current
         if (!c) throw new Error('not connected')
         try {
-          useStore.getState().addMessage(peer, await c.send(peer, emojify(text), undefined, reply))
+          const links: string[] = []
+          for (const f of files) links.push(await c.upload(f))
+          const body = text || files.map((f) => f.name).join(', ')
+          useStore.getState().addMessage(peer, await c.send(peer, emojify(body), links.length ? links : undefined, reply))
         } catch (e) {
           emit('chat-island-error', { scope: 'send', message: (e as Error).message })
           throw e

@@ -59,6 +59,31 @@ const Attachment = memo(function Attachment({ url }: { url: string }) {
   )
 })
 
+/** Several attachments in one message: pictures in a grid, other files listed under them. */
+function Attachments({ urls }: { urls: string[] }) {
+  const pictures = urls.filter((u) => isImage(u) && safeUrl(u))
+  const rest = urls.filter((u) => !pictures.includes(u))
+  return (
+    <div className="ci-flex ci-flex-col ci-gap-1">
+      {pictures.length > 0 && (
+        <div className={`ci-grid ci-gap-1 ${pictures.length > 1 ? 'ci-grid-cols-2' : ''}`}>
+          {pictures.map((u) => (
+            <a key={u} href={u} target="_blank" rel="noreferrer">
+              <img src={u} alt={fileName(u)} className="ci-w-28 ci-h-28 ci-object-cover ci-rounded-xl ci-block" />
+            </a>
+          ))}
+        </div>
+      )}
+      {rest.map((u) => (
+        <Attachment key={u} url={u} />
+      ))}
+    </div>
+  )
+}
+
+/** A caption that only names the files (what a message without text carries) is not shown. */
+const namesOnly = (body: string, urls: string[]) => body === urls.map(fileName).join(', ') || urls.some((u) => body === u || body === fileName(u))
+
 /** Small Markdown as React elements (nothing injected): code, bold, italic, strike, links, bullets. */
 const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/g
 
@@ -336,8 +361,8 @@ export function MessageList({
                     } ${m.pending ? 'ci-opacity-60' : ''}`}
                   >
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
-                    {m.oob ? <Attachment url={m.oob} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
-                    {m.oob && m.body && m.body !== m.oob && m.body !== fileName(m.oob) && <div className="ci-text-xs ci-opacity-80 ci-mt-1">{m.body}</div>}
+                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
+                    {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
                       <span className="ci-opacity-60">{time(m.ts)}</span>
                       {m.mine && !group && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}

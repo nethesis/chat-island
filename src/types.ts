@@ -9,6 +9,7 @@ export interface Message {
   ts: number        // epoch ms
   mine: boolean
   oob?: string      // attachment URL (XEP-0066), when the message carries one
+  files?: string[]  // every attachment, when the message carries more than one
   pending?: boolean // sent, not yet echoed back by the server
   room?: string     // group address when the message belongs to a group
   nick?: string     // sender's username inside a group

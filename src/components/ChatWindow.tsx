@@ -11,7 +11,7 @@ import type { Message, Reply } from '../types'
 import type { Theme } from '../theme'
 
 export interface WindowActions {
-  send: (peer: string, text: string, reply?: Reply) => Promise<void>
+  send: (peer: string, text: string, reply?: Reply, files?: File[]) => Promise<void>
   createGroup: (name: string, members: string[], avatar?: string) => Promise<void>
   editGroup: (room: string, change: { add?: string[]; remove?: string; name?: string; avatar?: string }) => Promise<void>
   typing: (peer: string, composing: boolean) => void
@@ -204,7 +204,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
         focusKey={focusTick}
         disabled={status !== 'online' || gone || kicked}
         disabledText={gone ? 'No longer active' : kicked ? 'No longer in this group' : undefined}
-        onSend={(t) => actions.send(peer, t, reply ?? undefined).then(() => setReply(null))}
+        onSend={(t, files) => actions.send(peer, t, reply ?? undefined, files).then(() => setReply(null))}
         onTyping={(v) => actions.typing(peer, v)}
         onFile={(f) => actions.upload(peer, f)}
       />
