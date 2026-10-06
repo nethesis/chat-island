@@ -120,7 +120,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |
 | `chat-island-send` | in | `{ username, text }` send a text to an operator or group |
 | `chat-island-group-create` | in | `{ name, members }` create a group with these usernames and open it |
-| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number |
+| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |

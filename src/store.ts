@@ -108,7 +108,13 @@ export const useStore = create<State>((set, get) => ({
   setStatus: (status, error) => set({ status, error }),
   reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false }),
   // The host may send partial entries: a name is always there, the username at worst.
-  setContacts: (list) => set({ contacts: Object.fromEntries(list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username }])) }),
+  // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
+  setContacts: (list) =>
+    set((s) => ({
+      contacts: Object.fromEntries(
+        list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username, ...('avatar' in c ? {} : { avatar: s.contacts[c.username]?.avatar }) }]),
+      ),
+    })),
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),
   setInactive: (inactive) => set({ inactive }),
   setOnline: (peer, online) => set((s) => (s.online[peer] === online ? {} : { online: { ...s.online, [peer]: online } })),
