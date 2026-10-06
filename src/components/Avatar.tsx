@@ -1,9 +1,11 @@
 import type { Contact } from '../types'
 
 /** Initials on the phone-island neutral grays: the picture, when the CTI has one, wins. */
+// Words are letters and digits: "Coda - Assistenza" is CA, not C-.
 const initials = (name: string) =>
   name
-    .split(/\s+/)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
