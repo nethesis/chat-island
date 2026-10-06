@@ -14,7 +14,7 @@ export async function shrink(file: File): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.8)
 }
 
-export function NewChat({ onOpen, onCreateGroup, onDragStart }: { onOpen: (peer: string) => void; onCreateGroup: (name: string, members: string[], avatar?: string) => Promise<void>; onDragStart?: (e: React.PointerEvent) => void }) {
+export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen: (peer: string) => void; onCreateGroup: (name: string, members: string[], avatar?: string) => Promise<void>; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   const { contacts, online, mobile, setPicker } = useStore()
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<string[]>([])
@@ -40,7 +40,7 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart }: { onOpen: (peer:
   }
 
   return (
-    <div className="ci-w-[22rem] ci-max-h-[30rem] ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white">
+    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[22rem] ci-max-h-[30rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
       {/* The search row moves the island too, like a conversation's header; typing and closing stay clicks. */}
       <div
         className={`ci-px-4 ci-py-3 ci-flex ci-items-center ci-gap-2 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`}

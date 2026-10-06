@@ -7,8 +7,12 @@ import { resolve } from 'node:path'
 //   npm run build:widget  -> dist-widget/ self-contained script that mounts on every <div class="chat-island">
 const widget = process.env.BUILD === 'widget'
 
+// The SASL libraries are UMD: their AMD branch (define(["./lib/factory"])) means nothing once bundled,
+// but Turbopack (next dev) tries to resolve its paths and fails. The CommonJS branch is the one that runs.
+const noAmd = { name: 'no-amd', renderChunk: (code: string) => code.replace(/typeof define\s*==+\s*["']function["']\s*&&\s*define\.amd/g, 'false') }
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), noAmd],
   define: widget ? { 'process.env.NODE_ENV': '"production"' } : {},
   build: widget
     ? {

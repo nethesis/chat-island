@@ -28,10 +28,10 @@ const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', hei
 const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy', 'ringing', 'onhold'].includes(presence)
 
 /** The floating conversation: phone-island surface, radius and buttons. */
-export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void }) {
+export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place })),
+  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -81,19 +81,28 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
     else closeChat()
   }
 
+  // In a panel the X takes the chat out of the rail and shows the head that took its place, if any.
+  const closeDocked = () => {
+    const s = useStore.getState()
+    const i = Math.max(0, s.order.indexOf(peer))
+    s.removeHead(peer)
+    const rest = useStore.getState().order
+    if (rest.length) s.openChat(rest[Math.min(i, rest.length - 1)])
+  }
+
   if (!c) return null
   // An operator gone from the CTI: the chat stays to read, nothing more to send.
   const gone = c.kind !== 'group' && !!inactive[peer]
   // Removed from a group: the newest notice about me says so; the chat stays to read.
   const kicked = c.kind === 'group' && c.messages.findLast((m) => m.notice && (m.notice.event === 'add' || m.notice.event === 'remove') && m.notice.users.includes(me))?.notice?.event === 'remove'
   return (
-    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} style={expanded ? EXPANDED : undefined} className="ci-relative ci-w-[22rem] ci-h-[30rem] ci-transition-[width,height] ci-duration-150 ci-ease-out ci-flex ci-flex-col ci-rounded-3xl ci-shadow-2xl ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 ci-text-gray-900 dark:ci-text-white">
+    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} style={expanded && !docked ? EXPANDED : undefined} className={`ci-relative ci-flex ci-flex-col ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white ${docked ? 'ci-w-full ci-h-full' : 'ci-w-[22rem] ci-h-[30rem] ci-transition-[width,height] ci-duration-150 ci-ease-out ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'}`}>
       {/* The tail slides to the head this window belongs to. */}
-      <span
+      {!docked && <span
         className={`ci-absolute ${place.x === 'left' ? 'ci--right-1.5 dark:ci-border-t dark:ci-border-r' : 'ci--left-1.5 dark:ci-border-b dark:ci-border-l'} ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border-solid dark:ci-border-gray-700 ci-shadow-2xl ci-transition-all ci-duration-200`}
         style={{ [place.y === 'up' ? 'bottom' : 'top']: `calc(1.875rem + ${slot} * 3.75rem)` }}
         aria-hidden="true"
-      />
+      />}
       <div className={`ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3 ci-rounded-t-3xl ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
         {c.kind === 'group' ? (
           <GroupAvatar name={c.name ?? peer} size={36} avatar={c.avatar} />
@@ -132,13 +141,9 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
             {Icon.phone}
           </Button>
         )}
-        {/* Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap). */}
-        <Button variant="small" onClick={() => useStore.getState().setExpanded(!expanded)} aria-label={expanded ? 'Reduce' : 'Expand'} title={expanded ? 'Reduce' : 'Expand'}>
-          {expanded ? Icon.shrink : Icon.expand}
-        </Button>
-        {/* Minimize: the head stays in the dock; its X closes the conversation. */}
-        <Button variant="small" onClick={() => closeChat()} aria-label="Minimize" title="Minimize">
-          {Icon.minus}
+        {/* Minimize: the head stays in the dock. In a panel the heads have no X, so this one takes the chat out of the rail. */}
+        <Button variant="small" onClick={() => (docked ? closeDocked() : closeChat())} aria-label={docked ? 'Close' : 'Minimize'} title={docked ? 'Close' : 'Minimize'}>
+          {docked ? Icon.close : Icon.minus}
         </Button>
         {/* Window menu: the theme now, more entries later. */}
         <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label="Menu" title="Menu" aria-expanded={menu}>
@@ -146,7 +151,19 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
         </Button>
       </div>
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
-      {menu && <WindowMenu theme={theme} onClose={() => setMenu(false)} onSettings={c.kind === 'group' && c.owner && !kicked ? () => setSettings(true) : undefined} />}
+      {menu && (
+        <WindowMenu
+          theme={theme}
+          onClose={() => setMenu(false)}
+          onSettings={c.kind === 'group' && c.owner && !kicked ? () => setSettings(true) : undefined}
+          actions={[
+            // Pin to the host's side panel, or back to the floating island.
+            ...(pinnable ? [{ label: docked ? 'Unpin' : 'Pin to side panel', icon: docked ? Icon.unpin : Icon.pin, run: () => emit('chat-island-pin', { pinned: !docked }) }] : []),
+            // Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap).
+            ...(docked ? [] : [{ label: expanded ? 'Reduce' : 'Expand', icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
+          ]}
+        />
+      )}
       {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
         <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
@@ -174,8 +191,9 @@ export function ChatWindow({ peer, actions, theme, onDragStart }: { peer: string
           ))}
         </div>
       )}
-      <div className="ci-flex-1 ci-min-h-0 ci-flex ci-flex-col ci-overflow-hidden ci-rounded-b-3xl">
+      <div className={`ci-flex-1 ci-min-h-0 ci-flex ci-flex-col ci-overflow-hidden ${docked ? '' : 'ci-rounded-b-3xl'}`}>
       <MessageList
+        key={`list:${peer}`}
         messages={c.messages}
         typing={c.typing}
         group={c.kind === 'group'}
@@ -220,7 +238,8 @@ const THEMES: { value: Theme; label: string; icon: React.ReactNode }[] = [
 ]
 
 /** The header menu; a click elsewhere closes it. */
-function WindowMenu({ theme, onClose, onSettings }: { theme?: Theme; onClose: () => void; onSettings?: () => void }) {
+function WindowMenu({ theme, onClose, onSettings, actions }: { theme?: Theme; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
+  const items = [...actions, ...(onSettings ? [{ label: 'Group settings', icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[aria-label="Menu"]') && onClose()
@@ -229,23 +248,22 @@ function WindowMenu({ theme, onClose, onSettings }: { theme?: Theme; onClose: ()
   }, [onClose])
   return (
     <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-min-w-44 ci-w-max ci-whitespace-nowrap ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
-      {onSettings && (
-        <>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onSettings()
-              onClose()
-            }}
-            className="ci-w-full ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700"
-          >
-            <span className="ci-text-gray-600 dark:ci-text-gray-100">{Icon.gear}</span>
-            Group settings
-          </button>
-          <div className="ci-my-1 ci-border-t ci-border-gray-300 dark:ci-border-gray-600" />
-        </>
-      )}
+      {items.map((it) => (
+        <button
+          key={it.label}
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            it.run()
+            onClose()
+          }}
+          className="ci-w-full ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700"
+        >
+          <span className="ci-text-gray-600 dark:ci-text-gray-100">{it.icon}</span>
+          {it.label}
+        </button>
+      ))}
+      {items.length > 0 && <div className="ci-my-1 ci-border-t ci-border-gray-300 dark:ci-border-gray-600" />}
       <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>
       {THEMES.map((t) => (
         <button

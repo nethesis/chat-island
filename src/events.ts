@@ -13,6 +13,8 @@ export function emit(
   detail: { peer: string; name: string; body: string; kind: 'chat' | 'group'; author: string; text: string; attachment: boolean; avatar?: string; ts: number },
 ): void
 export function emit(name: 'chat-island-theme-change', detail: { theme: 'light' | 'dark' | 'system' }): void
+export function emit(name: 'chat-island-pin', detail: { pinned: boolean }): void
+export function emit(name: 'chat-island-window', detail: { open: string | null; picker: boolean }): void
 export function emit(name: string, detail: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }))
 }

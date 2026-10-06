@@ -226,6 +226,7 @@ export function MessageList({
   const [pickerFor, setPickerFor] = useState<string | null>(null) // the full picker, for this message
   const nameOf = (u: string) => contacts[u]?.name ?? u
 
+  // Pinned to the bottom, also when a picture loads later and grows the list.
   useEffect(() => {
     const el = box.current
     if (el && stick.current) el.scrollTop = el.scrollHeight
@@ -257,7 +258,7 @@ export function MessageList({
 
   return (
     <div className="ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col">
-      <div ref={box} onScroll={onScroll} className="ci-flex-1 ci-overflow-y-auto ci-px-4 ci-py-2 ci-space-y-1">
+      <div ref={box} onScroll={onScroll} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className="ci-flex-1 ci-overflow-y-auto ci-px-4 ci-py-2 ci-space-y-1">
         {hasOlder && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">Scroll up for older messages</div>}
         {messages.map((m, i) => {
           const prev = messages[i - 1]

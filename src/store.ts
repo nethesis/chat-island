@@ -22,6 +22,9 @@ interface State {
   newChatButton: boolean
   expanded: boolean // the bigger chat window, remembered
   place: { x: 'left' | 'right'; y: 'up' | 'down' } // where panels open beside the dock
+  pinnable: boolean // the host has a side panel for the chat
+  rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
+  panel: HTMLElement | null // the host's side panel for the open conversation
 
   setStatus(s: Status, err?: string): void
   reset(): void // a new account in the same page: forget everything of the previous one
@@ -90,6 +93,9 @@ export const useStore = create<State>((set, get) => ({
   enablePush: () => {},
   maxHeads: 5,
   newChatButton: true,
+  pinnable: false,
+  rail: null,
+  panel: null,
   place: { x: 'left', y: 'up' },
   expanded: (() => {
     try {

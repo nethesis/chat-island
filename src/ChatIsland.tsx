@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useDrag } from './drag'
@@ -36,6 +37,8 @@ export interface ChatIslandProps {
   headless?: boolean
   /** Play a short chime when a message arrives and its window is not in view (default true). */
   sound?: boolean
+  /** The host has a side panel to pin the chat to (events chat-island-pin, chat-island-pin-target). */
+  pinnable?: boolean
   /** Drag the island around the page (default true); off when the host moves its own window. */
   drag?: boolean
   /** Host drag from the dock and the window header, instead of the island's own (e.g. to move an app window). */
@@ -111,7 +114,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
   return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
 }
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   const [dark, themeChoice] = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
@@ -125,7 +128,11 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     soundRef.current = sound
     notificationsRef.current = notifications
   }, [cfg, sound, notifications])
-  useEffect(() => useStore.setState({ maxHeads, newChatButton }), [maxHeads, newChatButton])
+  useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable }), [maxHeads, newChatButton, pinnable])
+  // A pinnable host tells where its rail and panel are; while the rail is there the heads live in it and nothing floats.
+  useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-rail-target', ({ el }) => useStore.setState({ rail: el ?? null })), [])
+  useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-pin-target', ({ el }) => useStore.setState({ panel: el ?? null })), [])
+  const { rail, panel } = useStore(useShallow((st) => ({ rail: st.rail, panel: st.panel })))
   // Back from the browser's page cache the old connection is gone: start a new one.
   const [epoch, setEpoch] = useState(0)
   useEffect(() => {
@@ -140,6 +147,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const rootRef = useRef<HTMLDivElement>(null)
   const drag = useDrag(rootRef, `chat-island-pos:${cfg?.host ?? ''}:${cfg?.username ?? ''}`)
   const { open, picker, status } = useStore(useShallow((st) => ({ open: st.open, picker: st.picker, status: st.status })))
+  // What a pinned host should show in its panel: a conversation, the picker, or nothing.
+  useEffect(() => emit('chat-island-window', { open, picker }), [open, picker, rail])
 
   const actions: WindowActions = useMemo(
     () => ({
@@ -522,6 +531,16 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   if (!cfg || headless) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
   const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
+  // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
+  if (rail) {
+    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status}><Boundary>{children}</Boundary></div>
+    return (
+      <>
+        {createPortal(root('', <Dock rail />), rail)}
+        {panel && (picker || open) && createPortal(root('ci-h-full', picker ? <NewChat docked onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} /> : <ChatWindow docked peer={open!} actions={actions} theme={themeChoice} />), panel)}
+      </>
+    )
+  }
   return (
     <div
       ref={rootRef}

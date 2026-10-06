@@ -42,8 +42,11 @@ import '@nethesis/chat-island/dist/index.css'
 | `sound` | `true` | chime for a message not in view |
 | `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
+| `pinnable` | `false` | the host has a side rail and panel the chat can be pinned to (see below) |
 
 The expand button in a chat's header doubles its width (one and a half times its height), within the viewport: a host whose window follows the island, like NethLink, lifts that cap with `--ci-max-w` / `--ci-max-h` on `.chat-island-root`.
+
+With `pinnable` the chat menu offers Pin to side panel: the host mounts two slots and announces them with `chat-island-rail-target` and `chat-island-pin-target` `{ el }` (again on every `chat-island-status`, since the island may come up later). While the rail slot is there nothing floats: the chat heads render in it (no X: the panel's X takes a chat out and shows the next one) and the open conversation, or the new chat panel, fills the panel slot. `chat-island-window { open, picker }` tells the host when to show or hide its panel, `chat-island-pin { pinned }` when the person pins or unpins; the host keeps that choice.
 
 A group's owner changes its picture, name and members from the chat menu (Group settings); each change is a quiet line in the group (no body: no push, no unread) that every member's client refreshes on.
 
@@ -120,6 +123,8 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
+| `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |
+| `chat-island-pin-target` | in | `{ el }` the host's panel for the open conversation while pinned |
 | `chat-island-conversations` | out | `{ conversations }` newest first |
 | `chat-island-unread` | out | `{ total }` |
 | `chat-island-message` | out | every new message |
@@ -127,6 +132,8 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-error` | out | `{ scope, message }` |
 | `chat-island-push` | out | `{ enabled }` |
 | `chat-island-call` | out | `{ username, number }` |
+| `chat-island-pin` | out | `{ pinned }` the person asked to pin to, or unpin from, the host's panel |
+| `chat-island-window` | out | `{ open, picker }` what a pinned host should show: a conversation, the picker or nothing |
 | `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
 
 ## Integrate in an existing app

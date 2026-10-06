@@ -6,50 +6,28 @@ import { Button, Icon } from './Button'
 
 /** Messenger-style chat heads: one round avatar per conversation, plus the phone-island style buttons. */
 /** pushButton: offer the bell to enable notifications; off when the host asks at start-up like phone-island does for the microphone. */
-export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: React.PointerEvent) => void; pushButton?: boolean }) {
-  const { order, open, conversations, contacts, inactive, online, mobile, openChat, removeHead, picker, setPicker, status, push, enablePush, newChatButton, maxHeads, place } = useStore(
-    useShallow((s) => ({ order: s.order, open: s.open, conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton, maxHeads: s.maxHeads, place: s.place })),
+/** rail: heads only, in a compact column for the host's side rail while the chat is pinned. */
+export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragStart?: (e: React.PointerEvent) => void; pushButton?: boolean; rail?: boolean }) {
+  const { order, picker, setPicker, status, push, enablePush, newChatButton, maxHeads, place } = useStore(
+    useShallow((s) => ({ order: s.order, picker: s.picker, setPicker: s.setPicker, status: s.status, push: s.push, enablePush: s.enablePush, newChatButton: s.newChatButton, maxHeads: s.maxHeads, place: s.place })),
   )
+  if (rail)
+    return (
+      <div className="ci-flex ci-flex-col ci-items-center ci-gap-4">
+        {order.length > 0 && <div className="ci-w-6 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700" />}
+        {order.slice(0, maxHeads).map((peer) => (
+          <Head key={peer} peer={peer} size={36} rail />
+        ))}
+        {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} rail />}
+      </div>
+    )
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. Press and drag anywhere here to move the island.
   return (
     <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse ci-mb-3' : 'ci-flex-col ci-mt-3'} ci-items-center ci-gap-3 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
-      {order.slice(0, maxHeads).map((peer) => {
-        const c = conversations[peer]
-        const active = open === peer
-        return (
-          <div key={peer} className="ci-relative ci-group">
-            <button
-              type="button"
-              title={c?.kind === 'group' ? c.name ?? peer : contacts[peer]?.name ?? inactive[peer] ?? peer}
-              onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
-              className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
-            >
-              {c?.kind === 'group' ? (
-                <GroupAvatar name={c.name ?? peer} size={48} avatar={c.avatar} />
-              ) : (
-                <>
-                  <Avatar contact={contacts[peer]} username={peer} size={48} />
-                  <PresenceDot online={online[peer]} presence={contacts[peer]?.presence} mobile={mobile[peer]} />
-                </>
-              )}
-              {c?.unread > 0 && (
-                <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
-                  {c.unread > 99 ? '99+' : c.unread}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              aria-label={`Remove ${c?.kind === 'group' ? c.name ?? peer : contacts[peer]?.name ?? inactive[peer] ?? peer} from the dock`}
-              onClick={() => removeHead(peer)}
-              className="ci-absolute ci--top-1 ci--left-1 ci-hidden group-hover:ci-flex group-focus-within:ci-flex ci-w-5 ci-h-5 ci-rounded-full ci-border-0 ci-p-0 ci-bg-gray-700 dark:ci-bg-gray-300 ci-text-gray-50 dark:ci-text-gray-900 ci-items-center ci-justify-center"
-            >
-              {Icon.close}
-            </button>
-          </div>
-        )
-      })}
+      {order.slice(0, maxHeads).map((peer) => (
+        <Head key={peer} peer={peer} size={48} />
+      ))}
       {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} />}
       {newChatButton && (
         <Button variant="default" title={status === 'online' ? 'New chat' : `Chat ${status}`} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
@@ -66,8 +44,48 @@ export function Dock({ onDragStart, pushButton = true }: { onDragStart?: (e: Rea
   )
 }
 
+/** One head: avatar, presence and unread count; a click opens its chat, on the open one it closes it. */
+function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean }) {
+  const { c, contact, active, inactive, online, mobile, openChat, removeHead } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead })),
+  )
+  const name = c?.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive ?? peer
+  return (
+    <div className="ci-relative ci-group">
+      <button
+        type="button"
+        title={name}
+        onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
+        className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
+      >
+        {c?.kind === 'group' ? (
+          <GroupAvatar name={name} size={size} avatar={c.avatar} />
+        ) : (
+          <>
+            <Avatar contact={contact} username={peer} size={size} />
+            <PresenceDot online={online} presence={contact?.presence} mobile={mobile} />
+          </>
+        )}
+        {c?.unread > 0 && (
+          <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
+            {c.unread > 99 ? '99+' : c.unread}
+          </span>
+        )}
+      </button>
+      {!rail && <button
+        type="button"
+        aria-label={`Remove ${name} from the dock`}
+        onClick={() => removeHead(peer)}
+        className="ci-absolute ci--top-1 ci--left-1 ci-hidden group-hover:ci-flex group-focus-within:ci-flex ci-w-5 ci-h-5 ci-rounded-full ci-border-0 ci-p-0 ci-bg-gray-700 dark:ci-bg-gray-300 ci-text-gray-50 dark:ci-text-gray-900 ci-items-center ci-justify-center"
+      >
+        {Icon.close}
+      </button>}
+    </div>
+  )
+}
+
 /** +N: the chats past the dock's heads, in a list to bring one back. */
-function Overflow({ peers }: { peers: string[] }) {
+function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) {
   const { conversations, contacts, inactive, online, mobile, openChat, removeHead, place } = useStore(
     useShallow((s) => ({ conversations: s.conversations, contacts: s.contacts, inactive: s.inactive, online: s.online, mobile: s.mobile, openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
   )
@@ -90,7 +108,7 @@ function Overflow({ peers }: { peers: string[] }) {
 
   return (
     <div ref={box} className="ci-relative">
-      <Button variant="default" title={`${peers.length} more chats`} aria-expanded={show} onClick={() => setShow((v) => !v)} className="ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950">
+      <Button variant="default" title={`${peers.length} more chats`} aria-expanded={show} onClick={() => setShow((v) => !v)} className={`ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950 ${rail ? '!ci-w-9 !ci-h-9 ci-text-sm' : ''}`}>
         +{peers.length}
         {unread > 0 && (
           <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
@@ -99,7 +117,7 @@ function Overflow({ peers }: { peers: string[] }) {
         )}
       </Button>
       {show && (
-        <div role="menu" onPointerDown={(e) => e.stopPropagation()} className={`ci-anim-drop ci-absolute ${place.x === 'left' ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ${place.y === 'up' ? 'ci-top-0' : 'ci-bottom-0'} ci-z-30 ci-w-64 ci-max-h-80 ci-overflow-y-auto ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-gray-900 dark:ci-text-white ci-text-sm ci-cursor-default`}>
+        <div role="menu" onPointerDown={(e) => e.stopPropagation()} className={`ci-anim-drop ci-absolute ${rail || place.x === 'left' ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ${rail || place.y === 'up' ? 'ci-top-0' : 'ci-bottom-0'} ci-z-30 ci-w-64 ci-max-h-80 ci-overflow-y-auto ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-gray-900 dark:ci-text-white ci-text-sm ci-cursor-default`}>
           {peers.map((p) => {
             const c = conversations[p]
             return (
