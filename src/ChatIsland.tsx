@@ -289,11 +289,15 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // The heads and the open chat come back after a reload, per user; a hidden island neither reads nor writes them.
     const dockKey = `chat-island-dock:${cfg.host}:${cfg.username}`
     let unsave = () => {}
+    const restored = new Set<string>()
     if (!headlessRef.current) {
       try {
         const saved = JSON.parse(localStorage.getItem(dockKey) ?? 'null') as { order?: string[]; open?: string | null } | null
         if (saved?.order?.length) {
-          saved.order.forEach((p) => s.ensure(p))
+          saved.order.forEach((p) => {
+            s.ensure(p)
+            restored.add(p)
+          })
           useStore.setState({ order: saved.order, open: saved.open && saved.order.includes(saved.open) ? saved.open : null })
         }
       } catch {
@@ -326,6 +330,14 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
               useStore.getState().seed(page.messages, cfg.username)
               useStore.getState().applyReactions(page.reactions)
               useStore.getState().applyMarkers(page.markers)
+              // A remembered head the server knows nothing about (chat deleted elsewhere, wiped server) goes.
+              const st = useStore.getState()
+              restored.forEach((p) => {
+                const cv = st.conversations[p]
+                if (!cv || cv.messages.length || (cv.kind === 'group' && cv.name)) return
+                c.history(p, undefined, 1).then((h) => h.messages.length === 0 && useStore.getState().removeConversation(p)).catch(() => {})
+              })
+              restored.clear()
             })
             .catch(() => {})
         }
