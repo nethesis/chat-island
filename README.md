@@ -37,7 +37,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `position` | `bottom-right` | or `bottom-left` |
 | `serviceWorker` | | URL of `chat-island-sw.js` on the host: notifications with the tab closed |
 | `notifications` | `click` | `auto` asks for permission once online |
-| `newChatButton` | `true` | `false` when the host has its own list |
+| `newChatButton` | `true` | the new chat button while there are no chats; `false` when the host has its own list (a `+` under the heads stays) |
 | `maxHeads` | `5` | chat heads in the dock; the others wait behind a +N bubble |
 | `sound` | `true` | chime for a message not in view |
 | `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
@@ -143,7 +143,7 @@ An app with its own users (WebTop, an intranet) embeds the widget and builds its
 1. log the user in on the CTI (`/api/login`, or a QR code token with two-factor authentication) and pass `<cti_host>:<username>:<token>` as `data-config`;
 2. on `chat-island-status` `unauthorized`, log in again and set the new token in `data-config`: the island reconnects in place;
 3. keep its conversation list with `chat-island-conversations-request` / `chat-island-conversations`, badges with `chat-island-unread`;
-4. drive the island with `chat-island-open`, `chat-island-close`, `chat-island-send`, `chat-island-group-create`, `chat-island-delete`; `newChatButton: false` hides the island's own entry point;
+4. drive the island with `chat-island-open`, `chat-island-close`, `chat-island-send`, `chat-island-group-create`, `chat-island-delete`; `newChatButton: false` hides the island's entry point while there are no chats (the `+` under the heads stays);
 5. serve `chat-island-sw.js` from its own origin for notifications with the tab closed.
 
 ```js
