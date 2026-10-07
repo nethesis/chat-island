@@ -46,15 +46,24 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
 
 /** One head: avatar, presence and unread count; a click opens its chat, on the open one it closes it. */
 function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean }) {
-  const { c, contact, active, inactive, online, mobile, openChat, removeHead } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead })),
+  const { c, contact, active, inactive, online, mobile, openChat, removeHead, place } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
   )
   const name = c?.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive ?? peer
+  // The name at once on hover, like the host's rail tooltips, on the side facing the page.
+  const left = rail || place.x === 'left'
   return (
     <div className="ci-relative ci-group">
+      <span
+        role="tooltip"
+        className={`ci-pointer-events-none ci-absolute ci-top-1/2 ci--translate-y-1/2 ${left ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900`}
+      >
+        {name}
+        <span className={`ci-absolute ci-top-1/2 ci--translate-y-1/2 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100 ${left ? 'ci--right-1' : 'ci--left-1'}`} />
+      </span>
       <button
         type="button"
-        title={name}
+        aria-label={name}
         onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
         className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
       >
