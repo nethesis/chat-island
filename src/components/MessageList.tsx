@@ -42,6 +42,19 @@ export const appAttachment = (body: string): { text?: string; count: number } | 
   }
 }
 
+/** Save a file from the upload host as itself: a blob link downloads in place, where a plain one opens a window (an empty one in NethLink). */
+const save = (url: string) =>
+  fetch(url)
+    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+    .then((blob) => {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = fileName(url)
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+    })
+    .catch(() => window.open(url, '_blank', 'noreferrer'))
+
 /** A voice note, WhatsApp style: play, a seek bar and the time, and a download. Our own: Chrome's player, narrow, spills its volume slider out. */
 /** alone: nothing under it but the message time, so the duration sits on that line, as in WhatsApp. */
 function Voice({ url, alone }: { url: string; alone?: boolean }) {
@@ -101,7 +114,7 @@ function Voice({ url, alone }: { url: string; alone?: boolean }) {
         />
         {!alone && <span className="ci-shrink-0 ci-text-xs ci-tabular-nums ci-opacity-70">{(playing || at ? clock(at) : clock(length, true))}</span>}
       </div>
-      <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
+      <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" onClick={(e) => (e.preventDefault(), save(url))} title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
       </a>
       {alone && <span className="ci-absolute ci-left-12 ci-top-full ci-mt-1 ci-text-[10px] ci-leading-none ci-tabular-nums ci-opacity-60">{(playing || at ? clock(at) : clock(length, true))}</span>}
