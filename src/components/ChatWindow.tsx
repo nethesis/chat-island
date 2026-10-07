@@ -46,8 +46,9 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
   const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
 
   useEffect(() => {
-    if (c && !c.loaded) actions.loadOlder(peer)
-  }, [peer, c?.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Again once online: a chat restored by a reload mounts before the connection.
+    if (c && !c.loaded && status === 'online') actions.loadOlder(peer)
+  }, [peer, c?.loaded, status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     markRead(peer)
