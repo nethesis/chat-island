@@ -39,6 +39,8 @@ export interface ChatIslandProps {
   sound?: boolean
   /** The host has a side panel to pin the chat to (events chat-island-pin, chat-island-pin-target). */
   pinnable?: boolean
+  /** The browser's own tooltips for the heads' names: for a host window sized to the dock (NethLink), where a drawn one is cut off. */
+  nativeTooltips?: boolean
   /** Drag the island around the page (default true); off when the host moves its own window. */
   drag?: boolean
   /** Host drag from the dock and the window header, instead of the island's own (e.g. to move an app window). */
@@ -114,7 +116,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
   return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
 }
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   const [dark, themeChoice] = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
@@ -128,7 +130,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     soundRef.current = sound
     notificationsRef.current = notifications
   }, [cfg, sound, notifications])
-  useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable }), [maxHeads, newChatButton, pinnable])
+  useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable, nativeTooltips }), [maxHeads, newChatButton, pinnable, nativeTooltips])
   // A pinnable host tells where its rail and panel are; while the rail is there the heads live in it and nothing floats.
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-rail-target', ({ el }) => useStore.setState({ rail: el ?? null })), [])
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-pin-target', ({ el }) => useStore.setState({ panel: el ?? null })), [])

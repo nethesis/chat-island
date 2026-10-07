@@ -52,12 +52,14 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
     useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
   )
   const name = c?.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive ?? peer
+  const native = useStore((s) => s.nativeTooltips)
   return (
     <div className="ci-relative ci-group">
       <Tip text={name} left={rail || place.x === 'left'} />
       <button
         type="button"
         aria-label={name}
+        title={native ? name : undefined}
         onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
         className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
       >
@@ -89,6 +91,7 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
 
 /** The text at once on hover, like the host's rail tooltips, on the side facing the page. */
 function Tip({ text, left }: { text: string; left: boolean }) {
+  if (useStore((s) => s.nativeTooltips)) return null
   return (
     <span
       role="tooltip"
@@ -102,11 +105,11 @@ function Tip({ text, left }: { text: string; left: boolean }) {
 
 /** "+" under the heads: the operator picker in place of the open chat, without the host's own "new chat". */
 function NewChat({ rail = false }: { rail?: boolean }) {
-  const { picker, setPicker, place } = useStore(useShallow((s) => ({ picker: s.picker, setPicker: s.setPicker, place: s.place })))
+  const { picker, setPicker, place, native } = useStore(useShallow((s) => ({ picker: s.picker, setPicker: s.setPicker, place: s.place, native: s.nativeTooltips })))
   return (
     <div className="ci-relative ci-group">
       <Tip text="New chat" left={rail || place.x === 'left'} />
-      <Button variant="default" aria-label="New chat" aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
+      <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
         {Icon.plus}
       </Button>
     </div>

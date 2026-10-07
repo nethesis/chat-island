@@ -23,6 +23,7 @@ interface State {
   expanded: boolean // the bigger chat window, remembered
   place: { x: 'left' | 'right'; y: 'up' | 'down' } // where panels open beside the dock
   pinnable: boolean // the host has a side panel for the chat
+  nativeTooltips: boolean // the browser's tooltips on the heads, not drawn ones
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
   panel: HTMLElement | null // the host's side panel for the open conversation
 
@@ -102,6 +103,7 @@ export const useStore = create<State>((set, get) => ({
   maxHeads: 5,
   newChatButton: true,
   pinnable: false,
+  nativeTooltips: false,
   rail: null,
   panel: null,
   place: { x: 'left', y: 'up' },
