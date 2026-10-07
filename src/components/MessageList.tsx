@@ -42,7 +42,74 @@ export const appAttachment = (body: string): { text?: string; count: number } | 
   }
 }
 
-const Attachment = memo(function Attachment({ url }: { url: string }) {
+/** A voice note, WhatsApp style: play, a seek bar and the time, and a download. Our own: Chrome's player, narrow, spills its volume slider out. */
+/** alone: nothing under it but the message time, so the duration sits on that line, as in WhatsApp. */
+function Voice({ url, alone }: { url: string; alone?: boolean }) {
+  const audio = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [at, setAt] = useState(0)
+  const [length, setLength] = useState(0)
+  // Rounded the same way at rest and while playing; at rest a short note shows 0:01, not 0:00.
+  const clock = (s: number, rest = false) => ((r) => `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`)(Math.max(Math.round(s), rest && s > 0 ? 1 : 0))
+  // Recorded WebM can report an infinite length until read to the end: seek far once to learn it.
+  const measure = () => {
+    const a = audio.current
+    if (!a) return
+    if (Number.isFinite(a.duration)) return setLength(a.duration)
+    a.currentTime = 1e9
+    a.addEventListener('timeupdate', () => ((a.currentTime = 0), Number.isFinite(a.duration) && setLength(a.duration)), { once: true })
+  }
+  const toggle = () => {
+    const a = audio.current
+    if (!a) return
+    if (a.paused) a.play().catch(() => {})
+    else a.pause()
+  }
+  return (
+    // A 0..15rem grid track: the player takes up to 15rem but never widens the bubble (a group's beside its avatar).
+    <div className="ci-relative ci-grid ci-grid-cols-[minmax(0,15rem)_auto] ci-items-center ci-gap-1 ci-max-w-full">
+      <audio
+        ref={audio}
+        src={url}
+        preload="metadata"
+        onLoadedMetadata={measure}
+        onDurationChange={() => audio.current && Number.isFinite(audio.current.duration) && setLength(audio.current.duration)}
+        onTimeUpdate={() => audio.current && setAt(audio.current.currentTime)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => (setPlaying(false), setAt(0))}
+      />
+      <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
+        <button type="button" onClick={toggle} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'} className="ci-h-10 ci-w-10 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-text-current hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
+          {playing ? (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" className="ci-block"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
+          ) : (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" className="ci-block"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" /></svg>
+          )}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={length || 1}
+          step={0.01}
+          value={Math.min(at, length || 1)}
+          disabled={!length}
+          onChange={(e) => audio.current && (audio.current.currentTime = Number(e.target.value))}
+          aria-label="Position"
+          style={{ '--ci-at': `${length ? (Math.min(at, length) / length) * 100 : 0}%` } as React.CSSProperties}
+          className="ci-voice ci-flex-1 ci-min-w-0 ci-w-full ci-m-0 ci-block ci-cursor-pointer"
+        />
+        {!alone && <span className="ci-shrink-0 ci-text-xs ci-tabular-nums ci-opacity-70">{(playing || at ? clock(at) : clock(length, true))}</span>}
+      </div>
+      <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+      </a>
+      {alone && <span className="ci-absolute ci-left-12 ci-top-full ci-mt-1 ci-text-[10px] ci-leading-none ci-tabular-nums ci-opacity-60">{(playing || at ? clock(at) : clock(length, true))}</span>}
+    </div>
+  )
+}
+
+const Attachment = memo(function Attachment({ url, alone }: { url: string; alone?: boolean }) {
   if (!safeUrl(url)) return <span className="ci-break-all">{url}</span>
   if (isImage(url))
     return (
@@ -50,17 +117,7 @@ const Attachment = memo(function Attachment({ url }: { url: string }) {
         <img src={url} alt={fileName(url)} className="ci-max-w-full ci-max-h-60 ci-rounded-2xl ci-block" />
       </a>
     )
-  // Our own download: the browser's player hides it when narrow, or has none (Firefox, Safari); its ⋮ menu goes.
-  if (isAudio(url))
-    return (
-      // A 0..15rem grid track: the player takes up to 15rem but never widens the bubble (a group's beside its avatar).
-      <div className="ci-grid ci-grid-cols-[minmax(0,15rem)_auto] ci-items-center ci-gap-1 ci-max-w-full">
-        <audio controls controlsList="nodownload noplaybackrate" src={url} className="ci-w-full" />
-        <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-gray-500 dark:ci-text-gray-400 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-        </a>
-      </div>
-    )
+  if (isAudio(url)) return <Voice url={url} alone={alone} />
   return (
     <a href={url} target="_blank" rel="noreferrer" className="ci-underline ci-break-all ci-flex ci-items-center ci-gap-1">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
@@ -372,7 +429,7 @@ export function MessageList({
                     } ${m.pending ? 'ci-opacity-60' : ''}`}
                   >
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
-                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
+                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
                     {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
                       <span className="ci-opacity-60">{time(m.ts)}</span>

@@ -25,6 +25,14 @@
 .chat-island-root ::-webkit-scrollbar { width: 6px; }
 .chat-island-root ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 9999px; }
 
+/* Voice note seek bar: a thin track in the bubble's text colour, filled up to --ci-at, a small round thumb. */
+.chat-island-root input.ci-voice { -webkit-appearance: none; appearance: none; height: 14px; background: transparent; }
+.chat-island-root input.ci-voice::-webkit-slider-runnable-track { height: 3px; border-radius: 9999px; background: linear-gradient(currentColor, currentColor) 0 / var(--ci-at, 0%) 100% no-repeat, color-mix(in srgb, currentColor 25%, transparent); }
+.chat-island-root input.ci-voice::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; margin-top: -4.5px; border: 0; border-radius: 9999px; background: currentColor; }
+.chat-island-root input.ci-voice::-moz-range-track { height: 3px; border-radius: 9999px; background: color-mix(in srgb, currentColor 25%, transparent); }
+.chat-island-root input.ci-voice::-moz-range-progress { height: 3px; border-radius: 9999px; background: currentColor; }
+.chat-island-root input.ci-voice::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 9999px; background: currentColor; }
+
 /* No focus outline from the host's styles (forms plugins and the like) on the island's own fields. */
 .chat-island-root :is(input, textarea):focus { outline: none; box-shadow: none; }
 
