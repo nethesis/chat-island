@@ -53,8 +53,9 @@ const Attachment = memo(function Attachment({ url }: { url: string }) {
   // Our own download: the browser's player hides it when narrow, or has none (Firefox, Safari); its ⋮ menu goes.
   if (isAudio(url))
     return (
-      <div className="ci-flex ci-items-center ci-gap-1 ci-max-w-full">
-        <audio controls controlsList="nodownload noplaybackrate" src={url} className="ci-min-w-0 ci-max-w-full" />
+      // The player shrinks to fit (the browser drops its volume slider when narrow) instead of running under the button.
+      <div className="ci-flex ci-items-center ci-gap-1 ci-w-72 ci-max-w-full">
+        <audio controls controlsList="nodownload noplaybackrate" src={url} className="ci-flex-1 ci-min-w-0 ci-w-0" />
         <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-gray-500 dark:ci-text-gray-400 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
         </a>
