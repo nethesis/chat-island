@@ -522,7 +522,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       if (!r) return
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
       const big = expanded && !!shownPeer
-      const w = ((big ? 44 : 22) + (shownPeer && shownPicker ? 22.75 : 0) + 0.75) * rem
+      const w = ((big ? 44 : 25) + (shownPeer && shownPicker ? 25.75 : 0) + 0.75) * rem
       const h = (big ? 45 : 30) * rem
       const x = r.left >= w || r.left >= window.innerWidth - r.right ? 'left' : 'right'
       const y = r.bottom >= h || r.bottom >= window.innerHeight - r.top ? 'up' : 'down'
@@ -568,7 +568,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     >
       <Boundary>
         {shownPeer && (
-          <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={{ ...beside(shownPicker ? 23.5 : 0.75), ...(morph.current ? ({ '--ci-morph': morphFrom(morph.current) } as React.CSSProperties) : {}) }} onAnimationEnd={closed}>
+          <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={{ ...beside(shownPicker ? 26.5 : 0.75), ...(morph.current ? ({ '--ci-morph': morphFrom(morph.current) } as React.CSSProperties) : {}) }} onAnimationEnd={closed}>
             <ChatWindow peer={shownPeer} actions={actions} theme={themeChoice} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
           </div>
         )}

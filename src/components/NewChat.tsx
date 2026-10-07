@@ -40,7 +40,7 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
   }
 
   return (
-    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[22rem] ci-max-h-[30rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
+    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-max-h-[30rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
       {/* The search row moves the island too, like a conversation's header; typing and closing stay clicks. */}
       <div
         className={`ci-px-4 ci-py-3 ci-flex ci-items-center ci-gap-2 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`}
