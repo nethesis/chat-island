@@ -44,13 +44,14 @@ const NS = {
 
 const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
 
-/** XEP-0333 chat marker on a one-to-one message: the peer received or read it; mine = sent by another client of mine. */
+/** XEP-0333 chat marker: the peer (in a group, the member `user`) received or read it; mine = sent by another client of mine. */
 export interface Marker {
   peer: string
   kind: 'received' | 'displayed'
   id: string // the marked message's origin-id
   ts: number
   mine: boolean
+  user?: string
 }
 
 export interface HistoryPage {
@@ -261,7 +262,10 @@ export class Chat {
 
   /** XEP-0333: tell the peer I received or read up to this message. Archived, so the ticks survive a reload. */
   async marker(peer: string, kind: 'received' | 'displayed', id: string) {
-    await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id: crypto.randomUUID() }, xml(kind, { xmlns: NS.markers, id }), xml('store', { xmlns: NS.hints })))
+    const group = this.isGroup(peer)
+    await this.xmpp.send(
+      xml('message', { to: group ? peer : `${peer}@${this.domain}`, type: group ? 'groupchat' : 'chat', id: crypto.randomUUID() }, xml(kind, { xmlns: NS.markers, id }), xml('store', { xmlns: NS.hints })),
+    )
   }
 
   /** XEP-0444: my whole set of reactions to one message; an empty set takes them back. Archived like a message. */
@@ -303,8 +307,14 @@ export class Chat {
   }
 
   /** History with one operator or group, newest page first; pass `before` (archive id) to page back. */
-  history(peer: string, before?: string, max = 30): Promise<HistoryPage> {
-    return this.mam(peer, before, max)
+  async history(peer: string, before?: string, max = 30): Promise<HistoryPage> {
+    // Read receipts take archive slots too (many in a group): page on until there is something to show.
+    let page = await this.mam(peer, before, max)
+    for (let i = 0; i < 4 && max > 1 && page.messages.length < 10 && !page.complete && page.first; i++) {
+      const more = await this.mam(peer, page.first, max)
+      page = { messages: [...more.messages, ...page.messages], reactions: [...more.reactions, ...page.reactions], markers: [...more.markers, ...page.markers], complete: more.complete, first: more.first ?? page.first }
+    }
+    return page
   }
 
   private async mam(peer: string | undefined, before: string | undefined, max: number): Promise<HistoryPage> {
@@ -621,11 +631,26 @@ export class Chat {
     if (!st.getChild('body') && state) this.h.typing(local(peer), state.name === 'composing')
   }
 
-  /** A chat marker on a one-to-one message, live, carbon or archived. */
+  /** A chat marker, live, carbon, archived or wrapped by MucSub; in a group only from the room. */
   private markerOf(st: Element, ts: number): Marker | undefined {
-    if (st.attrs.type !== 'chat') return undefined
-    const el = st.getChild('received', NS.markers) ?? st.getChild('displayed', NS.markers)
+    const event = st.getChild('event', NS.pubsubEvent)
+    let msg = st
+    let room: string | undefined
+    if (event && event.getChild('items')?.attrs.node === NS.mucsubMessages) {
+      room = bare(st.attrs.from)
+      const inner = findMessage(event)
+      if (!this.isGroup(room) || !inner || bare(inner.attrs.from) !== room) return undefined
+      msg = inner
+    } else if (st.attrs.type === 'groupchat') {
+      room = bare(st.attrs.from)
+      if (!this.isGroup(room)) return undefined
+    } else if (st.attrs.type !== 'chat') return undefined
+    const el = msg.getChild('received', NS.markers) ?? msg.getChild('displayed', NS.markers)
     if (!el?.attrs.id) return undefined
+    if (room) {
+      const user = (msg.attrs.from ?? '').split('/')[1] ?? ''
+      return user ? { peer: room, kind: el.name as Marker['kind'], id: el.attrs.id, ts, mine: user === this.cfg.username, user } : undefined
+    }
     const from = bare(st.attrs.from)
     const mine = from === this.me || !st.attrs.from
     const peer = mine ? local(bare(st.attrs.to)) : local(from)

@@ -155,7 +155,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       // Read receipt: the newest message from the peer, once, only while the window is really in view.
       seen: (peer) => {
         const c = useStore.getState().conversations[peer]
-        if (headlessRef.current || document.visibilityState !== 'visible' || c?.kind !== 'chat') return
+        if (headlessRef.current || document.visibilityState !== 'visible' || !c) return
         const last = c.messages.findLast((m) => !m.mine && m.oid)
         if (!last || last.ts <= (c.myRead ?? 0)) return
         useStore.setState((s) => ({ conversations: { ...s.conversations, [peer]: { ...s.conversations[peer], myRead: last.ts } } }))
@@ -364,7 +364,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         s.addMessage(peer, m, { live: !m.notice })
         emit('chat-island-message', { ...m, peer })
         emit('chat-island-unread', { total: useStore.getState().totalUnread() })
-        if (!m.mine && !m.room && m.oid) c.marker(peer, 'received', m.oid).catch(() => {})
+        // In a group the read receipt of an open window covers it: one marker less per member.
+        const shown = m.room && !headlessRef.current && document.visibilityState === 'visible' && useStore.getState().open === peer
+        if (!m.mine && m.oid && !shown) c.marker(peer, 'received', m.oid).catch(() => {})
         if (!m.mine && !m.notice && !headlessRef.current) notify(peer, m)
       },
     })

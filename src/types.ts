@@ -57,6 +57,7 @@ export interface Conversation {
   delivered?: number // the peer has received my messages up to this time
   read?: number      // the peer has read my messages up to this time
   myRead?: number    // I told the peer I read up to this time (from any of my clients)
+  marks?: Record<string, { delivered: number; read: number }> // group: how far each member got; delivered/read are then the slowest
 }
 
 export interface Contact {

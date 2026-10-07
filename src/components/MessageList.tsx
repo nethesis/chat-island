@@ -375,7 +375,7 @@ export function MessageList({
                     {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
                       <span className="ci-opacity-60">{time(m.ts)}</span>
-                      {m.mine && !group && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}
+                      {m.mine && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}
                     </span>
                   </div>
                   {target && <Chips forMsg={reactions?.[target]} me={me} mine={m.mine} nameOf={nameOf} onReact={(e) => canReact && react(target, e)} />}

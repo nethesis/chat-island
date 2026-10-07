@@ -62,6 +62,14 @@ const empty = (peer: string, mucHost: string): Conversation => ({
   complete: false,
 })
 
+/** Group ticks as in WhatsApp: delivered or read only once every other member got there. */
+const groupTicks = (c: Conversation, me: string): Pick<Conversation, 'delivered' | 'read'> => {
+  const others = (c.members ?? []).filter((u) => u !== me)
+  if (!others.length) return { delivered: 0, read: 0 }
+  const of = (u: string) => c.marks?.[u] ?? { delivered: 0, read: 0 }
+  return { delivered: Math.min(...others.map((u) => of(u).delivered)), read: Math.min(...others.map((u) => of(u).read)) }
+}
+
 /** Heads keep their place: a new one goes at the bottom, past the limit the topmost not-open one leaves. */
 // Beyond max a head waits behind the +N bubble; one coming back takes the bottom, never pushing the open chat out.
 const withHead = (order: string[], peer: string, max: number, open: string | null): string[] => {
@@ -130,7 +138,8 @@ export const useStore = create<State>((set, get) => ({
   setGroup: (peer, name, members, avatar, owner) =>
     set((s) => {
       const c = s.conversations[peer] ?? empty(peer, s.mucHost)
-      return { conversations: { ...s.conversations, [peer]: { ...c, kind: 'group', name, members, avatar: avatar ?? c.avatar, owner: owner ?? c.owner } } }
+      const g = { ...c, kind: 'group' as const, name, members, avatar: avatar ?? c.avatar, owner: owner ?? c.owner }
+      return { conversations: { ...s.conversations, [peer]: { ...g, ...groupTicks(g, s.me) } } }
     }),
 
   // Last message per conversation from the archive; after a reconnect it also merges
@@ -183,10 +192,18 @@ export const useStore = create<State>((set, get) => ({
       const conversations = { ...s.conversations }
       for (const mk of list) {
         const c = conversations[mk.peer]
-        if (!c || c.kind !== 'chat') continue
+        if (!c) continue
         const ts = c.messages.find((m) => m.mine !== mk.mine && (m.oid === mk.id || m.id === mk.id))?.ts ?? mk.ts
         if (mk.mine) {
           if (mk.kind === 'displayed') conversations[mk.peer] = { ...c, myRead: Math.max(c.myRead ?? 0, ts), unread: 0 }
+          continue
+        }
+        if (c.kind === 'group') {
+          if (!mk.user) continue
+          const was = c.marks?.[mk.user] ?? { delivered: 0, read: 0 }
+          const read = mk.kind === 'displayed' ? Math.max(was.read, ts) : was.read
+          const g = { ...c, marks: { ...c.marks, [mk.user]: { delivered: Math.max(was.delivered, ts, read), read } } }
+          conversations[mk.peer] = { ...g, ...groupTicks(g, s.me) }
           continue
         }
         const delivered = Math.max(c.delivered ?? 0, ts)
