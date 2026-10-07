@@ -19,6 +19,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
           <Head key={peer} peer={peer} size={36} rail />
         ))}
         {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} rail />}
+        <NewChat rail />
       </div>
     )
   // Reversed column: the most recent head sits at the bottom, beside the open
@@ -29,7 +30,8 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
         <Head key={peer} peer={peer} size={48} />
       ))}
       {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} />}
-      {newChatButton && (
+      {order.length > 0 && <NewChat />}
+      {newChatButton && !order.length && (
         <Button variant="default" title={status === 'online' ? 'New chat' : `Chat ${status}`} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
           {Icon.chat}
           {status !== 'online' && <span className="ci-absolute ci-bottom-0 ci-right-0 ci-w-3 ci-h-3 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />}
@@ -50,17 +52,9 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
     useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
   )
   const name = c?.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive ?? peer
-  // The name at once on hover, like the host's rail tooltips, on the side facing the page.
-  const left = rail || place.x === 'left'
   return (
     <div className="ci-relative ci-group">
-      <span
-        role="tooltip"
-        className={`ci-pointer-events-none ci-absolute ci-top-1/2 ci--translate-y-1/2 ${left ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900`}
-      >
-        {name}
-        <span className={`ci-absolute ci-top-1/2 ci--translate-y-1/2 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100 ${left ? 'ci--right-1' : 'ci--left-1'}`} />
-      </span>
+      <Tip text={name} left={rail || place.x === 'left'} />
       <button
         type="button"
         aria-label={name}
@@ -89,6 +83,32 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
       >
         {Icon.close}
       </button>}
+    </div>
+  )
+}
+
+/** The text at once on hover, like the host's rail tooltips, on the side facing the page. */
+function Tip({ text, left }: { text: string; left: boolean }) {
+  return (
+    <span
+      role="tooltip"
+      className={`ci-pointer-events-none ci-absolute ci-top-1/2 ci--translate-y-1/2 ${left ? 'ci-right-full ci-mr-3' : 'ci-left-full ci-ml-3'} ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900`}
+    >
+      {text}
+      <span className={`ci-absolute ci-top-1/2 ci--translate-y-1/2 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100 ${left ? 'ci--right-1' : 'ci--left-1'}`} />
+    </span>
+  )
+}
+
+/** "+" under the heads: the operator picker in place of the open chat, without the host's own "new chat". */
+function NewChat({ rail = false }: { rail?: boolean }) {
+  const { picker, setPicker, place } = useStore(useShallow((s) => ({ picker: s.picker, setPicker: s.setPicker, place: s.place })))
+  return (
+    <div className="ci-relative ci-group">
+      <Tip text="New chat" left={rail || place.x === 'left'} />
+      <Button variant="default" aria-label="New chat" aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
+        {Icon.plus}
+      </Button>
     </div>
   )
 }
