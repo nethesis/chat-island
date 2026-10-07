@@ -506,7 +506,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     prevOpen.current = open
     if (!open) morph.current = null
   }, [open])
-  const [shownPeer, closing, closed] = useExit(open)
+  // The "+" swaps the chat for the picker: the chat goes at once, or the picker would sit beside it while it closes.
+  const [shownPeer, closing, closed] = useExit(open, picker)
   const [shownPicker, pickerClosing, pickerClosed] = useExit(picker, swap)
 
   // The island places itself (no host drag): panels open beside the dock on the side with room, up or down.
