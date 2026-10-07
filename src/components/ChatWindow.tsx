@@ -104,6 +104,12 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
         aria-hidden="true"
       />}
       <div className={`ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3 ci-rounded-t-3xl ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
+        {/* A group's picture, name and members: press them for the full list with everyone's presence. */}
+        <div
+          className={`ci-flex ci-flex-1 ci-min-w-0 ci-items-center ci-gap-3 ${c.kind === 'group' ? 'ci-relative ci-group ci-cursor-pointer' : ''}`}
+          {...(c.kind === 'group' ? { role: 'button', tabIndex: 0, 'aria-expanded': showMembers, onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setShowMembers((v) => !v)) } : {})}
+          onClick={() => c.kind === 'group' && setShowMembers((v) => !v)}
+        >
         {c.kind === 'group' ? (
           <GroupAvatar name={c.name ?? peer} size={36} avatar={c.avatar} />
         ) : (
@@ -112,12 +118,13 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
             <PresenceDot online={online[peer]} presence={contact?.presence} mobile={mobile[peer]} />
           </span>
         )}
-        {/* A group's subtitle lists its members; press it for the full list with everyone's presence. */}
-        <div
-          className={`ci-flex-1 ci-min-w-0 ${c.kind === 'group' ? 'ci-cursor-pointer' : ''}`}
-          {...(c.kind === 'group' ? { role: 'button', tabIndex: 0, 'aria-expanded': showMembers, onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setShowMembers((v) => !v)) } : {})}
-          onClick={() => c.kind === 'group' && setShowMembers((v) => !v)}
-        >
+        {c.kind === 'group' && !showMembers && (
+          <span role="tooltip" className="ci-pointer-events-none ci-absolute ci-left-0 ci-top-full ci-mt-2 ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900">
+            Click to see the group details
+            <span className="ci-absolute ci-left-4 ci--top-1 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100" />
+          </span>
+        )}
+        <div className="ci-flex-1 ci-min-w-0">
           <div className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
@@ -134,6 +141,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
                       ? 'Mobile'
                       : 'offline'}
           </div>
+        </div>
         </div>
         {/* Call when the CTI says the person is reachable on a phone (webrtc, desk phone, NethLink, mobile): being in the chat alone is not enough. */}
         {!gone && c.kind !== 'group' && contact?.number && callable(contact.presence) && (
