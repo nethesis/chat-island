@@ -61,10 +61,10 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
         aria-label={name}
         title={native ? name : undefined}
         onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
-        className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
+        className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
       >
         {c?.kind === 'group' ? (
-          <GroupAvatar name={name} size={size} avatar={c.avatar} />
+          <GroupAvatar peer={peer} name={name} size={size} avatar={c.avatar} head />
         ) : (
           <>
             <Avatar contact={contact} username={peer} size={size} />
@@ -109,7 +109,7 @@ function NewChat({ rail = false }: { rail?: boolean }) {
   return (
     <div className="ci-relative ci-group">
       <Tip text="New chat" left={rail || place.x === 'left'} />
-      <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-iconSecondary dark:ci-ring-iconSecondaryDark' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
+      <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
         {Icon.plus}
       </Button>
     </div>
@@ -165,7 +165,7 @@ function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) 
                 >
                   <span className="ci-relative">
                     {c?.kind === 'group' ? (
-                      <GroupAvatar name={nameOf(p)} size={32} avatar={c.avatar} />
+                      <GroupAvatar peer={p} name={nameOf(p)} size={32} avatar={c.avatar} />
                     ) : (
                       <>
                         <Avatar contact={contacts[p]} username={p} size={32} />
