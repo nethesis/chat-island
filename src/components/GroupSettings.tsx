@@ -54,7 +54,7 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
       <div className="ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3">
         <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then((avatar) => run({ avatar })).catch(() => setError('Picture not readable'))} />
         <button type="button" title="Change picture" aria-label="Change picture" disabled={busy} onClick={() => picture.current?.click()} className="ci-relative ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-group">
-          <GroupAvatar name={conv.name ?? conv.peer} size={48} avatar={conv.avatar} />
+          <GroupAvatar peer={conv.peer} name={conv.name ?? conv.peer} size={48} avatar={conv.avatar} />
           <span className="ci-absolute ci-inset-0 ci-rounded-full ci-bg-black/50 ci-text-white ci-hidden group-hover:ci-flex ci-items-center ci-justify-center">{Icon.camera}</span>
         </button>
         <input

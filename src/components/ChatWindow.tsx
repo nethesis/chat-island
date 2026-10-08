@@ -112,7 +112,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
           onClick={() => c.kind === 'group' && setShowMembers((v) => !v)}
         >
         {c.kind === 'group' ? (
-          <GroupAvatar name={c.name ?? peer} size={36} avatar={c.avatar} />
+          <GroupAvatar peer={peer} name={c.name ?? peer} size={36} avatar={c.avatar} />
         ) : (
           <span className="ci-relative">
             <Avatar contact={contact} username={peer} size={36} />
