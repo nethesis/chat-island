@@ -97,7 +97,9 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
       {selected.length > 0 && (
         <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700 ci-px-4 ci-py-3 ci-flex ci-items-center ci-gap-2">
           {selected.length === 1 ? (
-            <Button variant="default" className="ci-w-auto ci-h-10 ci-px-5" onClick={() => onOpen(selected[0])}>
+            // As the CTI's "New chat": green, the comment-medical icon, on the right.
+            <Button variant="green" className="ci-w-auto ci-h-10 ci-px-5 ci-gap-2 ci-ml-auto" onClick={() => onOpen(selected[0])}>
+              {Icon.newChat}
               Open chat
             </Button>
           ) : (
@@ -113,7 +115,8 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
                 onKeyDown={(e) => e.key === 'Enter' && name.trim() && !busy && create()}
                 className="ci-flex-1 ci-min-w-0 ci-w-0 ci-px-4 ci-py-2 ci-rounded-3xl ci-border-0 ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-ring-2 focus:ci-ring-gray-400 dark:focus:ci-ring-gray-500"
               />
-              <Button variant="green" className="ci-w-auto ci-h-10 ci-px-4 ci-shrink-0 ci-whitespace-nowrap" disabled={!name.trim() || busy} onClick={create}>
+              <Button variant="green" className="ci-w-auto ci-h-10 ci-px-4 ci-gap-2 ci-shrink-0 ci-whitespace-nowrap" disabled={!name.trim() || busy} onClick={create}>
+                {Icon.group}
                 {busy ? '…' : 'Create group'}
               </Button>
             </>
