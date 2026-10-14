@@ -235,7 +235,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
                 </span>
               )}
               <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((cur) => cur.filter((_, j) => j !== i))} className="ci-absolute ci-top-0.5 ci-right-0.5 ci-w-5 ci-h-5 ci-p-0 ci-rounded-full ci-border-0 ci-bg-gray-700/80 ci-text-white ci-flex ci-items-center ci-justify-center">
-                {Icon.close}
+                {Icon.xs}
               </button>
             </div>
           ))}

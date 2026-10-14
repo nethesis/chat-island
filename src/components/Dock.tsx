@@ -83,7 +83,7 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
         onClick={() => removeHead(peer)}
         className="ci-absolute ci--top-1 ci--left-1 ci-hidden group-hover:ci-flex group-focus-within:ci-flex ci-w-5 ci-h-5 ci-rounded-full ci-border-0 ci-p-0 ci-bg-gray-700 dark:ci-bg-gray-300 ci-text-gray-50 dark:ci-text-gray-900 ci-items-center ci-justify-center"
       >
-        {Icon.close}
+        {Icon.xs}
       </button>}
     </div>
   )
