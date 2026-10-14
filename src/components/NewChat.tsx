@@ -39,90 +39,92 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
     }
   }
 
+  const field = 'ci-h-12 ci-rounded-full ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 focus-within:ci-border-transparent focus-within:ci-ring-2 focus-within:ci-ring-emerald-500 dark:focus-within:ci-ring-emerald-300'
   return (
-    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-max-h-[30rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
-      {/* The search row moves the island too, like a conversation's header; typing and closing stay clicks. */}
-      <div
-        className={`ci-px-4 ci-py-3 ci-flex ci-items-center ci-gap-2 ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`}
-        onPointerDown={(e) => !(e.target as HTMLElement).closest('input, button') && onDragStart?.(e)}
-      >
-        <div className="ci-flex-1 ci-flex ci-items-center ci-gap-2 ci-px-4 ci-py-2 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-500 dark:ci-text-gray-400">
+    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[32rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
+      <div className="ci-px-4 ci-pt-3 ci-pb-3 ci-flex ci-flex-col ci-gap-3 ci-border-b ci-border-solid ci-border-x-0 ci-border-t-0 ci-border-gray-300 dark:ci-border-gray-700">
+        {/* The title row moves the island too, like a conversation's header; closing stays a click. */}
+        <div
+          className={`ci-flex ci-items-center ci-justify-between ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`}
+          onPointerDown={(e) => !(e.target as HTMLElement).closest('button') && onDragStart?.(e)}
+        >
+          <span className="ci-text-lg ci-font-medium">New chat</span>
+          <Button variant="small" onClick={() => setPicker(false)} aria-label="Close">
+            {Icon.close}
+          </Button>
+        </div>
+        <label className={`ci-flex ci-items-center ci-gap-3 ci-px-4 ci-text-gray-500 dark:ci-text-gray-400 ${field}`}>
           {Icon.search}
           <input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search operators"
-            className="ci-flex-1 ci-bg-transparent ci-border-0 ci-outline-none ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400"
+            className="ci-flex-1 ci-min-w-0 ci-bg-transparent ci-border-0 ci-outline-none ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400"
           />
-        </div>
-        <Button variant="small" onClick={() => setPicker(false)} aria-label="Close">
-          {Icon.close}
-        </Button>
+        </label>
+        {selected.length > 0 && (
+          <div className="ci-flex ci-flex-wrap ci-gap-1.5">
+            {selected.map((u) => (
+              <button key={u} type="button" title={`Remove ${contacts[u]?.name ?? u}`} onClick={() => toggle(u)} className="ci-flex ci-items-center ci-gap-1.5 ci-pl-2.5 ci-pr-2 ci-py-0.5 ci-rounded-full ci-text-xs ci-font-medium ci-bg-gray-200 ci-text-gray-800 dark:ci-bg-gray-700 dark:ci-text-gray-100 ci-border-0 ci-cursor-pointer">
+                {(contacts[u]?.name ?? u).split(' ')[0]}
+                {Icon.xs}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      {selected.length > 0 && (
-        <div className="ci-px-4 ci-pb-2 ci-flex ci-flex-wrap ci-gap-1.5">
-          {selected.map((u) => (
-            <button key={u} type="button" onClick={() => toggle(u)} className="ci-flex ci-items-center ci-gap-1 ci-pl-2.5 ci-pr-1.5 ci-py-1 ci-rounded-full ci-text-xs ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900 ci-border-0">
-              {contacts[u]?.name ?? u}
-              {Icon.close}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       <ul className="ci-overflow-y-auto ci-py-1 ci-m-0 ci-p-0 ci-list-none ci-flex-1">
         {list.length === 0 && <li className="ci-px-4 ci-py-6 ci-text-center ci-text-sm ci-text-gray-500 dark:ci-text-gray-400">No operators found</li>}
         {list.map((c) => {
           const on = selected.includes(c.username)
           return (
             <li key={c.username}>
-              <button type="button" onClick={() => toggle(c.username)} className="ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-2 ci-bg-transparent ci-border-0 ci-text-left hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 ci-text-inherit">
-                <span className="ci-relative">
-                  <Avatar contact={c} username={c.username} size={36} />
+              <button type="button" aria-pressed={on} onClick={() => toggle(c.username)} className="ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-2.5 ci-bg-transparent ci-border-0 ci-text-left ci-cursor-pointer hover:ci-bg-gray-200/70 dark:hover:ci-bg-gray-800/50 ci-text-inherit">
+                <span className="ci-relative ci-shrink-0">
+                  <Avatar contact={c} username={c.username} size={40} />
                   <PresenceDot online={online[c.username]} presence={c.presence} mobile={mobile[c.username]} />
                 </span>
                 <span className="ci-flex ci-flex-col ci-min-w-0 ci-flex-1">
-                  <span className="ci-text-sm ci-font-medium ci-truncate">{c.name}</span>
-                  <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">{c.username}</span>
+                  <span className="ci-text-sm ci-font-medium ci-truncate">{c.name || c.username}</span>
+                  <span className="ci-text-sm ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">@{c.username}</span>
                 </span>
-                <span className={`ci-w-5 ci-h-5 ci-rounded-full ci-border ci-flex ci-items-center ci-justify-center ${on ? 'ci-bg-phoneIslandCall dark:ci-bg-phoneIslandCallDark ci-border-transparent ci-text-white dark:ci-text-gray-950' : 'ci-border-gray-400 dark:ci-border-gray-600'}`}>
-                  {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
-                </span>
+                {on ? (
+                  <span className="ci-flex ci-text-phoneIslandCall dark:ci-text-phoneIslandCallDark">{Icon.circleCheck}</span>
+                ) : (
+                  <span className="ci-w-5 ci-h-5 ci-box-border ci-rounded-full ci-border ci-border-solid ci-border-gray-400 dark:ci-border-gray-600" />
+                )}
               </button>
             </li>
           )
         })}
       </ul>
-      {selected.length > 0 && (
-        <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700 ci-px-4 ci-py-3 ci-flex ci-items-center ci-gap-2">
-          {selected.length === 1 ? (
-            // As the CTI's "New chat": green, the comment-medical icon, on the right.
-            <Button variant="green" className="ci-w-auto ci-h-10 ci-px-5 ci-gap-2 ci-ml-auto" onClick={() => onOpen(selected[0])}>
-              {Icon.newChat}
-              Open chat
+      <div className="ci-border-t ci-border-solid ci-border-x-0 ci-border-b-0 ci-border-gray-300 dark:ci-border-gray-700 ci-px-4 ci-py-4 ci-flex ci-items-center ci-gap-2">
+        {selected.length < 2 ? (
+          <Button variant="default" className="ci-w-auto ci-px-6 ci-gap-3 ci-ml-auto ci-font-medium" disabled={!selected.length} onClick={() => onOpen(selected[0])}>
+            {Icon.arrowRight}
+            Start chat
+          </Button>
+        ) : (
+          <>
+            <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then(setAvatar).catch(() => {})} />
+            <button type="button" title="Group picture" aria-label="Group picture" onClick={() => picture.current?.click()} className="ci-w-12 ci-h-12 ci-shrink-0 ci-box-border ci-p-0 ci-overflow-hidden ci-rounded-full ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-bg-transparent ci-cursor-pointer ci-text-gray-700 dark:ci-text-gray-200 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 ci-flex ci-items-center ci-justify-center">
+              {avatar ? <img src={avatar} alt="" draggable={false} className="ci-w-full ci-h-full ci-object-cover" /> : Icon.camera}
+            </button>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Group name"
+              onKeyDown={(e) => e.key === 'Enter' && name.trim() && !busy && create()}
+              className={`ci-flex-1 ci-min-w-0 ci-w-0 ci-box-border ci-px-4 ci-bg-transparent ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-border-transparent focus:ci-ring-2 focus:ci-ring-emerald-500 dark:focus:ci-ring-emerald-300 ${field}`}
+            />
+            <Button variant="default" className="ci-w-auto ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" disabled={!name.trim() || busy} onClick={create}>
+              {Icon.group}
+              {busy ? '…' : 'Create group'}
             </Button>
-          ) : (
-            <>
-              <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then(setAvatar).catch(() => {})} />
-              <button type="button" title="Group picture" onClick={() => picture.current?.click()} className="ci-w-10 ci-h-10 ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-overflow-hidden ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-500 dark:ci-text-gray-400 ci-flex ci-items-center ci-justify-center">
-                {avatar ? <img src={avatar} alt="" draggable={false} className="ci-w-full ci-h-full ci-object-cover" /> : Icon.camera}
-              </button>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Group name"
-                onKeyDown={(e) => e.key === 'Enter' && name.trim() && !busy && create()}
-                className="ci-flex-1 ci-min-w-0 ci-w-0 ci-px-4 ci-py-2 ci-rounded-3xl ci-border-0 ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-ring-2 focus:ci-ring-gray-400 dark:focus:ci-ring-gray-500"
-              />
-              <Button variant="green" className="ci-w-auto ci-h-10 ci-px-4 ci-gap-2 ci-shrink-0 ci-whitespace-nowrap" disabled={!name.trim() || busy} onClick={create}>
-                {Icon.group}
-                {busy ? '…' : 'Create group'}
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

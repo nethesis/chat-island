@@ -94,11 +94,7 @@ function Voice({ url, alone }: { url: string; alone?: boolean }) {
       />
       <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
         <button type="button" onClick={toggle} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'} className="ci-h-10 ci-w-10 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-text-current hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
-          {playing ? (
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" className="ci-block"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
-          ) : (
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" className="ci-block"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" /></svg>
-          )}
+          {playing ? Icon.pause : Icon.play}
         </button>
         <input
           type="range"
@@ -115,7 +111,7 @@ function Voice({ url, alone }: { url: string; alone?: boolean }) {
         {!alone && <span className="ci-shrink-0 ci-text-xs ci-tabular-nums ci-opacity-70">{(playing || at ? clock(at) : clock(length, true))}</span>}
       </div>
       <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" onClick={(e) => (e.preventDefault(), save(url))} title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+        {Icon.download}
       </a>
       {alone && <span className="ci-absolute ci-left-12 ci-top-full ci-mt-1 ci-text-[10px] ci-leading-none ci-tabular-nums ci-opacity-60">{(playing || at ? clock(at) : clock(length, true))}</span>}
     </div>
@@ -133,7 +129,7 @@ const Attachment = memo(function Attachment({ url, alone }: { url: string; alone
   if (isAudio(url)) return <Voice url={url} alone={alone} />
   return (
     <a href={url} target="_blank" rel="noreferrer" className="ci-underline ci-break-all ci-flex ci-items-center ci-gap-1">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+      {Icon.clip}
       {fileName(url)}
     </a>
   )
@@ -474,14 +470,7 @@ const TICK_LABEL = { pending: 'Sending', sent: 'Sent', delivered: 'Delivered', r
 function Ticks({ state }: { state: 'pending' | 'sent' | 'delivered' | 'read' }) {
   return (
     <span title={TICK_LABEL[state]} aria-label={TICK_LABEL[state]} className={state === 'read' ? 'ci-text-phoneIslandCallDark dark:ci-text-phoneIslandCall' : 'ci-opacity-60'}>
-      {state === 'pending' ? (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-      ) : (
-        <svg width="16" height="12" viewBox="0 0 28 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 9l4 4 9-10" />
-          {state !== 'sent' && <path d="M12 12l1 1 9-10" />}
-        </svg>
-      )}
+      {state === 'pending' ? Icon.clock : state === 'sent' ? Icon.tick : Icon.ticks}
     </span>
   )
 }

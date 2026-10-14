@@ -33,7 +33,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
       {order.length > 0 && <NewChat />}
       {newChatButton && !order.length && (
         <Button variant="default" title={status === 'online' ? 'New chat' : `Chat ${status}`} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
-          {Icon.chat}
+          {Icon.newChat}
           {status !== 'online' && <span className="ci-absolute ci-bottom-0 ci-right-0 ci-w-3 ci-h-3 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />}
         </Button>
       )}
@@ -103,15 +103,23 @@ function Tip({ text, left }: { text: string; left: boolean }) {
   )
 }
 
-/** "+" under the heads: the operator picker in place of the open chat, without the host's own "new chat". */
+/** New chat under the heads: the operator picker in place of the open chat, without the host's own "new chat". */
 function NewChat({ rail = false }: { rail?: boolean }) {
   const { picker, setPicker, place, native } = useStore(useShallow((s) => ({ picker: s.picker, setPicker: s.setPicker, place: s.place, native: s.nativeTooltips })))
+  const toggle = () => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))
   return (
     <div className="ci-relative ci-group">
       <Tip text="New chat" left={rail || place.x === 'left'} />
-      <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={() => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'} ${rail ? '!ci-w-9 !ci-h-9' : ''}`}>
-        {Icon.plus}
-      </Button>
+      {rail ? (
+        // The CTI's icon button: emerald, flat, part of its right sidebar.
+        <button type="button" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-h-9 ci-w-9 ci-flex ci-items-center ci-justify-center ci-rounded-lg ci-border-0 ci-cursor-pointer ci-text-emerald-700 dark:ci-text-emerald-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-emerald-500 dark:focus-visible:ci-ring-emerald-300 ${picker ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}>
+          {Icon.newChat}
+        </button>
+      ) : (
+        <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}>
+          {Icon.newChat}
+        </Button>
+      )}
     </div>
   )
 }
