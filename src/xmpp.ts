@@ -43,6 +43,7 @@ const NS = {
 }
 
 const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
+const CONNECT_TIMEOUT = 30000 // from opening the socket to online
 
 /** XEP-0333 chat marker: the peer (in a group, the member `user`) received or read it; mine = sent by another client of mine. */
 export interface Marker {
@@ -94,6 +95,7 @@ export class Chat {
   private attempt = 0 // failed connections in a row, drives the retry delay
   private retryTimer?: number
   private pingTimer?: number
+  private connectTimer?: number
   private unauthorized = false // the token was refused: retrying would only hammer the server
   private connected = false
   private online = new Map<string, Set<string>>() // user -> resources seen available
@@ -136,24 +138,29 @@ export class Chat {
       }
       this.h.status('error', e.message)
     })
-    this.xmpp.on('online', async () => {
-      if (this.stopped) {
-        await this.xmpp.stop().catch(() => {})
-        return
-      }
-      this.attempt = 0
-      this.connected = true
-      try {
-        await this.xmpp.send(xml('iq', { type: 'set', id: 'carbons' }, xml('enable', { xmlns: NS.carbons })))
-        await this.xmpp.send(xml('presence'))
-      } catch {
-        return // the socket dropped again: the disconnect handler retries
-      }
-      window.clearInterval(this.pingTimer)
-      this.pingTimer = window.setInterval(() => this.ping(), PING_EVERY)
-      this.h.status('online')
-    })
+    this.xmpp.on('online', () => this.onOnline())
+    // A resumed session (XEP-0198, e.g. after a standby) emits no 'online' of its own.
+    ;(this.xmpp as unknown as { streamManagement?: { on(e: string, f: () => void): void } }).streamManagement?.on('resumed', () => setTimeout(() => this.onOnline(), 0))
     this.xmpp.on('stanza', (st: Element) => this.onStanza(st))
+  }
+
+  private async onOnline() {
+    window.clearTimeout(this.connectTimer)
+    if (this.stopped) {
+      await this.xmpp.stop().catch(() => {})
+      return
+    }
+    this.attempt = 0
+    this.connected = true
+    try {
+      await this.xmpp.send(xml('iq', { type: 'set', id: 'carbons' }, xml('enable', { xmlns: NS.carbons })))
+      await this.xmpp.send(xml('presence'))
+    } catch {
+      return // the socket dropped again: the disconnect handler retries
+    }
+    window.clearInterval(this.pingTimer)
+    this.pingTimer = window.setInterval(() => this.ping(), PING_EVERY)
+    this.h.status('online')
   }
 
   start() {
@@ -169,6 +176,7 @@ export class Chat {
     this.stopped = true
     window.clearTimeout(this.retryTimer)
     window.clearInterval(this.pingTimer)
+    window.clearTimeout(this.connectTimer)
     window.removeEventListener('online', this.wake)
     document.removeEventListener('visibilitychange', this.onVisible)
     return this.xmpp.stop().catch(() => {})
@@ -210,6 +218,13 @@ export class Chat {
     if (this.stopped || this.unauthorized) return
     this.retryTimer = undefined
     const x = this.xmpp as unknown as { status: string; options: { service: string; domain: string }; connect(s: string): Promise<void>; open(o: { domain: string }): Promise<unknown> }
+    // An attempt that never gets online (a half-open socket after a standby) is dropped and retried.
+    window.clearTimeout(this.connectTimer)
+    this.connectTimer = window.setTimeout(() => {
+      if (this.stopped || this.connected) return
+      ;(this.xmpp as unknown as { disconnect(): Promise<void> }).disconnect().catch(() => {})
+      this.scheduleRetry()
+    }, CONNECT_TIMEOUT)
     const attempt = x.status === 'offline' ? this.xmpp.start() : x.connect(x.options.service).then(() => x.open({ domain: x.options.domain }))
     attempt.catch((e: Error) => {
       if (this.stopped) return
