@@ -160,10 +160,13 @@ function Attachments({ urls }: { urls: string[] }) {
 /** A caption that only names the files (what a message without text carries) is not shown. */
 const namesOnly = (body: string, urls: string[]) => body === urls.map(fileName).join(', ') || urls.some((u) => body === u || body === fileName(u))
 
-/** Small Markdown as React elements (nothing injected): code, bold, italic, strike, links, bullets. */
-const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/g
+/** Small Markdown as React elements (nothing injected): code, bold, italic, strike, links, bullets, @mentions. */
+const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)|(?<![\w@.])@([\w.-]*\w)/g
 
-function Inline({ text }: { text: string }) {
+/** @username of someone the island knows: highlighted, more so when it is me. */
+type Mentions = { known: (u: string) => boolean; me: string; mine?: boolean }
+
+function Inline({ text, at: mention }: { text: string; at: Mentions }) {
   const out: ReactNode[] = []
   let last = 0
   for (const m of text.matchAll(INLINE)) {
@@ -175,14 +178,26 @@ function Inline({ text }: { text: string }) {
     else if (m[3]) out.push(<s key={at}>{s.slice(2, -2)}</s>)
     else if (m[4]) out.push(<em key={at}>{s.slice(1, -1)}</em>)
     else if (m[5]) out.push(<a key={at} href={m[6]} target="_blank" rel="noreferrer" className="ci-underline">{m[5]}</a>)
-    else out.push(<a key={at} href={s} target="_blank" rel="noreferrer" className="ci-underline ci-break-all">{s}</a>)
+    else if (m[8] !== undefined) {
+      const u = m[8].toLowerCase()
+      if (!mention.known(u)) out.push(s)
+      else
+        out.push(
+          <span key={at} className={`ci-font-medium ${mention.mine ? 'ci-text-blue-300 dark:ci-text-blue-700' : 'ci-text-blue-600 dark:ci-text-blue-400'} ${u === mention.me && !mention.mine ? 'ci-rounded ci-px-0.5 ci-bg-blue-500/15' : ''}`}>
+            {s}
+          </span>,
+        )
+    } else out.push(<a key={at} href={s} target="_blank" rel="noreferrer" className="ci-underline ci-break-all">{s}</a>)
     last = at + s.length
   }
   if (last < text.length) out.push(emojify(text.slice(last)))
   return <>{out}</>
 }
 
-const Body = memo(function Body({ text }: { text: string }) {
+const Body = memo(function Body({ text, mine }: { text: string; mine?: boolean }) {
+  const contacts = useStore((st) => st.contacts)
+  const me = useStore((st) => st.me)
+  const at: Mentions = { known: (u) => u === me || !!contacts[u], me, mine }
   // Fenced blocks first (odd parts), the rest line by line so bullets get their dot.
   const parts = text.split(/```[^\n]*\n?([\s\S]*?)```/g)
   return (
@@ -193,7 +208,7 @@ const Body = memo(function Body({ text }: { text: string }) {
             {p.replace(/\n$/, '')}
           </pre>
         ) : (
-          <Inline key={i} text={p.replace(/^(\s*)[-*] (?=\S)/gm, '$1• ')} />
+          <Inline key={i} text={p.replace(/^(\s*)[-*] (?=\S)/gm, '$1• ')} at={at} />
         ),
       )}
     </span>
@@ -438,8 +453,8 @@ export function MessageList({
                     } ${m.pending ? 'ci-opacity-60' : ''}`}
                   >
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
-                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} />}
-                    {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} /></div>}
+                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} />}
+                    {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} mine={m.mine} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
                       <span className="ci-opacity-60">{time(m.ts)}</span>
                       {m.mine && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}

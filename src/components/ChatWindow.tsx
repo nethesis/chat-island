@@ -228,6 +228,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
       )}
       <Composer
         key={peer}
+        members={c?.kind === 'group' ? c.members : undefined}
         focusKey={focusTick}
         disabled={status !== 'online' || gone || kicked}
         disabledText={gone ? 'No longer active' : kicked ? 'No longer in this group' : undefined}

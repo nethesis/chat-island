@@ -3,6 +3,8 @@ import { Button, Icon } from './Button'
 import { EmojiPicker } from './EmojiPicker'
 import { webmOpusToOgg } from '../ogg'
 import { emojify } from '../shortcodes'
+import { useStore } from '../store'
+import { Avatar, PresenceDot } from './Avatar'
 
 /** Ogg Opus first (the app's voice format); WebM Opus is remuxed to Ogg, Safari falls back to mp4. */
 const RECORD_TYPES = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']
@@ -23,8 +25,35 @@ async function voiceFile(chunks: Blob[], mime: string): Promise<File> {
 const extOf = (mime: string) => (/mp4/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm')
 const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`
 
-export function Composer({ onSend, onTyping, onFile, disabled, disabledText, focusKey }: { onSend: (text: string, files: File[]) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; disabledText?: string; focusKey?: number }) {
+export function Composer({ onSend, onTyping, onFile, disabled, disabledText, focusKey, members }: { onSend: (text: string, files: File[]) => Promise<void> | void; onTyping: (composing: boolean) => void; onFile: (f: File) => void; disabled: boolean; disabledText?: string; focusKey?: number; members?: string[] }) {
   const [text, setText] = useState('')
+  // @ in a group: the members to mention, as in Mattermost; the word being typed filters them.
+  const [mention, setMention] = useState<{ start: number; q: string } | null>(null)
+  const [pick, setPick] = useState(0)
+  const { contacts, me, online, mobile } = useStore()
+  const candidates = useMemo(() => {
+    if (!mention || !members) return []
+    const q = mention.q
+    return members
+      .filter((u) => u !== me)
+      .map((u) => ({ u, name: contacts[u]?.name ?? u }))
+      .filter((c) => c.u.includes(q) || c.name.toLowerCase().includes(q))
+      .sort((a, b) => Number(!a.u.startsWith(q)) - Number(!b.u.startsWith(q)) || a.name.localeCompare(b.name))
+      .slice(0, 8)
+  }, [mention, members, contacts, me])
+  const findMention = (v: string, caret: number) => {
+    const m = members?.length ? v.slice(0, caret).match(/(?:^|\s)@([\w.-]*)$/) : null
+    setMention(m ? { start: caret - m[1].length - 1, q: m[1].toLowerCase() } : null)
+    setPick(0)
+  }
+  const choose = (u: string) => {
+    if (!mention) return
+    const caret = box.current?.selectionStart ?? text.length
+    const v = text.slice(0, mention.start) + '@' + u + ' ' + text.slice(caret)
+    change(v)
+    cursor.current = mention.start + u.length + 2
+    setMention(null)
+  }
   // Attachments wait here and go with the text in one message, as in WhatsApp; a voice note still goes at once.
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -85,6 +114,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
     const v = typed.includes(':') ? emojify(typed) : typed
     if (v !== typed) cursor.current = Math.max(0, (box.current?.selectionStart ?? typed.length) - (typed.length - v.length))
     setText(v)
+    findMention(v, box.current?.selectionStart ?? v.length)
     if (v) {
       setComposing(true)
       window.clearTimeout(typingTimer.current)
@@ -213,6 +243,29 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
       )}
     <div className="ci-relative ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-3">
       {emoji && <EmojiPicker className="ci-absolute ci-bottom-full ci-left-3 ci-mb-1" onPick={insert} onClose={() => setEmoji(false)} />}
+      {candidates.length > 0 && (
+        <div role="listbox" aria-label="Group members" className="ci-absolute ci-bottom-full ci-left-3 ci-right-3 ci-mb-1 ci-z-30 ci-py-2 ci-rounded-2xl ci-shadow-xl ci-bg-gray-50 dark:ci-bg-gray-900 ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
+          <div className="ci-px-4 ci-pb-1 ci-text-xs ci-font-medium ci-uppercase ci-tracking-wide ci-text-gray-500 dark:ci-text-gray-400">Group members</div>
+          {candidates.map((c, i) => (
+            <button
+              key={c.u}
+              type="button"
+              role="option"
+              aria-selected={i === pick}
+              onMouseDown={(e) => (e.preventDefault(), choose(c.u))}
+              onMouseEnter={() => setPick(i)}
+              className={`ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-1.5 ci-border-0 ci-text-left ci-cursor-pointer ci-text-sm ci-text-gray-900 dark:ci-text-white ${i === pick ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}
+            >
+              <span className="ci-relative ci-shrink-0">
+                <Avatar contact={contacts[c.u]} username={c.u} size={28} />
+                <PresenceDot online={online[c.u]} presence={contacts[c.u]?.presence} mobile={mobile[c.u]} />
+              </span>
+              <span className="ci-font-medium">@{c.u}</span>
+              <span className="ci-truncate ci-text-gray-500 dark:ci-text-gray-400">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <input ref={file} type="file" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
       <Button variant="transparent" disabled={disabled || busy} title="Attach files" onClick={() => file.current?.click()} className="ci-h-10 ci-w-10">
         {Icon.clip}
@@ -236,12 +289,31 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
           rows={1}
           placeholder={disabled ? disabledText ?? 'Connecting…' : busy ? 'Sending…' : files.length ? 'Add a caption' : 'Write a message'}
           onChange={(e) => change(e.target.value)}
+          onClick={(e) => findMention(text, e.currentTarget.selectionStart)}
+          onBlur={() => setMention(null)}
           onPaste={(e) => {
             if (!e.clipboardData.files.length) return
             e.preventDefault()
             addFiles(e.clipboardData.files)
           }}
           onKeyDown={(e) => {
+            if (candidates.length) {
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault()
+                setPick((i) => (i + (e.key === 'ArrowDown' ? 1 : candidates.length - 1)) % candidates.length)
+                return
+              }
+              if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault()
+                choose(candidates[Math.min(pick, candidates.length - 1)].u)
+                return
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                setMention(null)
+                return
+              }
+            }
             // Enter sends; Shift+Enter, or Enter inside an open ``` block, adds a line.
             const inFence = (text.match(/```/g) ?? []).length % 2 === 1
             if (e.key === 'Enter' && !e.shiftKey && !inFence) {
