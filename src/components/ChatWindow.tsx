@@ -25,6 +25,23 @@ export interface WindowActions {
 const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
 
 /** CTI main presence values under which a call can be placed to this person. */
+/** @username, then the devices the person can be reached on, as in the CTI's device menu. */
+function Who({ username, devices = [], mobile }: { username: string; devices?: string[]; mobile?: boolean }) {
+  const icons = [
+    devices.includes('nethlink') && ['NethLink', Icon.desktop],
+    devices.includes('webrtc') && ['Web phone', Icon.headset],
+    (mobile || devices.includes('mobile')) && ['Mobile', Icon.mobile],
+  ].filter(Boolean) as [string, JSX.Element][]
+  return (
+    <span className="ci-flex ci-items-center ci-gap-1.5">
+      <span className="ci-truncate">@{username}</span>
+      {icons.map(([label, icon]) => (
+        <span key={label} title={label} aria-label={label} className="ci-flex ci-shrink-0">{icon}</span>
+      ))}
+    </span>
+  )
+}
+
 const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy', 'ringing', 'onhold'].includes(presence)
 
 /** The floating conversation: phone-island surface, radius and buttons. */
@@ -97,10 +114,10 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
   // Removed from a group: the newest notice about me says so; the chat stays to read.
   const kicked = c.kind === 'group' && c.messages.findLast((m) => m.notice && (m.notice.event === 'add' || m.notice.event === 'remove') && m.notice.users.includes(me))?.notice?.event === 'remove'
   return (
-    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} style={expanded && !docked ? EXPANDED : undefined} className={`ci-relative ci-flex ci-flex-col ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white ${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[30rem] ci-transition-[width,height] ci-duration-150 ci-ease-out ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'}`}>
+    <div role="dialog" aria-label={c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer} onKeyDown={onKeyDown} style={expanded && !docked ? EXPANDED : undefined} className={`ci-relative ci-flex ci-flex-col ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white ${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[30rem] ci-transition-[width,height] ci-duration-150 ci-ease-out ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-800'}`}>
       {/* The tail slides to the head this window belongs to. */}
       {!docked && <span
-        className={`ci-absolute ${place.x === 'left' ? 'ci--right-1.5 dark:ci-border-t dark:ci-border-r' : 'ci--left-1.5 dark:ci-border-b dark:ci-border-l'} ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border-solid dark:ci-border-gray-700 ci-shadow-2xl ci-transition-all ci-duration-200`}
+        className={`ci-absolute ${place.x === 'left' ? 'ci--right-1.5 dark:ci-border-t dark:ci-border-r' : 'ci--left-1.5 dark:ci-border-b dark:ci-border-l'} ci-w-3 ci-h-3 ci-rotate-45 ci-bg-gray-50 dark:ci-bg-gray-950 dark:ci-border-solid dark:ci-border-gray-800 ci-shadow-2xl ci-transition-all ci-duration-200`}
         style={{ [place.y === 'up' ? 'bottom' : 'top']: `calc(1.875rem + ${slot} * 3.75rem)` }}
         aria-hidden="true"
       />}
@@ -136,11 +153,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
                 ? members.map(nameOf).join(', ')
                 : c.typing
                   ? 'typing…'
-                  : online[peer]
-                    ? 'online'
-                    : mobile[peer]
-                      ? 'Mobile'
-                      : 'offline'}
+                  : <Who username={peer} devices={contact?.devices} mobile={mobile[peer] || contact?.presence === 'cellphone'} />}
           </div>
         </div>
         </div>
@@ -150,13 +163,13 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
             {Icon.phone}
           </Button>
         )}
+        {/* Window menu, before minimize so the last button is the one that closes. */}
+        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label="Settings" title="Settings" aria-expanded={menu}>
+          {Icon.gear}
+        </Button>
         {/* Minimize: the head stays in the dock. In a panel the heads have no X, so this one takes the chat out of the rail. */}
         <Button variant="small" onClick={() => (docked ? closeDocked() : closeChat())} aria-label={docked ? 'Close' : 'Minimize'} title={docked ? 'Close' : 'Minimize'}>
           {docked ? Icon.close : Icon.minus}
-        </Button>
-        {/* Window menu: the theme now, more entries later. */}
-        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label="Menu" title="Menu" aria-expanded={menu}>
-          {Icon.dots}
         </Button>
       </div>
       <div className="ci-mx-4 ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
@@ -185,7 +198,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
                 <Avatar contact={contacts[m]} username={m} size={28} />
                 {m !== me && <PresenceDot online={online[m]} presence={contacts[m]?.presence} mobile={mobile[m]} />}
               </span>
-              <span className="ci-truncate ci-flex-1">{nameOf(m)}</span>
+              <span className="ci-flex-1 ci-min-w-0 ci-truncate">{nameOf(m)} <span className="ci-text-gray-500 dark:ci-text-gray-400">@{m}</span></span>
               {/* Reach one member directly: a one-to-one chat, or a call when the CTI says they can be called. */}
               {m !== me && (
                 <>
@@ -294,7 +307,7 @@ function WindowMenu({ theme, themes, onClose, onSettings, actions }: { theme?: T
           <span className="ci-text-gray-600 dark:ci-text-gray-100">{t.icon}</span>
           {t.label}
           {/* The tick on the right, like phone-island's menu. */}
-          <span className="ci-ml-auto ci-pl-6 ci-w-10 ci-shrink-0 ci-flex ci-justify-end ci-text-green-600 dark:ci-text-green-400">{theme === t.value && Icon.check}</span>
+          <span className="ci-ml-auto ci-pl-6 ci-w-10 ci-shrink-0 ci-flex ci-justify-end ci-text-accent-600 dark:ci-text-accent-400">{theme === t.value && Icon.check}</span>
         </button>
       ))}
     </div>

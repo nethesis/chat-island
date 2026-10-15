@@ -86,7 +86,7 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
                     <Avatar contact={c} username={c.username} size={28} />
                     <span className="ci-flex-1 ci-truncate">{c.name}</span>
                     {/* As in New chat: the circled check when picked. */}
-                    {on ? <span className="ci-flex ci-text-phoneIslandCall dark:ci-text-phoneIslandCallDark">{Icon.circleCheck}</span> : <span className="ci-w-5 ci-h-5 ci-box-border ci-rounded-full ci-border ci-border-solid ci-border-gray-400 dark:ci-border-gray-600" />}
+                    {on ? <span className="ci-flex ci-text-accent-700 dark:ci-text-accent-500">{Icon.circleCheck}</span> : <span className="ci-w-5 ci-h-5 ci-box-border ci-rounded-full ci-border ci-border-solid ci-border-gray-400 dark:ci-border-gray-600" />}
                   </button>
                 </li>
               )

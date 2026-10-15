@@ -66,6 +66,7 @@ export interface Contact {
   avatar?: string     // data URL
   presence?: string   // CTI main presence, when the host provides it
   number?: string     // main extension, when the host provides it: shows the call button
+  devices?: string[]  // types of the registered extensions: webrtc, nethlink, mobile, physical
 }
 
 export interface Config {

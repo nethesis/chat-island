@@ -27,6 +27,8 @@ export default {
         iconWhite: '#FFFFFF', iconWhiteDark: '#FFFFFF',
         iconPrimaryNeutral: '#111827', iconPrimaryNeutralDark: '#F9FAFB',
         iconSecondary: '#4338CA', iconSecondaryDark: '#6366F1',
+        // The host's accent (accent prop): emerald for the CTI, blue for NethLink.
+        accent: Object.fromEntries([50, 300, 400, 500, 600, 700, 950].map((n) => [n, `rgb(var(--ci-accent-${n}) / <alpha-value>)`])),
       },
     },
   },

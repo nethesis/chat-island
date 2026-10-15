@@ -245,7 +245,7 @@ function Chips({ forMsg, me, onReact, nameOf, mine }: { forMsg?: Record<string, 
             onClick={() => onReact(e)}
             className={`ci-flex ci-items-center ci-gap-0.5 ci-h-6 ci-px-1.5 ci-rounded-full ci-text-xs ci-border ci-border-solid ci-shadow-sm ${
               own
-                ? 'ci-bg-emerald-50 ci-border-emerald-400 dark:ci-bg-emerald-950 dark:ci-border-emerald-600'
+                ? 'ci-bg-accent-50 ci-border-accent-400 dark:ci-bg-accent-950 dark:ci-border-accent-600'
                 : 'ci-bg-gray-50 ci-border-gray-300 dark:ci-bg-gray-900 dark:ci-border-gray-700'
             } ci-text-gray-900 dark:ci-text-white`}
           >
@@ -481,10 +481,10 @@ export function MessageList({
 
 const TICK_LABEL = { pending: 'Sending', sent: 'Sent', delivered: 'Delivered', read: 'Read' }
 
-/** WhatsApp style: one tick sent, two delivered, two in NethVoice green read (the light green on my dark bubble, and back); a clock while sending. */
+/** WhatsApp style: thin ticks, one sent, two delivered, two in the host's accent read; a clock while sending. */
 function Ticks({ state }: { state: 'pending' | 'sent' | 'delivered' | 'read' }) {
   return (
-    <span title={TICK_LABEL[state]} aria-label={TICK_LABEL[state]} className={state === 'read' ? 'ci-text-phoneIslandCallDark dark:ci-text-phoneIslandCall' : 'ci-opacity-60'}>
+    <span title={TICK_LABEL[state]} aria-label={TICK_LABEL[state]} className={`ci-inline-flex ${state === 'read' ? 'ci-text-accent-400 dark:ci-text-accent-600' : 'ci-opacity-60'}`}>
       {state === 'pending' ? Icon.clock : state === 'sent' ? Icon.tick : Icon.ticks}
     </span>
   )

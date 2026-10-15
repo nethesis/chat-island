@@ -222,8 +222,9 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
         addFiles(e.dataTransfer.files)
       }}
     >
+      {files.length > 0 && <div className="ci-mx-4 ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />}
       {files.length > 0 && (
-        <div className="ci-flex ci-gap-2 ci-px-3 ci-pt-2 ci-overflow-x-auto">
+        <div className="ci-flex ci-gap-2 ci-px-3 ci-pt-3 ci-overflow-x-auto">
           {files.map((f, i) => (
             <div key={i} title={f.name} className="ci-relative ci-shrink-0 ci-w-14 ci-h-14 ci-rounded-xl ci-overflow-hidden ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-flex ci-items-center ci-justify-center">
               {previews[i] ? (
@@ -318,7 +319,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
             style={{ height: Math.min(128, 32 + 20 * (text.split('\n').length - 1)) }}
           />
         {text.trim() || files.length || busy ? (
-          <button type="button" disabled={disabled || busy} onClick={submit} title="Send" aria-label="Send" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-emerald-700 dark:ci-text-emerald-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+          <button type="button" disabled={disabled || busy} onClick={submit} title="Send" aria-label="Send" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
             {Icon.send}
           </button>
         ) : (

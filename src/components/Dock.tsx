@@ -25,7 +25,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. On a round background like the phone island; press and drag anywhere here to move the island.
   return (
-    <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse ci-mb-3' : 'ci-flex-col ci-mt-3'} ci-items-center ci-gap-3 ci-p-2 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700 empty:ci-hidden ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
+    <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse' : 'ci-flex-col'} ci-items-center ci-gap-3 ci-p-2 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-800 empty:ci-hidden ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
       {order.slice(0, maxHeads).map((peer) => (
         <Head key={peer} peer={peer} size={48} />
       ))}
@@ -61,7 +61,7 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
         aria-label={name}
         title={native ? name : undefined}
         onClick={() => (active ? useStore.getState().closeChat() : openChat(peer))}
-        className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
+        className={`ci-relative ci-rounded-full ci-shadow-lg ci-transition-transform hover:ci-scale-105 ci-ring-2 ci-border-0 ci-p-0 ci-bg-transparent ${active ? 'ci-ring-accent-500 dark:ci-ring-accent-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}
       >
         {c?.kind === 'group' ? (
           <GroupAvatar peer={peer} name={name} size={size} avatar={c.avatar} head />
@@ -112,11 +112,11 @@ function NewChat({ rail = false }: { rail?: boolean }) {
       <Tip text="New chat" left={rail || place.x === 'left'} />
       {rail ? (
         // The CTI's icon button: emerald, flat, part of its right sidebar.
-        <button type="button" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-h-9 ci-w-9 ci-flex ci-items-center ci-justify-center ci-rounded-lg ci-border-0 ci-cursor-pointer ci-text-emerald-700 dark:ci-text-emerald-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-emerald-500 dark:focus-visible:ci-ring-emerald-300 ${picker ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}>
+        <button type="button" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-h-9 ci-w-9 ci-flex ci-items-center ci-justify-center ci-rounded-lg ci-border-0 ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-accent-500 dark:focus-visible:ci-ring-accent-300 ${picker ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}>
           {Icon.newChat}
         </button>
       ) : (
-        <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-emerald-500 dark:ci-ring-emerald-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}>
+        <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-accent-500 dark:ci-ring-accent-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}>
           {Icon.newChat}
         </Button>
       )}

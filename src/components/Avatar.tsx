@@ -22,10 +22,10 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   )
 }
 
-/** Green: connected to the chat. Red: the CTI says busy or do-not-disturb. Green as well when only the mobile app is registered: the text says Mobile. Grey: not reachable. */
+/** Green: connected to the chat, or online for the CTI, as its own dot shows. Red: the CTI says busy or do-not-disturb. Green as well when only the mobile app is registered: the text says Mobile. Grey: not reachable. */
 export function PresenceDot({ online, presence, mobile }: { online?: boolean; presence?: string; mobile?: boolean }) {
   // As in the CTI: DND black, busy or ringing red; always the same white outline.
-  const color = presence === 'dnd' ? 'ci-bg-gray-950' : ['busy', 'ringing', 'incoming'].includes(presence ?? '') ? 'ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark' : online || mobile ? 'ci-bg-phoneIslandCall dark:ci-bg-phoneIslandCallDark' : 'ci-bg-gray-400 dark:ci-bg-gray-600'
+  const color = presence === 'dnd' ? 'ci-bg-gray-950' : ['busy', 'ringing', 'incoming'].includes(presence ?? '') ? 'ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark' : online || mobile || presence === 'online' ? 'ci-bg-phoneIslandCall dark:ci-bg-phoneIslandCallDark' : 'ci-bg-gray-400 dark:ci-bg-gray-600'
   return <span className={`ci-absolute ci-bottom-0 ci-right-0 ci-w-3 ci-h-3 ci-rounded-full ci-ring-2 ci-ring-white ${color}`} />
 }
 

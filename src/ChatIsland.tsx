@@ -41,6 +41,8 @@ export interface ChatIslandProps {
   pinnable?: boolean
   /** The browser's own tooltips for the heads' names: for a host window sized to the dock (NethLink), where a drawn one is cut off. */
   nativeTooltips?: boolean
+  /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
+  accent?: 'emerald' | 'blue'
   /** Drag the island around the page (default true); off when the host moves its own window. */
   drag?: boolean
   /** Host drag from the dock and the window header, instead of the island's own (e.g. to move an app window). */
@@ -117,7 +119,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
   return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
 }
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
@@ -576,12 +578,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     place.y === 'up' ? `inset(calc(100% - ${h}px) -3rem -4.5rem -3rem round 1.5rem)` : `inset(-1rem -3rem calc(100% - ${h}px) -3rem round 1.5rem)`
   if (!cfg || headless) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
-  const side = anchored ? '' : `${position.endsWith('left') ? 'ci-left-4' : 'ci-right-4'} ${position.startsWith('top') ? 'ci-top-5' : 'ci-bottom-5'}`
+  const side = anchored ? '' : `${position.endsWith('left') ? 'ci-left-4' : 'ci-right-4'} ${position.startsWith('top') ? 'ci-top-8' : 'ci-bottom-8'}`
   // In a row beside the dock (host drag): mirrored when the dock is on the left, top-aligned when it is at the top.
   const flow = free ? 'ci-items-end' : `${place.y === 'down' ? 'ci-items-start' : 'ci-items-end'} ${place.x === 'right' ? 'ci-flex-row-reverse' : ''}`
   // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
   if (rail) {
-    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status}><Boundary>{children}</Boundary></div>
+    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent}><Boundary>{children}</Boundary></div>
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
@@ -596,6 +598,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       onClickCapture={drag.onClickCapture}
       className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ${flow} ci-gap-3 ci-font-sans ci-select-none`}
       data-status={status}
+      data-accent={accent}
     >
       <Boundary>
         {shownPeer && (

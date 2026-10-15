@@ -42,9 +42,9 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
     }
   }
 
-  const field = 'ci-h-12 ci-rounded-full ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 focus-within:ci-border-transparent focus-within:ci-ring-2 focus-within:ci-ring-emerald-500 dark:focus-within:ci-ring-emerald-300'
+  const field = 'ci-h-12 ci-rounded-full ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 focus-within:ci-border-transparent focus-within:ci-ring-2 focus-within:ci-ring-accent-500 dark:focus-within:ci-ring-accent-300'
   return (
-    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[32rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-700'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
+    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[32rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-800'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
       <div className="ci-px-4 ci-pt-3 ci-pb-3 ci-flex ci-flex-col ci-gap-3 ci-border-b ci-border-solid ci-border-x-0 ci-border-t-0 ci-border-gray-300 dark:ci-border-gray-700">
         {/* The title row moves the island too, like a conversation's header; closing stays a click. */}
         <div
@@ -93,7 +93,7 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
                   <span className="ci-text-sm ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">@{c.username}</span>
                 </span>
                 {on ? (
-                  <span className="ci-flex ci-text-phoneIslandCall dark:ci-text-phoneIslandCallDark">{Icon.circleCheck}</span>
+                  <span className="ci-flex ci-text-accent-700 dark:ci-text-accent-500">{Icon.circleCheck}</span>
                 ) : (
                   <span className="ci-w-5 ci-h-5 ci-box-border ci-rounded-full ci-border ci-border-solid ci-border-gray-400 dark:ci-border-gray-600" />
                 )}
@@ -119,7 +119,7 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
               onChange={(e) => setName(e.target.value)}
               placeholder="Group name (optional)"
               onKeyDown={(e) => e.key === 'Enter' && !busy && create()}
-              className={`ci-flex-1 ci-min-w-0 ci-w-0 ci-box-border ci-px-4 ci-bg-transparent ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-border-transparent focus:ci-ring-2 focus:ci-ring-emerald-500 dark:focus:ci-ring-emerald-300 ${field}`}
+              className={`ci-flex-1 ci-min-w-0 ci-w-0 ci-box-border ci-px-4 ci-bg-transparent ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-border-transparent focus:ci-ring-2 focus:ci-ring-accent-500 dark:focus:ci-ring-accent-300 ${field}`}
             />
             <Button variant="default" className="ci-w-auto ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" disabled={busy} onClick={create}>
               {Icon.group}

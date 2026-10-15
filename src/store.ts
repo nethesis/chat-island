@@ -125,7 +125,7 @@ export const useStore = create<State>((set, get) => ({
   setContacts: (list) =>
     set((s) => ({
       contacts: Object.fromEntries(
-        list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username, ...('avatar' in c ? {} : { avatar: s.contacts[c.username]?.avatar }) }]),
+        list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username, ...('avatar' in c ? {} : { avatar: s.contacts[c.username]?.avatar }), ...(c.devices ? {} : { devices: s.contacts[c.username]?.devices }) }]),
       ),
     })),
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),
