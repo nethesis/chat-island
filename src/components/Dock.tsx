@@ -25,7 +25,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
   // Reversed column: the most recent head sits at the bottom, beside the open
   // window; the buttons stack above the heads. On a round background like the phone island; press and drag anywhere here to move the island.
   return (
-    <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse' : 'ci-flex-col'} ci-items-center ci-gap-3 ci-p-2 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-800 empty:ci-hidden ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
+    <div className={`ci-flex ${place.y === 'up' ? 'ci-flex-col-reverse' : 'ci-flex-col'} ci-items-center ci-gap-3 ci-p-2 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-200 dark:ci-border-gray-800 empty:ci-hidden ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
       {order.slice(0, maxHeads).map((peer) => (
         <Head key={peer} peer={peer} size={48} />
       ))}

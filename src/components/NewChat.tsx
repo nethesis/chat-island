@@ -44,7 +44,7 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
 
   const field = 'ci-h-12 ci-rounded-full ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 focus-within:ci-border-transparent focus-within:ci-ring-2 focus-within:ci-ring-accent-500 dark:focus-within:ci-ring-accent-300'
   return (
-    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[32rem] ci-rounded-3xl ci-shadow-2xl dark:ci-border dark:ci-border-solid dark:ci-border-gray-800'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
+    <div className={`${docked ? 'ci-w-full ci-h-full' : 'ci-w-[25rem] ci-h-[32rem] ci-rounded-3xl ci-shadow-2xl ci-border ci-border-solid ci-border-gray-200 dark:ci-border-gray-800'} ci-flex ci-flex-col ci-overflow-hidden ci-bg-gray-50 dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white`}>
       <div className="ci-px-4 ci-pt-3 ci-pb-3 ci-flex ci-flex-col ci-gap-3 ci-border-b ci-border-solid ci-border-x-0 ci-border-t-0 ci-border-gray-300 dark:ci-border-gray-700">
         {/* The title row moves the island too, like a conversation's header; closing stays a click. */}
         <div
