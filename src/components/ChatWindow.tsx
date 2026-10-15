@@ -170,7 +170,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
             // Pin to the host's side panel, or back to the floating island.
             ...(pinnable ? [{ label: docked ? 'Unpin' : 'Pin to side panel', icon: docked ? Icon.unpin : Icon.pin, run: () => emit('chat-island-pin', { pinned: !docked }) }] : []),
             // Messages still arrive, without sound or notification.
-            muted ? { label: 'Unmute', icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: 'Mute', icon: Icon.bellSlash, run: () => setMuted(peer, true) },
+            muted ? { label: 'Unmute notifications', icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: 'Mute notifications', icon: Icon.bellSlash, run: () => setMuted(peer, true) },
             // Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap).
             ...(docked ? [] : [{ label: expanded ? 'Reduce' : 'Expand', icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
           ]}
