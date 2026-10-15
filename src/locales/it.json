@@ -1,0 +1,121 @@
+{
+  "Common": {
+    "You": "Tu",
+    "Attachment": "Allegato",
+    "Close": "Chiudi",
+    "Cancel": "Annulla",
+    "Remove": "Rimuovi",
+    "Remove {{name}}": "Rimuovi {{name}}",
+    "Search operators": "Cerca operatori",
+    "Group name": "Nome del gruppo",
+    "Group settings": "Impostazioni gruppo",
+    "New chat": "Nuova chat",
+    "Emoji": "Emoji",
+    "Connecting…": "Connessione…"
+  },
+  "Status": {
+    "connecting": "connessione…",
+    "online": "online",
+    "offline": "offline",
+    "error": "errore",
+    "unauthorized": "non autorizzato"
+  },
+  "Chat": {
+    "NethLink": "NethLink",
+    "Web phone": "Telefono web",
+    "Mobile": "Cellulare",
+    "No longer active": "Non più attivo",
+    "No longer in this group": "Non fai più parte di questo gruppo",
+    "Click to see the group details": "Clicca per vedere i dettagli del gruppo",
+    "typing…": "sta scrivendo…",
+    "Call {{number}}": "Chiama {{number}}",
+    "Call": "Chiama",
+    "Chat": "Chat",
+    "Settings": "Impostazioni",
+    "Minimize": "Riduci a icona",
+    "Unpin": "Sgancia dal pannello laterale",
+    "Pin to side panel": "Aggancia al pannello laterale",
+    "Mute notifications": "Silenzia notifiche",
+    "Unmute notifications": "Riattiva notifiche",
+    "Expand": "Espandi",
+    "Reduce": "Riduci",
+    "Cancel reply": "Annulla risposta",
+    "Switch to light theme": "Passa al tema chiaro",
+    "Switch to dark theme": "Passa al tema scuro"
+  },
+  "Composer": {
+    "Discard": "Scarta",
+    "Recording {{time}}": "Registrazione {{time}}",
+    "Send voice note": "Invia messaggio vocale",
+    "Group members": "Membri del gruppo",
+    "Attach files": "Allega file",
+    "Sending…": "Invio…",
+    "Add a caption": "Aggiungi una didascalia",
+    "Write a message": "Scrivi un messaggio",
+    "Send": "Invia",
+    "Record a voice note": "Registra un messaggio vocale"
+  },
+  "Dock": {
+    "Chat {{status}}": "Chat {{status}}",
+    "Enable notifications when the tab is closed": "Abilita le notifiche quando la scheda è chiusa",
+    "Remove {{name}} from the dock": "Rimuovi {{name}} dal dock",
+    "Remove from the dock": "Rimuovi dal dock",
+    "{{count}} more chats": "Altre {{count}} chat"
+  },
+  "Emoji": {
+    "Smileys": "Faccine",
+    "Gestures": "Gesti",
+    "Hearts and symbols": "Cuori e simboli",
+    "Celebrations": "Feste",
+    "Work": "Lavoro",
+    "Food and places": "Cibo e luoghi"
+  },
+  "Group": {
+    "Not saved": "Non salvato",
+    "Picture not readable": "Immagine non leggibile",
+    "Change picture": "Cambia immagine",
+    "Save": "Salva",
+    "No operators to add": "Nessun operatore da aggiungere",
+    "Add": "Aggiungi",
+    "Add members": "Aggiungi membri",
+    "Owner": "Proprietario",
+    "Remove from the group": "Rimuovi dal gruppo"
+  },
+  "Messages": {
+    "Pause": "Pausa",
+    "Play": "Riproduci",
+    "Position": "Posizione",
+    "Download": "Scarica",
+    "{{emoji}} {{count}}": "{{emoji}} {{count}}",
+    "{{emoji}} {{count}}, yours: press to remove": "{{emoji}} {{count}}, tua: premi per rimuovere",
+    "Scroll up for older messages": "Scorri in su per i messaggi precedenti",
+    "React": "Reagisci",
+    "React to this message": "Reagisci a questo messaggio",
+    "Reply": "Rispondi",
+    "Reply to this message": "Rispondi a questo messaggio",
+    "More emojis": "Altre emoji",
+    "typing…": "sta scrivendo…",
+    "Sending": "Invio in corso",
+    "Sent": "Inviato",
+    "Delivered": "Consegnato",
+    "Read": "Letto"
+  },
+  "NewChat": {
+    "No operators found": "Nessun operatore trovato",
+    "Start chat": "Avvia chat",
+    "Group picture": "Immagine del gruppo",
+    "Group name (optional)": "Nome del gruppo (facoltativo)",
+    "Create group": "Crea gruppo"
+  },
+  "Notice": {
+    "you": "te",
+    "{{who}} added {{users}}": "{{who}} ha aggiunto {{users}}",
+    "You added {{users}}": "Hai aggiunto {{users}}",
+    "{{who}} removed {{users}}": "{{who}} ha rimosso {{users}}",
+    "You removed {{users}}": "Hai rimosso {{users}}",
+    "{{who}} renamed the group to \"{{name}}\"": "{{who}} ha rinominato il gruppo in \"{{name}}\"",
+    "You renamed the group to \"{{name}}\"": "Hai rinominato il gruppo in \"{{name}}\"",
+    "{{who}} changed the group picture": "{{who}} ha cambiato l'immagine del gruppo",
+    "You changed the group picture": "Hai cambiato l'immagine del gruppo"
+  }
+}

@@ -5,6 +5,7 @@ import { webmOpusToOgg } from '../ogg'
 import { emojify } from '../shortcodes'
 import { useStore } from '../store'
 import { Avatar, PresenceDot } from './Avatar'
+import { t } from '../i18n'
 
 /** Ogg Opus first (the app's voice format); WebM Opus is remuxed to Ogg, Safari falls back to mp4. */
 const RECORD_TYPES = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']
@@ -142,16 +143,16 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
   }
 
   const submit = () => {
-    const t = text.trim()
-    if ((!t && !files.length) || busy) return
+    const body = text.trim()
+    if ((!body && !files.length) || busy) return
     const sending = files
     setText('')
     setFiles([])
     setBusy(!!sending.length)
     // Not sent (the connection just dropped): give the text and the attachments back rather than lose them.
-    Promise.resolve(onSend(t, sending))
+    Promise.resolve(onSend(body, sending))
       .catch(() => {
-        setText((cur) => cur || t)
+        setText((cur) => cur || body)
         setFiles((cur) => (cur.length ? cur : sending))
       })
       .finally(() => setBusy(false))
@@ -200,14 +201,14 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
   if (rec)
     return (
       <div className="ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-3">
-        <Button variant="transparent" title="Discard" aria-label="Discard" onClick={() => stop(true)} className="ci-h-10 ci-w-10">
+        <Button variant="transparent" title={t('Composer.Discard')} aria-label={t('Composer.Discard')} onClick={() => stop(true)} className="ci-h-10 ci-w-10">
           {Icon.close}
         </Button>
         <div className="ci-flex-1 ci-flex ci-items-center ci-gap-2 ci-px-4 ci-py-2.5 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-sm">
           <span className="ci-w-2.5 ci-h-2.5 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-animate-pulse" />
-          <span>Recording {mmss(elapsed)}</span>
+          <span>{t('Composer.Recording {{time}}', { time: mmss(elapsed) })}</span>
         </div>
-        <Button variant="green" title="Send voice note" aria-label="Send voice note" onClick={() => stop(false)} className="ci-h-10 ci-w-10">
+        <Button variant="green" title={t('Composer.Send voice note')} aria-label={t('Composer.Send voice note')} onClick={() => stop(false)} className="ci-h-10 ci-w-10">
           {Icon.send}
         </Button>
       </div>
@@ -235,7 +236,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
                   <span className="ci-w-full ci-truncate ci-text-center">{f.name}</span>
                 </span>
               )}
-              <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((cur) => cur.filter((_, j) => j !== i))} className="ci-absolute ci-top-0.5 ci-right-0.5 ci-w-5 ci-h-5 ci-p-0 ci-rounded-full ci-border-0 ci-bg-gray-700/80 ci-text-white ci-flex ci-items-center ci-justify-center">
+              <button type="button" aria-label={t('Common.Remove {{name}}', { name: f.name })} onClick={() => setFiles((cur) => cur.filter((_, j) => j !== i))} className="ci-absolute ci-top-0.5 ci-right-0.5 ci-w-5 ci-h-5 ci-p-0 ci-rounded-full ci-border-0 ci-bg-gray-700/80 ci-text-white ci-flex ci-items-center ci-justify-center">
                 {Icon.xs}
               </button>
             </div>
@@ -245,8 +246,8 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
     <div className="ci-relative ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-3">
       {emoji && <EmojiPicker className="ci-absolute ci-bottom-full ci-left-3 ci-mb-1" onPick={insert} onClose={() => setEmoji(false)} />}
       {candidates.length > 0 && (
-        <div role="listbox" aria-label="Group members" className="ci-absolute ci-bottom-full ci-left-3 ci-right-3 ci-mb-1 ci-z-30 ci-py-2 ci-rounded-2xl ci-shadow-xl ci-bg-gray-50 dark:ci-bg-gray-900 ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
-          <div className="ci-px-4 ci-pb-1 ci-text-xs ci-font-medium ci-uppercase ci-tracking-wide ci-text-gray-500 dark:ci-text-gray-400">Group members</div>
+        <div role="listbox" aria-label={t('Composer.Group members')} className="ci-absolute ci-bottom-full ci-left-3 ci-right-3 ci-mb-1 ci-z-30 ci-py-2 ci-rounded-2xl ci-shadow-xl ci-bg-gray-50 dark:ci-bg-gray-900 ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
+          <div className="ci-px-4 ci-pb-1 ci-text-xs ci-font-medium ci-uppercase ci-tracking-wide ci-text-gray-500 dark:ci-text-gray-400">{t('Composer.Group members')}</div>
           {candidates.map((c, i) => (
             <button
               key={c.u}
@@ -270,10 +271,10 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
       <input ref={file} type="file" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
       {/* One box, as in the phone island: attach and emoji on the left, the microphone or send on the right. */}
       <div className="ci-flex-1 ci-min-w-0 ci-flex ci-items-end ci-gap-0.5 ci-px-1 ci-py-1 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark focus-within:ci-ring-2 focus-within:ci-ring-gray-400 dark:focus-within:ci-ring-gray-500">
-        <button type="button" disabled={disabled || busy} title="Attach files" aria-label="Attach files" onClick={() => file.current?.click()} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+        <button type="button" disabled={disabled || busy} title={t('Composer.Attach files')} aria-label={t('Composer.Attach files')} onClick={() => file.current?.click()} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.clip}
         </button>
-        <button type="button" disabled={disabled} title="Emoji" aria-label="Emoji" aria-expanded={emoji} onClick={() => setEmoji((v) => !v)} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+        <button type="button" disabled={disabled} title={t('Common.Emoji')} aria-label={t('Common.Emoji')} aria-expanded={emoji} onClick={() => setEmoji((v) => !v)} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.smile}
         </button>
           <textarea
@@ -281,7 +282,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
             value={text}
             disabled={disabled}
             rows={1}
-            placeholder={disabled ? disabledText ?? 'Connecting…' : busy ? 'Sending…' : files.length ? 'Add a caption' : 'Write a message'}
+            placeholder={disabled ? disabledText ?? t('Common.Connecting…') : busy ? t('Composer.Sending…') : files.length ? t('Composer.Add a caption') : t('Composer.Write a message')}
             onChange={(e) => change(e.target.value)}
             onClick={(e) => findMention(text, e.currentTarget.selectionStart)}
             onBlur={() => setMention(null)}
@@ -319,11 +320,11 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
             style={{ height: Math.min(128, 32 + 20 * (text.split('\n').length - 1)) }}
           />
         {text.trim() || files.length || busy ? (
-          <button type="button" disabled={disabled || busy} onClick={submit} title="Send" aria-label="Send" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+          <button type="button" disabled={disabled || busy} onClick={submit} title={t('Composer.Send')} aria-label={t('Composer.Send')} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
             {Icon.send}
           </button>
         ) : (
-          <button type="button" disabled={disabled || typeof MediaRecorder === 'undefined'} onClick={record} title="Record a voice note" aria-label="Record a voice note" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+          <button type="button" disabled={disabled || typeof MediaRecorder === 'undefined'} onClick={record} title={t('Composer.Record a voice note')} aria-label={t('Composer.Record a voice note')} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
             {Icon.mic}
           </button>
         )}

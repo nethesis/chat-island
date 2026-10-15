@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Contact, Conversation, Message, Reaction, Status } from './types'
 import type { Marker } from './xmpp'
+import type { Lang } from './i18n'
 
 interface State {
   me: string
@@ -27,6 +28,7 @@ interface State {
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
   panel: HTMLElement | null // the host's side panel for the open conversation
   muted: Record<string, boolean> // peers whose messages come without sound or notification
+  lang: Lang
 
   setStatus(s: Status, err?: string): void
   reset(): void // a new account in the same page: forget everything of the previous one
@@ -106,6 +108,7 @@ export const useStore = create<State>((set, get) => ({
   newChatButton: true,
   pinnable: false,
   muted: {},
+  lang: 'en',
   nativeTooltips: false,
   rail: null,
   panel: null,

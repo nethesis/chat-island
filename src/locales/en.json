@@ -1,0 +1,121 @@
+{
+  "Common": {
+    "You": "You",
+    "Attachment": "Attachment",
+    "Close": "Close",
+    "Cancel": "Cancel",
+    "Remove": "Remove",
+    "Remove {{name}}": "Remove {{name}}",
+    "Search operators": "Search operators",
+    "Group name": "Group name",
+    "Group settings": "Group settings",
+    "New chat": "New chat",
+    "Emoji": "Emoji",
+    "Connecting…": "Connecting…"
+  },
+  "Status": {
+    "connecting": "connecting",
+    "online": "online",
+    "offline": "offline",
+    "error": "error",
+    "unauthorized": "unauthorized"
+  },
+  "Chat": {
+    "NethLink": "NethLink",
+    "Web phone": "Web phone",
+    "Mobile": "Mobile",
+    "No longer active": "No longer active",
+    "No longer in this group": "No longer in this group",
+    "Click to see the group details": "Click to see the group details",
+    "typing…": "typing…",
+    "Call {{number}}": "Call {{number}}",
+    "Call": "Call",
+    "Chat": "Chat",
+    "Settings": "Settings",
+    "Minimize": "Minimize",
+    "Unpin": "Unpin",
+    "Pin to side panel": "Pin to side panel",
+    "Mute notifications": "Mute notifications",
+    "Unmute notifications": "Unmute notifications",
+    "Expand": "Expand",
+    "Reduce": "Reduce",
+    "Cancel reply": "Cancel reply",
+    "Switch to light theme": "Switch to light theme",
+    "Switch to dark theme": "Switch to dark theme"
+  },
+  "Composer": {
+    "Discard": "Discard",
+    "Recording {{time}}": "Recording {{time}}",
+    "Send voice note": "Send voice note",
+    "Group members": "Group members",
+    "Attach files": "Attach files",
+    "Sending…": "Sending…",
+    "Add a caption": "Add a caption",
+    "Write a message": "Write a message",
+    "Send": "Send",
+    "Record a voice note": "Record a voice note"
+  },
+  "Dock": {
+    "Chat {{status}}": "Chat {{status}}",
+    "Enable notifications when the tab is closed": "Enable notifications when the tab is closed",
+    "Remove {{name}} from the dock": "Remove {{name}} from the dock",
+    "Remove from the dock": "Remove from the dock",
+    "{{count}} more chats": "{{count}} more chats"
+  },
+  "Emoji": {
+    "Smileys": "Smileys",
+    "Gestures": "Gestures",
+    "Hearts and symbols": "Hearts and symbols",
+    "Celebrations": "Celebrations",
+    "Work": "Work",
+    "Food and places": "Food and places"
+  },
+  "Group": {
+    "Not saved": "Not saved",
+    "Picture not readable": "Picture not readable",
+    "Change picture": "Change picture",
+    "Save": "Save",
+    "No operators to add": "No operators to add",
+    "Add": "Add",
+    "Add members": "Add members",
+    "Owner": "Owner",
+    "Remove from the group": "Remove from the group"
+  },
+  "Messages": {
+    "Pause": "Pause",
+    "Play": "Play",
+    "Position": "Position",
+    "Download": "Download",
+    "{{emoji}} {{count}}": "{{emoji}} {{count}}",
+    "{{emoji}} {{count}}, yours: press to remove": "{{emoji}} {{count}}, yours: press to remove",
+    "Scroll up for older messages": "Scroll up for older messages",
+    "React": "React",
+    "React to this message": "React to this message",
+    "Reply": "Reply",
+    "Reply to this message": "Reply to this message",
+    "More emojis": "More emojis",
+    "typing…": "typing…",
+    "Sending": "Sending",
+    "Sent": "Sent",
+    "Delivered": "Delivered",
+    "Read": "Read"
+  },
+  "NewChat": {
+    "No operators found": "No operators found",
+    "Start chat": "Start chat",
+    "Group picture": "Group picture",
+    "Group name (optional)": "Group name (optional)",
+    "Create group": "Create group"
+  },
+  "Notice": {
+    "you": "you",
+    "{{who}} added {{users}}": "{{who}} added {{users}}",
+    "You added {{users}}": "You added {{users}}",
+    "{{who}} removed {{users}}": "{{who}} removed {{users}}",
+    "You removed {{users}}": "You removed {{users}}",
+    "{{who}} renamed the group to \"{{name}}\"": "{{who}} renamed the group to \"{{name}}\"",
+    "You renamed the group to \"{{name}}\"": "You renamed the group to \"{{name}}\"",
+    "{{who}} changed the group picture": "{{who}} changed the group picture",
+    "You changed the group picture": "You changed the group picture"
+  }
+}

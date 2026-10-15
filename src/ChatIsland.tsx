@@ -17,6 +17,7 @@ import { emojify } from './shortcodes'
 import type { Config, ConversationSummary, Message } from './types'
 import { useDark, type Theme } from './theme'
 import './index.css'
+import { t, toLang } from './i18n'
 
 export interface ChatIslandProps {
   /** Base64 of "<cti_host>:<cti_username>:<cti_token>", the same shape phone-island uses. */
@@ -41,6 +42,8 @@ export interface ChatIslandProps {
   pinnable?: boolean
   /** The browser's own tooltips for the heads' names: for a host window sized to the dock (NethLink), where a drawn one is cut off. */
   nativeTooltips?: boolean
+  /** 'it' or 'en'; default the browser's language, as in phone-island. */
+  language?: string
   /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
   accent?: 'emerald' | 'blue'
   /** Drag the island around the page (default true); off when the host moves its own window. */
@@ -67,7 +70,7 @@ function summarize(): ConversationSummary[] {
         unread: c.unread,
         members: c.members,
         muted: !!st.muted[c.peer],
-        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
+        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? '') : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
       }
     })
     .filter((c) => c.last || c.kind === 'group')
@@ -104,7 +107,7 @@ function parseConfig(dataConfig: string): Config | null {
 }
 
 /** A one-line preview of a message: Markdown marks dropped, a code block shown as its text. */
-const plain = (t: string) => (appAttachment(t) ? 'Attachment' : emojify(t)).replace(/```[^\n]*\n?/g, '').replace(/(\*\*|__|~~|`)/g, '').replace(/(^|\s)[*_](\S[^*_]*)[*_]/g, '$1$2').replace(/\s+/g, ' ').trim()
+const plain = (s: string) => (appAttachment(s) ? t('Common.Attachment') : emojify(s)).replace(/```[^\n]*\n?/g, '').replace(/(\*\*|__|~~|`)/g, '').replace(/(^|\s)[*_](\S[^*_]*)[*_]/g, '$1$2').replace(/\s+/g, ' ').trim()
 
 /** Keeps a panel mounted until it has shrunk back into the dock; skip drops it at once. */
 function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEvent) => void] {
@@ -119,7 +122,12 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
   return [value || (skip ? value : kept), !value && !skip && !!kept, onEnd]
 }
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent }: ChatIslandProps) {
+useStore.setState({ lang: toLang() })
+
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language }: ChatIslandProps) {
+  // Every string follows the language: a change remounts the island in the new one.
+  useLayoutEffect(() => useStore.setState({ lang: toLang(language) }), [language])
+  const lang = useStore((st) => st.lang)
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
@@ -399,7 +407,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       if ((visible && st.open === peer) || st.muted[peer]) return
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
-      const text = m.oob ? 'Attachment' : emojify(m.body)
+      const text = m.oob ? t('Common.Attachment') : emojify(m.body)
       const group = conv?.kind === 'group'
       const author = group && m.nick ? st.contacts[m.nick]?.name ?? m.nick : name
       const body = group && m.nick ? `${author}: ${text}` : text
@@ -583,7 +591,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const flow = free ? 'ci-items-end' : `${place.y === 'down' ? 'ci-items-start' : 'ci-items-end'} ${place.x === 'right' ? 'ci-flex-row-reverse' : ''}`
   // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
   if (rail) {
-    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent}><Boundary>{children}</Boundary></div>
+    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent}><Boundary key={lang}>{children}</Boundary></div>
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
@@ -600,7 +608,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       data-status={status}
       data-accent={accent}
     >
-      <Boundary>
+      <Boundary key={lang}>
         {shownPeer && (
           <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={{ ...beside(shownPicker ? 26.5 : 0.75), ...(morph.current ? ({ '--ci-morph': morphFrom(morph.current) } as React.CSSProperties) : {}) }} onAnimationEnd={closed}>
             <ChatWindow peer={shownPeer} actions={actions} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />

@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store'
 import { Avatar, GroupAvatar, PresenceDot } from './Avatar'
 import { Button, Icon } from './Button'
+import { t } from '../i18n'
 
 /** Messenger-style chat heads: one round avatar per conversation, plus the phone-island style buttons. */
 /** pushButton: offer the bell to enable notifications; off when the host asks at start-up like phone-island does for the microphone. */
@@ -32,13 +33,13 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
       {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} />}
       {order.length > 0 && <NewChat />}
       {newChatButton && !order.length && (
-        <Button variant="default" title={status === 'online' ? 'New chat' : `Chat ${status}`} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
+        <Button variant="default" title={status === 'online' ? t('Common.New chat') : t('Dock.Chat {{status}}', { status: t(`Status.${status}`) })} onClick={() => setPicker(!picker)} className="ci-relative ci-shadow-lg">
           {Icon.newChat}
           {status !== 'online' && <span className="ci-absolute ci-bottom-0 ci-right-0 ci-w-3 ci-h-3 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />}
         </Button>
       )}
       {pushButton && push === 'ask' && status === 'online' && (
-        <Button variant="neutral" title="Enable notifications when the tab is closed" onClick={enablePush} className="ci-shadow-lg ci-bg-gray-50 dark:ci-bg-gray-950">
+        <Button variant="neutral" title={t('Dock.Enable notifications when the tab is closed')} onClick={enablePush} className="ci-shadow-lg ci-bg-gray-50 dark:ci-bg-gray-950">
           {Icon.bell}
         </Button>
       )}
@@ -79,7 +80,7 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
       </button>
       {!rail && <button
         type="button"
-        aria-label={`Remove ${name} from the dock`}
+        aria-label={t('Dock.Remove {{name}} from the dock', { name })}
         onClick={() => removeHead(peer)}
         className="ci-absolute ci--top-1 ci--left-1 ci-hidden group-hover:ci-flex group-focus-within:ci-flex ci-w-5 ci-h-5 ci-rounded-full ci-border-0 ci-p-0 ci-bg-gray-700 dark:ci-bg-gray-300 ci-text-gray-50 dark:ci-text-gray-900 ci-items-center ci-justify-center"
       >
@@ -109,14 +110,14 @@ function NewChat({ rail = false }: { rail?: boolean }) {
   const toggle = () => (picker ? setPicker(false) : useStore.setState({ picker: true, open: null }))
   return (
     <div className="ci-relative ci-group">
-      <Tip text="New chat" left={rail || place.x === 'left'} />
+      <Tip text={t('Common.New chat')} left={rail || place.x === 'left'} />
       {rail ? (
         // The CTI's icon button: emerald, flat, part of its right sidebar.
-        <button type="button" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-h-9 ci-w-9 ci-flex ci-items-center ci-justify-center ci-rounded-lg ci-border-0 ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-accent-500 dark:focus-visible:ci-ring-accent-300 ${picker ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}>
+        <button type="button" aria-label={t('Common.New chat')} title={native ? t('Common.New chat') : undefined} aria-expanded={picker} onClick={toggle} className={`ci-h-9 ci-w-9 ci-flex ci-items-center ci-justify-center ci-rounded-lg ci-border-0 ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-accent-500 dark:focus-visible:ci-ring-accent-300 ${picker ? 'ci-bg-gray-200 dark:ci-bg-gray-800' : 'ci-bg-transparent'}`}>
           {Icon.newChat}
         </button>
       ) : (
-        <Button variant="default" aria-label="New chat" title={native ? 'New chat' : undefined} aria-expanded={picker} onClick={toggle} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-accent-500 dark:ci-ring-accent-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}>
+        <Button variant="default" aria-label={t('Common.New chat')} title={native ? t('Common.New chat') : undefined} aria-expanded={picker} onClick={toggle} className={`ci-shadow-lg ci-ring-2 ${picker ? 'ci-ring-accent-500 dark:ci-ring-accent-300' : 'ci-ring-gray-50 dark:ci-ring-gray-950'}`}>
           {Icon.newChat}
         </Button>
       )}
@@ -148,7 +149,7 @@ function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) 
 
   return (
     <div ref={box} className="ci-relative">
-      <Button variant="default" title={`${peers.length} more chats`} aria-expanded={show} onClick={() => setShow((v) => !v)} className={`ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950 ${rail ? '!ci-w-9 !ci-h-9 ci-text-sm' : ''}`}>
+      <Button variant="default" title={t('Dock.{{count}} more chats', { count: peers.length })} aria-expanded={show} onClick={() => setShow((v) => !v)} className={`ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950 ${rail ? '!ci-w-9 !ci-h-9 ci-text-sm' : ''}`}>
         +{peers.length}
         {unread > 0 && (
           <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
@@ -188,7 +189,7 @@ function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) 
                     </span>
                   )}
                 </button>
-                <Button variant="small" aria-label={`Remove ${nameOf(p)} from the dock`} title="Remove from the dock" onClick={() => removeHead(p)} className="ci-opacity-0 group-hover:ci-opacity-100 focus:ci-opacity-100">
+                <Button variant="small" aria-label={t('Dock.Remove {{name}} from the dock', { name: nameOf(p) })} title={t('Dock.Remove from the dock')} onClick={() => removeHead(p)} className="ci-opacity-0 group-hover:ci-opacity-100 focus:ci-opacity-100">
                   {Icon.close}
                 </Button>
               </div>

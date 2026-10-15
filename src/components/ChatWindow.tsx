@@ -8,6 +8,7 @@ import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { GroupSettings } from './GroupSettings'
 import type { Message, Reply } from '../types'
+import { t } from '../i18n'
 
 export interface WindowActions {
   send: (peer: string, text: string, reply?: Reply, files?: File[]) => Promise<void>
@@ -27,9 +28,9 @@ const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', hei
 /** @username, then the devices the person can be reached on, as in the CTI's device menu. */
 function Who({ username, devices = [], mobile }: { username: string; devices?: string[]; mobile?: boolean }) {
   const icons = [
-    devices.includes('nethlink') && ['NethLink', Icon.desktop],
-    devices.includes('webrtc') && ['Web phone', Icon.headset],
-    (mobile || devices.includes('mobile')) && ['Mobile', Icon.mobile],
+    devices.includes('nethlink') && [t('Chat.NethLink'), Icon.desktop],
+    devices.includes('webrtc') && [t('Chat.Web phone'), Icon.headset],
+    (mobile || devices.includes('mobile')) && [t('Chat.Mobile'), Icon.mobile],
   ].filter(Boolean) as [string, JSX.Element][]
   return (
     <span className="ci-flex ci-items-center ci-gap-1.5">
@@ -58,7 +59,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   // The message being answered, and a tick that puts the cursor in the composer.
   const [reply, setReply] = useState<Reply | null>(null)
   const [focusTick, setFocusTick] = useState(0)
-  const nameOf = (u: string) => (u === me ? 'You' : contacts[u]?.name ?? u)
+  const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? u)
   const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   const startReply = (m: Message) => {
     if (!m.oid) return
     const author = c?.kind === 'group' ? m.nick ?? '' : m.mine ? me : peer
-    const text = m.oob ? 'Attachment' : m.body.replace(/```/g, '').replace(/\s+/g, ' ').trim().slice(0, 100)
+    const text = m.oob ? t('Common.Attachment') : m.body.replace(/```/g, '').replace(/\s+/g, ' ').trim().slice(0, 100)
     const name = author === me ? useStore.getState().myName || me : contacts[author]?.name ?? author
     setReply({ id: m.oid, author, quote: `${name}: ${text}` })
     setFocusTick((t) => t + 1)
@@ -137,7 +138,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         )}
         {c.kind === 'group' && !showMembers && (
           <span role="tooltip" className="ci-pointer-events-none ci-absolute ci-left-0 ci-top-full ci-mt-2 ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900">
-            Click to see the group details
+            {t('Chat.Click to see the group details')}
             <span className="ci-absolute ci-left-4 ci--top-1 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100" />
           </span>
         )}
@@ -145,29 +146,29 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           <div className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
-              ? 'No longer active'
+              ? t('Chat.No longer active')
               : status !== 'online'
-              ? status
+              ? t(`Status.${status}`)
               : c.kind === 'group'
                 ? members.map(nameOf).join(', ')
                 : c.typing
-                  ? 'typing…'
+                  ? t('Chat.typing…')
                   : <Who username={peer} devices={contact?.devices} mobile={mobile[peer] || contact?.presence === 'cellphone'} />}
           </div>
         </div>
         </div>
         {/* Call when the CTI says the person is reachable on a phone (webrtc, desk phone, NethLink, mobile): being in the chat alone is not enough. */}
         {!gone && c.kind !== 'group' && contact?.number && callable(contact.presence) && (
-          <Button variant="call" title={`Call ${contact.number}`} aria-label="Call" onClick={() => emit('chat-island-call', { username: peer, number: contact.number! })}>
+          <Button variant="call" title={t('Chat.Call {{number}}', { number: contact.number })} aria-label={t('Chat.Call')} onClick={() => emit('chat-island-call', { username: peer, number: contact.number! })}>
             {Icon.phone}
           </Button>
         )}
         {/* Window menu, before minimize so the last button is the one that closes. */}
-        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label="Settings" title="Settings" aria-expanded={menu}>
+        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu}>
           {Icon.gear}
         </Button>
         {/* Minimize: the head stays in the dock. In a panel the heads have no X, so this one takes the chat out of the rail. */}
-        <Button variant="small" onClick={() => (docked ? closeDocked() : closeChat())} aria-label={docked ? 'Close' : 'Minimize'} title={docked ? 'Close' : 'Minimize'}>
+        <Button variant="small" onClick={() => (docked ? closeDocked() : closeChat())} aria-label={docked ? t('Common.Close') : t('Chat.Minimize')} title={docked ? t('Common.Close') : t('Chat.Minimize')}>
           {docked ? Icon.close : Icon.minus}
         </Button>
       </div>
@@ -179,11 +180,11 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           onSettings={c.kind === 'group' && c.owner && !kicked ? () => setSettings(true) : undefined}
           actions={[
             // Pin to the host's side panel, or back to the floating island.
-            ...(pinnable ? [{ label: docked ? 'Unpin' : 'Pin to side panel', icon: docked ? Icon.unpin : Icon.pin, run: () => emit('chat-island-pin', { pinned: !docked }) }] : []),
+            ...(pinnable ? [{ label: docked ? t('Chat.Unpin') : t('Chat.Pin to side panel'), icon: docked ? Icon.unpin : Icon.pin, run: () => emit('chat-island-pin', { pinned: !docked }) }] : []),
             // Messages still arrive, without sound or notification.
-            muted ? { label: 'Unmute notifications', icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: 'Mute notifications', icon: Icon.bellSlash, run: () => setMuted(peer, true) },
+            muted ? { label: t('Chat.Unmute notifications'), icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: t('Chat.Mute notifications'), icon: Icon.bellSlash, run: () => setMuted(peer, true) },
             // Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap).
-            ...(docked ? [] : [{ label: expanded ? 'Reduce' : 'Expand', icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
+            ...(docked ? [] : [{ label: expanded ? t('Chat.Reduce') : t('Chat.Expand'), icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
           ]}
         />
       )}
@@ -200,11 +201,11 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
               {/* Reach one member directly: a one-to-one chat, or a call when the CTI says they can be called. */}
               {m !== me && (
                 <>
-                  <Button variant="small" title="Chat" aria-label="Chat" onClick={() => openChat(m)}>
+                  <Button variant="small" title={t('Chat.Chat')} aria-label={t('Chat.Chat')} onClick={() => openChat(m)}>
                     {Icon.chat}
                   </Button>
                   {contacts[m]?.number && callable(contacts[m]?.presence) && (
-                    <Button variant="call" title={`Call ${contacts[m]?.number}`} aria-label="Call" onClick={() => emit('chat-island-call', { username: m, number: contacts[m]!.number! })}>
+                    <Button variant="call" title={t('Chat.Call {{number}}', { number: contacts[m]?.number ?? '' })} aria-label={t('Chat.Call')} onClick={() => emit('chat-island-call', { username: m, number: contacts[m]!.number! })}>
                       {Icon.phone}
                     </Button>
                   )}
@@ -232,10 +233,10 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
       {reply && (
         <div className="ci-mx-3 ci-mt-1 ci-flex ci-items-center ci-gap-2 ci-pl-3 ci-pr-1 ci-py-1.5 ci-rounded-2xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-border-0 ci-border-l-4 ci-border-solid ci-border-iconSecondary dark:ci-border-iconSecondaryDark">
           <div className="ci-flex-1 ci-min-w-0 ci-text-xs">
-            <div className="ci-font-medium ci-text-gray-900 dark:ci-text-white">{reply.author === me ? 'You' : contacts[reply.author]?.name ?? reply.author}</div>
+            <div className="ci-font-medium ci-text-gray-900 dark:ci-text-white">{reply.author === me ? t('Common.You') : contacts[reply.author]?.name ?? reply.author}</div>
             <div className="ci-truncate ci-text-gray-500 dark:ci-text-gray-400">{reply.quote?.replace(/^[^:]*: /, '')}</div>
           </div>
-          <Button variant="small" onClick={() => setReply(null)} aria-label="Cancel reply" title="Cancel reply">
+          <Button variant="small" onClick={() => setReply(null)} aria-label={t('Chat.Cancel reply')} title={t('Chat.Cancel reply')}>
             {Icon.close}
           </Button>
         </div>
@@ -245,8 +246,8 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         members={c?.kind === 'group' ? c.members : undefined}
         focusKey={focusTick}
         disabled={status !== 'online' || gone || kicked}
-        disabledText={gone ? 'No longer active' : kicked ? 'No longer in this group' : undefined}
-        onSend={(t, files) => actions.send(peer, t, reply ?? undefined, files).then(() => setReply(null))}
+        disabledText={gone ? t('Chat.No longer active') : kicked ? t('Chat.No longer in this group') : undefined}
+        onSend={(text, files) => actions.send(peer, text, reply ?? undefined, files).then(() => setReply(null))}
         onTyping={(v) => actions.typing(peer, v)}
         onFile={(f) => actions.upload(peer, f)}
       />
@@ -257,7 +258,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
 
 /** The header menu; a click elsewhere closes it. */
 function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
-  const items = [...actions, ...(onSettings ? [{ label: 'Group settings', icon: Icon.gear, run: onSettings }] : [])]
+  const items = [...actions, ...(onSettings ? [{ label: t('Common.Group settings'), icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
   // The theme in effect, whatever was chosen (system included).
   const [dark, setDark] = useState(false)
@@ -297,7 +298,7 @@ function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean;
           className="ci-w-full ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700"
         >
           <span className="ci-text-gray-600 dark:ci-text-gray-100">{dark ? Icon.sun : Icon.moon}</span>
-          {dark ? 'Switch to light theme' : 'Switch to dark theme'}
+          {dark ? t('Chat.Switch to light theme') : t('Chat.Switch to dark theme')}
         </button>
       )}
     </div>

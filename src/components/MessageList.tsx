@@ -6,6 +6,7 @@ import { emojify } from '../shortcodes'
 import { Icon } from './Button'
 import { EmojiPicker, QUICK_REACTIONS } from './EmojiPicker'
 import { noticeText } from '../notice'
+import { t } from '../i18n'
 
 const isImage = (url: string) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(url)
 const isAudio = (url: string) => /\.(webm|ogg|oga|opus|mp3|m4a|wav)(\?|$)/i.test(url)
@@ -26,8 +27,8 @@ export const safeUrl = (url: string) => {
     return false
   }
 }
-const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-const day = (ts: number) => new Date(ts).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
+const time = (ts: number) => new Date(ts).toLocaleTimeString(useStore.getState().lang, { hour: '2-digit', minute: '2-digit' })
+const day = (ts: number) => new Date(ts).toLocaleDateString(useStore.getState().lang, { weekday: 'short', day: 'numeric', month: 'short' })
 const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
 
 /** Old Acrobits attachment JSON kept in the archive: encrypted on Acrobits, not viewable here. */
@@ -93,7 +94,7 @@ function Voice({ url, alone }: { url: string; alone?: boolean }) {
         onEnded={() => (setPlaying(false), setAt(0))}
       />
       <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
-        <button type="button" onClick={toggle} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'} className="ci-h-10 ci-w-10 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-text-current hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
+        <button type="button" onClick={toggle} title={playing ? t('Messages.Pause') : t('Messages.Play')} aria-label={playing ? t('Messages.Pause') : t('Messages.Play')} className="ci-h-10 ci-w-10 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-text-current hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
           {playing ? Icon.pause : Icon.play}
         </button>
         <input
@@ -104,13 +105,13 @@ function Voice({ url, alone }: { url: string; alone?: boolean }) {
           value={Math.min(at, length || 1)}
           disabled={!length}
           onChange={(e) => audio.current && (audio.current.currentTime = Number(e.target.value))}
-          aria-label="Position"
+          aria-label={t('Messages.Position')}
           style={{ '--ci-at': `${length ? (Math.min(at, length) / length) * 100 : 0}%` } as React.CSSProperties}
           className="ci-voice ci-flex-1 ci-min-w-0 ci-w-full ci-m-0 ci-block ci-cursor-pointer"
         />
         {!alone && <span className="ci-shrink-0 ci-text-xs ci-tabular-nums ci-opacity-70">{(playing || at ? clock(at) : clock(length, true))}</span>}
       </div>
-      <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" onClick={(e) => (e.preventDefault(), save(url))} title="Download" aria-label="Download" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
+      <a href={url} download={fileName(url)} target="_blank" rel="noreferrer" onClick={(e) => (e.preventDefault(), save(url))} title={t('Messages.Download')} aria-label={t('Messages.Download')} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-text-current ci-opacity-60 hover:ci-opacity-100 hover:ci-bg-black/10 dark:hover:ci-bg-white/10">
         {Icon.download}
       </a>
       {alone && <span className="ci-absolute ci-left-12 ci-top-full ci-mt-1 ci-text-[10px] ci-leading-none ci-tabular-nums ci-opacity-60">{(playing || at ? clock(at) : clock(length, true))}</span>}
@@ -219,7 +220,7 @@ function OldAppAttachment({ text, count }: { text?: string; count: number }) {
   return (
     <span className="ci-italic ci-opacity-80">
       {text && <span className="ci-not-italic ci-block">{text}</span>}
-      {count > 1 ? `${count} attachments` : 'Attachment'} from the mobile app, not available here
+      {count > 1 ? `${count} attachments` : t('Common.Attachment')} from the mobile app, not available here
     </span>
   )
 }
@@ -240,8 +241,8 @@ function Chips({ forMsg, me, onReact, nameOf, mine }: { forMsg?: Record<string, 
           <button
             key={e}
             type="button"
-            title={users.map((u) => (u === me ? 'You' : nameOf(u))).join(', ')}
-            aria-label={`${e} ${users.length}${own ? ', yours: press to remove' : ''}`}
+            title={users.map((u) => (u === me ? t('Common.You') : nameOf(u))).join(', ')}
+            aria-label={t(own ? 'Messages.{{emoji}} {{count}}, yours: press to remove' : 'Messages.{{emoji}} {{count}}', { emoji: e, count: users.length })}
             onClick={() => onReact(e)}
             className={`ci-flex ci-items-center ci-gap-0.5 ci-h-6 ci-px-1.5 ci-rounded-full ci-text-xs ci-border ci-border-solid ci-shadow-sm ${
               own
@@ -261,7 +262,7 @@ function Chips({ forMsg, me, onReact, nameOf, mine }: { forMsg?: Record<string, 
 /** The quoted message on top of a reply; a click goes back to it. */
 function Quote({ reply, messages, mine, name }: { reply: NonNullable<Message['reply']>; messages: Message[]; mine: boolean; name: (u: string) => string }) {
   const original = messages.find((x) => x.oid === reply.id)
-  const text = original ? (original.oob ? 'Attachment' : original.body) : reply.quote?.replace(/^[^:]*: /, '') ?? ''
+  const text = original ? (original.oob ? t('Common.Attachment') : original.body) : reply.quote?.replace(/^[^:]*: /, '') ?? ''
   const jump = (e: React.MouseEvent) => {
     e.stopPropagation()
     const el = document.querySelector<HTMLElement>(`.chat-island-root [data-oid="${CSS.escape(reply.id)}"]`)
@@ -350,7 +351,7 @@ export function MessageList({
   return (
     <div className="ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col">
       <div ref={box} onScroll={onScroll} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className="ci-flex-1 ci-overflow-y-auto ci-px-4 ci-py-2 ci-space-y-1">
-        {hasOlder && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">Scroll up for older messages</div>}
+        {hasOlder && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">{t('Messages.Scroll up for older messages')}</div>}
         {messages.map((m, i) => {
           const prev = messages[i - 1]
           const newDay = !prev || !sameDay(prev.ts, m.ts)
@@ -360,7 +361,7 @@ export function MessageList({
               <div key={m.id}>
                 {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
                 <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">
-                  {m.mine ? 'You' : nameOf(m.nick ?? '')} {noticeText(m.notice, nameOf, me)}
+                  {noticeText(m.notice, nameOf, me, m.mine ? me : m.nick ?? '')}
                 </div>
               </div>
             )
@@ -372,8 +373,8 @@ export function MessageList({
           const reactButton = canReact && (
             <button
               type="button"
-              title="React"
-              aria-label="React to this message"
+              title={t('Messages.React')}
+              aria-label={t('Messages.React to this message')}
               onClick={(e) => {
                 e.stopPropagation()
                 setMenuFor(menuFor === target ? null : target!)
@@ -386,8 +387,8 @@ export function MessageList({
           const replyButton = !!onReply && !!target && !m.pending && (
             <button
               type="button"
-              title="Reply"
-              aria-label="Reply to this message"
+              title={t('Messages.Reply')}
+              aria-label={t('Messages.Reply to this message')}
               onClick={(e) => {
                 e.stopPropagation()
                 onReply(m)
@@ -431,8 +432,8 @@ export function MessageList({
                       <button
                         type="button"
                         role="menuitem"
-                        title="More emojis"
-                        aria-label="More emojis"
+                        title={t('Messages.More emojis')}
+                        aria-label={t('Messages.More emojis')}
                         onClick={() => {
                           setMenuFor(null)
                           setPickerFor(target)
@@ -452,7 +453,7 @@ export function MessageList({
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-tl-lg'
                     } ${m.pending ? 'ci-opacity-60' : ''}`}
                   >
-                    {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? 'You' : nameOf(u))} />}
+                    {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? t('Common.You') : nameOf(u))} />}
                     {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} />}
                     {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} mine={m.mine} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
@@ -470,7 +471,7 @@ export function MessageList({
         })}
         {typing && (
           <div className="ci-flex ci-justify-start ci-mt-2">
-            <div className="ci-px-3.5 ci-py-2 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-500 dark:ci-text-gray-400 ci-text-xs ci-italic">typing…</div>
+            <div className="ci-px-3.5 ci-py-2 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-500 dark:ci-text-gray-400 ci-text-xs ci-italic">{t('Messages.typing…')}</div>
           </div>
         )}
       </div>
@@ -484,7 +485,7 @@ const TICK_LABEL = { pending: 'Sending', sent: 'Sent', delivered: 'Delivered', r
 /** WhatsApp style: thin ticks, one sent, two delivered, two in the host's accent read; a clock while sending. */
 function Ticks({ state }: { state: 'pending' | 'sent' | 'delivered' | 'read' }) {
   return (
-    <span title={TICK_LABEL[state]} aria-label={TICK_LABEL[state]} className={`ci-inline-flex ${state === 'read' ? 'ci-text-accent-400 dark:ci-text-accent-600' : 'ci-opacity-60'}`}>
+    <span title={t(`Messages.${TICK_LABEL[state]}`)} aria-label={t(`Messages.${TICK_LABEL[state]}`)} className={`ci-inline-flex ${state === 'read' ? 'ci-text-accent-400 dark:ci-text-accent-600' : 'ci-opacity-60'}`}>
       {state === 'pending' ? Icon.clock : state === 'sent' ? Icon.tick : Icon.ticks}
     </span>
   )
