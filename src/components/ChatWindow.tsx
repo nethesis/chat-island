@@ -30,8 +30,8 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable })),
+  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -169,6 +169,8 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
           actions={[
             // Pin to the host's side panel, or back to the floating island.
             ...(pinnable ? [{ label: docked ? 'Unpin' : 'Pin to side panel', icon: docked ? Icon.unpin : Icon.pin, run: () => emit('chat-island-pin', { pinned: !docked }) }] : []),
+            // Messages still arrive, without sound or notification.
+            muted ? { label: 'Unmute', icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: 'Mute', icon: Icon.bellSlash, run: () => setMuted(peer, true) },
             // Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap).
             ...(docked ? [] : [{ label: expanded ? 'Reduce' : 'Expand', icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
           ]}

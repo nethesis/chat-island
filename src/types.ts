@@ -87,4 +87,5 @@ export interface ConversationSummary {
   unread: number
   members?: string[]
   last?: { body: string; ts: number; mine: boolean; oob?: string; nick?: string }
+  muted?: boolean // messages arrive without sound or notification
 }

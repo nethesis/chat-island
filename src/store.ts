@@ -26,6 +26,7 @@ interface State {
   nativeTooltips: boolean // the browser's tooltips on the heads, not drawn ones
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
   panel: HTMLElement | null // the host's side panel for the open conversation
+  muted: Record<string, boolean> // peers whose messages come without sound or notification
 
   setStatus(s: Status, err?: string): void
   reset(): void // a new account in the same page: forget everything of the previous one
@@ -48,6 +49,7 @@ interface State {
   markRead(peer: string): void
   setPicker(v: boolean): void
   setExpanded(v: boolean): void
+  setMuted(peer: string, muted: boolean): void
   totalUnread(): number
 }
 
@@ -103,6 +105,7 @@ export const useStore = create<State>((set, get) => ({
   maxHeads: 5,
   newChatButton: true,
   pinnable: false,
+  muted: {},
   nativeTooltips: false,
   rail: null,
   panel: null,
@@ -116,7 +119,7 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, muted: {} }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
   setContacts: (list) =>
@@ -252,6 +255,13 @@ export const useStore = create<State>((set, get) => ({
   markRead: (peer) =>
     set((s) => (s.conversations[peer] && s.conversations[peer].unread ? { conversations: { ...s.conversations, [peer]: { ...s.conversations[peer], unread: 0 } } } : {})),
   setPicker: (picker) => set({ picker }),
+  setMuted: (peer, muted) =>
+    set((s) => {
+      const next = { ...s.muted }
+      if (muted) next[peer] = true
+      else delete next[peer]
+      return { muted: next }
+    }),
   setExpanded: (expanded) => {
     try {
       localStorage.setItem('chat-island-expanded', expanded ? '1' : '0')

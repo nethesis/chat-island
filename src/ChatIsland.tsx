@@ -64,6 +64,7 @@ function summarize(): ConversationSummary[] {
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
+        muted: !!st.muted[c.peer],
         last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
       }
     })
@@ -291,6 +292,21 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     useStore.setState({ me: cfg.username, mucHost: `conference.${DOMAIN}`, maxHeads, newChatButton }) // eslint-disable-line react-hooks/exhaustive-deps
     // The heads and the open chat come back after a reload, per user; a hidden island neither reads nor writes them.
     const dockKey = `chat-island-dock:${cfg.host}:${cfg.username}`
+    // Muted chats, per user in this browser.
+    const muteKey = `chat-island-muted:${cfg.host}:${cfg.username}`
+    try {
+      useStore.setState({ muted: JSON.parse(localStorage.getItem(muteKey) ?? '{}') ?? {} })
+    } catch {
+      /* none remembered */
+    }
+    const unsaveMuted = useStore.subscribe((st, prev) => {
+      if (st.muted === prev.muted) return
+      try {
+        localStorage.setItem(muteKey, JSON.stringify(st.muted))
+      } catch {
+        /* not remembered */
+      }
+    })
     let unsave = () => {}
     const restored = new Set<string>()
     if (!headlessRef.current) {
@@ -378,7 +394,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const notify = (peer: string, m: Message) => {
       const st = useStore.getState()
       const visible = document.visibilityState === 'visible'
-      if (visible && st.open === peer) return
+      if ((visible && st.open === peer) || st.muted[peer]) return
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
       const text = m.oob ? 'Attachment' : emojify(m.body)
@@ -446,6 +462,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offNew = listen('chat-island-new', () => s.setPicker(true))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
+    const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
     const offGroup = listen<{ name: string; members: string[] }>('chat-island-group-create', ({ name, members }) => name && members?.length && actions.createGroup(name, members))
     const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
     const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize() }))
@@ -458,6 +475,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offDelete()
       offSend()
       offGroup()
+      offMute()
+      unsaveMuted()
       offOpen()
       offClose()
       offContacts()
@@ -480,7 +499,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length,
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(','),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize() }), [listKey])
 
