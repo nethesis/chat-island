@@ -163,6 +163,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
       {menu && (
         <WindowMenu
           theme={theme}
+          themes={!docked}
           onClose={() => setMenu(false)}
           onSettings={c.kind === 'group' && c.owner && !kicked ? () => setSettings(true) : undefined}
           actions={[
@@ -248,7 +249,7 @@ const THEMES: { value: Theme; label: string; icon: React.ReactNode }[] = [
 ]
 
 /** The header menu; a click elsewhere closes it. */
-function WindowMenu({ theme, onClose, onSettings, actions }: { theme?: Theme; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
+function WindowMenu({ theme, themes, onClose, onSettings, actions }: { theme?: Theme; themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
   const items = [...actions, ...(onSettings ? [{ label: 'Group settings', icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -273,9 +274,10 @@ function WindowMenu({ theme, onClose, onSettings, actions }: { theme?: Theme; on
           {it.label}
         </button>
       ))}
-      {items.length > 0 && <div className="ci-my-1 ci-border-t ci-border-gray-300 dark:ci-border-gray-600" />}
-      <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>
-      {THEMES.map((t) => (
+      {/* Pinned, the host's theme applies: no choice here. */}
+      {themes && items.length > 0 && <div className="ci-my-1 ci-border-t ci-border-gray-300 dark:ci-border-gray-600" />}
+      {themes && <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>}
+      {themes && THEMES.map((t) => (
         <button
           key={t.value}
           type="button"

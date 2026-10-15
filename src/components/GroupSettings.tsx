@@ -85,7 +85,8 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
                   <button type="button" onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.username) : [...p, c.username]))} className="ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-1.5 ci-border-0 ci-bg-transparent ci-text-left ci-text-inherit hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700">
                     <Avatar contact={c} username={c.username} size={28} />
                     <span className="ci-flex-1 ci-truncate">{c.name}</span>
-                    <span className={`ci-w-5 ci-h-5 ci-rounded-full ci-border ci-flex ci-items-center ci-justify-center ${on ? 'ci-bg-phoneIslandCall dark:ci-bg-phoneIslandCallDark ci-border-transparent ci-text-white dark:ci-text-gray-950' : 'ci-border-gray-400 dark:ci-border-gray-600'}`}>{on && Icon.check}</span>
+                    {/* As in New chat: the circled check when picked. */}
+                    {on ? <span className="ci-flex ci-text-phoneIslandCall dark:ci-text-phoneIslandCallDark">{Icon.circleCheck}</span> : <span className="ci-w-5 ci-h-5 ci-box-border ci-rounded-full ci-border ci-border-solid ci-border-gray-400 dark:ci-border-gray-600" />}
                   </button>
                 </li>
               )

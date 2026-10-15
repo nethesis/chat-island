@@ -34,7 +34,7 @@ import '@nethesis/chat-island/dist/index.css'
 | --- | --- | --- |
 | `dataConfig` | | Base64 of `<cti_host>:<cti_username>:<cti_token>` |
 | `theme` | host's `dark` class | `light`, `dark` or `system` |
-| `position` | `bottom-right` | or `bottom-left` |
+| `position` | `bottom-right` | `bottom-left`, `top-right` or `top-left`; with `onDragStart`, panels open away from that corner |
 | `serviceWorker` | | URL of `chat-island-sw.js` on the host: notifications with the tab closed |
 | `notifications` | `click` | `auto` asks for permission once online |
 | `newChatButton` | `true` | the new chat button while there are no chats; `false` when the host has its own list (a `+` under the heads stays) |

@@ -21,8 +21,8 @@ import './index.css'
 export interface ChatIslandProps {
   /** Base64 of "<cti_host>:<cti_username>:<cti_token>", the same shape phone-island uses. */
   dataConfig: string
-  /** Where the island sits; default bottom-right. */
-  position?: 'bottom-right' | 'bottom-left'
+  /** Where the island sits; default bottom-right. With a host drag, panels open away from this corner. */
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
   /** 'light', 'dark' or 'system'; default follows the host's `dark` class on <html>. */
   theme?: Theme
   /** URL of chat-island-sw.js served by the host app; enables notifications when the tab is closed. */
@@ -118,7 +118,6 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
 
 export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false }: ChatIslandProps) {
   const cfg = useMemo(() => parseConfig(dataConfig), [dataConfig])
-  const [dark, themeChoice] = useDark(theme)
   // Read at the moment they are needed: changing them must not tear the connection down.
   const cfgRef = useRef(cfg)
   const soundRef = useRef(sound)
@@ -135,6 +134,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-rail-target', ({ el }) => useStore.setState({ rail: el ?? null })), [])
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-pin-target', ({ el }) => useStore.setState({ panel: el ?? null })), [])
   const { rail, panel } = useStore(useShallow((st) => ({ rail: st.rail, panel: st.panel })))
+  // Pinned, the chat is part of the host's page: its theme, not the island's own choice.
+  const [dark, themeChoice] = useDark(theme, !!rail)
   // Back from the browser's page cache the old connection is gone: start a new one.
   const [epoch, setEpoch] = useState(0)
   useEffect(() => {
@@ -515,6 +516,14 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   // The island places itself (no host drag): panels open beside the dock on the side with room, up or down.
   const free = draggable && !onDragStart
   const { expanded, place } = useStore(useShallow((st) => ({ expanded: st.expanded, place: st.place })))
+  // A host that moves the island (an app window) says which corner it is in: panels open away from it.
+  useLayoutEffect(() => {
+    if (free) return
+    const x = position.endsWith('left') ? 'right' : 'left'
+    const y = position.startsWith('top') ? 'down' : 'up'
+    const p = useStore.getState().place
+    if (p.x !== x || p.y !== y) useStore.setState({ place: { x, y } })
+  }, [free, position])
   useLayoutEffect(() => {
     if (!free) return
     const fit = () => {
@@ -534,20 +543,23 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     return () => window.removeEventListener('resize', fit)
   }, [free, shownPeer, shownPicker, expanded, drag.anchor])
   // A panel beside the dock, offset past the ones nearer to it; it grows out of, and shrinks into, the corner by the dock.
+  const closedFrom = `inset(${place.y === 'up' ? '100%' : '0'} ${place.x === 'left' ? '0' : '100%'} ${place.y === 'up' ? '0' : '100%'} ${place.x === 'left' ? '100%' : '0'} round 1.5rem)`
   const beside = (offset: number): React.CSSProperties | undefined =>
     free
       ? ({
           position: 'absolute',
           [place.y === 'up' ? 'bottom' : 'top']: 0,
           [place.x === 'left' ? 'right' : 'left']: `calc(100% + ${offset}rem)`,
-          '--ci-closed': `inset(${place.y === 'up' ? '100%' : '0'} ${place.x === 'left' ? '0' : '100%'} ${place.y === 'up' ? '0' : '100%'} ${place.x === 'left' ? '100%' : '0'} round 1.5rem)`,
+          '--ci-closed': closedFrom,
         } as React.CSSProperties)
-      : undefined
+      : ({ '--ci-closed': closedFrom } as React.CSSProperties)
   const morphFrom = (h: number) =>
     place.y === 'up' ? `inset(calc(100% - ${h}px) -3rem -4.5rem -3rem round 1.5rem)` : `inset(-1rem -3rem calc(100% - ${h}px) -3rem round 1.5rem)`
   if (!cfg || headless) return null
   const anchored = draggable && !onDragStart && drag.anchor ? { right: drag.anchor.right, bottom: drag.anchor.bottom } : undefined
-  const side = anchored ? '' : position === 'bottom-left' ? 'ci-left-4 ci-bottom-5' : 'ci-right-4 ci-bottom-5'
+  const side = anchored ? '' : `${position.endsWith('left') ? 'ci-left-4' : 'ci-right-4'} ${position.startsWith('top') ? 'ci-top-5' : 'ci-bottom-5'}`
+  // In a row beside the dock (host drag): mirrored when the dock is on the left, top-aligned when it is at the top.
+  const flow = free ? 'ci-items-end' : `${place.y === 'down' ? 'ci-items-start' : 'ci-items-end'} ${place.x === 'right' ? 'ci-flex-row-reverse' : ''}`
   // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
   if (rail) {
     const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status}><Boundary>{children}</Boundary></div>
@@ -563,7 +575,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       ref={rootRef}
       style={anchored}
       onClickCapture={drag.onClickCapture}
-      className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ci-items-end ci-gap-3 ci-font-sans ci-select-none`}
+      className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ${flow} ci-gap-3 ci-font-sans ci-select-none`}
       data-status={status}
     >
       <Boundary>

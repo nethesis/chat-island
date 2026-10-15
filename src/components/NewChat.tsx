@@ -15,7 +15,7 @@ export async function shrink(file: File): Promise<string> {
 }
 
 export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen: (peer: string) => void; onCreateGroup: (name: string, members: string[], avatar?: string) => Promise<void>; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
-  const { contacts, online, mobile, setPicker } = useStore()
+  const { contacts, online, mobile, setPicker, myName } = useStore()
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [name, setName] = useState('')
@@ -33,7 +33,10 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
   const create = async () => {
     setBusy(true)
     try {
-      await onCreateGroup(name.trim(), selected, avatar)
+      // No name, as in WhatsApp: the members' first names, mine last; the owner can rename it later.
+      const first = (n: string) => n.split(' ')[0]
+      const fallback = [...selected.map((u) => first(contacts[u]?.name ?? u)), ...(myName ? [first(myName)] : [])].join(', ')
+      await onCreateGroup(name.trim() || fallback, selected, avatar)
     } finally {
       setBusy(false)
     }
@@ -114,11 +117,11 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Group name"
-              onKeyDown={(e) => e.key === 'Enter' && name.trim() && !busy && create()}
+              placeholder="Group name (optional)"
+              onKeyDown={(e) => e.key === 'Enter' && !busy && create()}
               className={`ci-flex-1 ci-min-w-0 ci-w-0 ci-box-border ci-px-4 ci-bg-transparent ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-border-transparent focus:ci-ring-2 focus:ci-ring-emerald-500 dark:focus:ci-ring-emerald-300 ${field}`}
             />
-            <Button variant="default" className="ci-w-auto ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" disabled={!name.trim() || busy} onClick={create}>
+            <Button variant="default" className="ci-w-auto ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" disabled={busy} onClick={create}>
               {Icon.group}
               {busy ? '…' : 'Create group'}
             </Button>

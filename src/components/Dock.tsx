@@ -14,7 +14,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
   if (rail)
     return (
       <div className="ci-flex ci-flex-col ci-items-center ci-gap-4">
-        {order.length > 0 && <div className="ci-w-6 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700" />}
+        <div className="ci-w-6 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700" />
         {order.slice(0, maxHeads).map((peer) => (
           <Head key={peer} peer={peer} size={36} rail />
         ))}
