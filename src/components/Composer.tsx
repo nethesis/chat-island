@@ -267,73 +267,66 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
         </div>
       )}
       <input ref={file} type="file" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
-      <Button variant="transparent" disabled={disabled || busy} title="Attach files" onClick={() => file.current?.click()} className="ci-h-10 ci-w-10">
-        {Icon.clip}
-      </Button>
-      <div className="ci-relative ci-flex-1 ci-min-w-0">
-        <button
-          type="button"
-          disabled={disabled}
-          title="Emoji"
-          aria-label="Emoji"
-          aria-expanded={emoji}
-          onClick={() => setEmoji((v) => !v)}
-          className="ci-absolute ci-left-2 ci-bottom-1 ci-z-10 ci-h-8 ci-w-8 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40"
-        >
+      {/* One box, as in the phone island: attach and emoji on the left, the microphone or send on the right. */}
+      <div className="ci-flex-1 ci-min-w-0 ci-flex ci-items-end ci-gap-0.5 ci-px-1 ci-py-1 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark focus-within:ci-ring-2 focus-within:ci-ring-gray-400 dark:focus-within:ci-ring-gray-500">
+        <button type="button" disabled={disabled || busy} title="Attach files" aria-label="Attach files" onClick={() => file.current?.click()} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+          {Icon.clip}
+        </button>
+        <button type="button" disabled={disabled} title="Emoji" aria-label="Emoji" aria-expanded={emoji} onClick={() => setEmoji((v) => !v)} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.smile}
         </button>
-        <textarea
-          ref={box}
-          value={text}
-          disabled={disabled}
-          rows={1}
-          placeholder={disabled ? disabledText ?? 'Connecting…' : busy ? 'Sending…' : files.length ? 'Add a caption' : 'Write a message'}
-          onChange={(e) => change(e.target.value)}
-          onClick={(e) => findMention(text, e.currentTarget.selectionStart)}
-          onBlur={() => setMention(null)}
-          onPaste={(e) => {
-            if (!e.clipboardData.files.length) return
-            e.preventDefault()
-            addFiles(e.clipboardData.files)
-          }}
-          onKeyDown={(e) => {
-            if (candidates.length) {
-              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.preventDefault()
-                setPick((i) => (i + (e.key === 'ArrowDown' ? 1 : candidates.length - 1)) % candidates.length)
-                return
-              }
-              if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault()
-                choose(candidates[Math.min(pick, candidates.length - 1)].u)
-                return
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault()
-                setMention(null)
-                return
-              }
-            }
-            // Enter sends; Shift+Enter, or Enter inside an open ``` block, adds a line.
-            const inFence = (text.match(/```/g) ?? []).length % 2 === 1
-            if (e.key === 'Enter' && !e.shiftKey && !inFence) {
+          <textarea
+            ref={box}
+            value={text}
+            disabled={disabled}
+            rows={1}
+            placeholder={disabled ? disabledText ?? 'Connecting…' : busy ? 'Sending…' : files.length ? 'Add a caption' : 'Write a message'}
+            onChange={(e) => change(e.target.value)}
+            onClick={(e) => findMention(text, e.currentTarget.selectionStart)}
+            onBlur={() => setMention(null)}
+            onPaste={(e) => {
+              if (!e.clipboardData.files.length) return
               e.preventDefault()
-              submit()
-            }
-          }}
-          className={`${disabled ? 'ci-overflow-hidden' : ''} ci-block ci-w-full ci-resize-none ci-max-h-32 ci-pl-11 ci-pr-4 ci-py-2.5 ci-rounded-3xl ci-border-0 ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-ring-2 focus:ci-ring-gray-400 dark:focus:ci-ring-gray-500 ci-text-sm`}
-          style={{ height: Math.min(128, 40 + 20 * (text.split('\n').length - 1)) }}
-        />
+              addFiles(e.clipboardData.files)
+            }}
+            onKeyDown={(e) => {
+              if (candidates.length) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setPick((i) => (i + (e.key === 'ArrowDown' ? 1 : candidates.length - 1)) % candidates.length)
+                  return
+                }
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault()
+                  choose(candidates[Math.min(pick, candidates.length - 1)].u)
+                  return
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setMention(null)
+                  return
+                }
+              }
+              // Enter sends; Shift+Enter, or Enter inside an open ``` block, adds a line.
+              const inFence = (text.match(/```/g) ?? []).length % 2 === 1
+              if (e.key === 'Enter' && !e.shiftKey && !inFence) {
+                e.preventDefault()
+                submit()
+              }
+            }}
+            className={`${disabled ? 'ci-overflow-hidden' : ''} ci-block ci-flex-1 ci-min-w-0 ci-resize-none ci-max-h-32 ci-px-1 ci-py-1.5 ci-border-0 ci-bg-transparent ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none ci-text-sm`}
+            style={{ height: Math.min(128, 32 + 20 * (text.split('\n').length - 1)) }}
+          />
+        {text.trim() || files.length || busy ? (
+          <button type="button" disabled={disabled || busy} onClick={submit} title="Send" aria-label="Send" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-emerald-700 dark:ci-text-emerald-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+            {Icon.send}
+          </button>
+        ) : (
+          <button type="button" disabled={disabled || typeof MediaRecorder === 'undefined'} onClick={record} title="Record a voice note" aria-label="Record a voice note" className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+            {Icon.mic}
+          </button>
+        )}
       </div>
-      {text.trim() || files.length || busy ? (
-        <Button variant="default" disabled={disabled || busy} onClick={submit} title="Send" className="ci-h-10 ci-w-10">
-          {Icon.send}
-        </Button>
-      ) : (
-        <Button variant="default" disabled={disabled || typeof MediaRecorder === 'undefined'} onClick={record} title="Record a voice note" aria-label="Record a voice note" className="ci-h-10 ci-w-10">
-          {Icon.mic}
-        </Button>
-      )}
     </div>
     </div>
   )

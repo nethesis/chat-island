@@ -159,7 +159,7 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
           {Icon.dots}
         </Button>
       </div>
-      <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
+      <div className="ci-mx-4 ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       {menu && (
         <WindowMenu
           theme={theme}
