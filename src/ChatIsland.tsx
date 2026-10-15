@@ -138,7 +138,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-pin-target', ({ el }) => useStore.setState({ panel: el ?? null })), [])
   const { rail, panel } = useStore(useShallow((st) => ({ rail: st.rail, panel: st.panel })))
   // Pinned, the chat is part of the host's page: its theme, not the island's own choice.
-  const [dark, themeChoice] = useDark(theme, !!rail)
+  const [dark] = useDark(theme, !!rail)
   // Back from the browser's page cache the old connection is gone: start a new one.
   const [epoch, setEpoch] = useState(0)
   useEffect(() => {
@@ -587,7 +587,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
-        {panel && (picker || open) && createPortal(root('ci-h-full', picker ? <NewChat docked onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} /> : <ChatWindow docked peer={open!} actions={actions} theme={themeChoice} />), panel)}
+        {panel && (picker || open) && createPortal(root('ci-h-full', picker ? <NewChat docked onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} /> : <ChatWindow docked peer={open!} actions={actions} />), panel)}
       </>
     )
   }
@@ -603,7 +603,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       <Boundary>
         {shownPeer && (
           <div className={closing ? 'ci-anim-close' : morph.current ? 'ci-anim-morph' : 'ci-anim-open'} style={{ ...beside(shownPicker ? 26.5 : 0.75), ...(morph.current ? ({ '--ci-morph': morphFrom(morph.current) } as React.CSSProperties) : {}) }} onAnimationEnd={closed}>
-            <ChatWindow peer={shownPeer} actions={actions} theme={themeChoice} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
+            <ChatWindow peer={shownPeer} actions={actions} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
           </div>
         )}
         {shownPicker && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store'
 import { emit } from '../events'
@@ -8,7 +8,6 @@ import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { GroupSettings } from './GroupSettings'
 import type { Message, Reply } from '../types'
-import type { Theme } from '../theme'
 
 export interface WindowActions {
   send: (peer: string, text: string, reply?: Reply, files?: File[]) => Promise<void>
@@ -45,7 +44,7 @@ function Who({ username, devices = [], mobile }: { username: string; devices?: s
 const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy', 'ringing', 'onhold'].includes(presence)
 
 /** The floating conversation: phone-island surface, radius and buttons. */
-export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer: string; actions: WindowActions; theme?: Theme; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
+export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
   const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted } = useStore(
     useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted })),
@@ -175,7 +174,6 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
       <div className="ci-mx-4 ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       {menu && (
         <WindowMenu
-          theme={theme}
           themes={!docked}
           onClose={() => setMenu(false)}
           onSettings={c.kind === 'group' && c.owner && !kicked ? () => setSettings(true) : undefined}
@@ -257,16 +255,13 @@ export function ChatWindow({ peer, actions, theme, onDragStart, docked }: { peer
   )
 }
 
-const THEMES: { value: Theme; label: string; icon: React.ReactNode }[] = [
-  { value: 'light', label: 'Light', icon: Icon.sun },
-  { value: 'dark', label: 'Dark', icon: Icon.moon },
-  { value: 'system', label: 'System', icon: Icon.monitor },
-]
-
 /** The header menu; a click elsewhere closes it. */
-function WindowMenu({ theme, themes, onClose, onSettings, actions }: { theme?: Theme; themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
+function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
   const items = [...actions, ...(onSettings ? [{ label: 'Group settings', icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
+  // The theme in effect, whatever was chosen (system included).
+  const [dark, setDark] = useState(false)
+  useLayoutEffect(() => setDark(!!box.current?.closest('.ci-dark')), [])
   useEffect(() => {
     const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[aria-label="Menu"]') && onClose()
     document.addEventListener('pointerdown', away, true)
@@ -289,27 +284,22 @@ function WindowMenu({ theme, themes, onClose, onSettings, actions }: { theme?: T
           {it.label}
         </button>
       ))}
-      {/* Pinned, the host's theme applies: no choice here. */}
+      {/* One switch to the other theme; pinned, the host's theme applies. */}
       {themes && items.length > 0 && <div className="ci-my-1 ci-border-t ci-border-gray-300 dark:ci-border-gray-600" />}
-      {themes && <div className="ci-px-4 ci-py-1 ci-font-semibold ci-text-gray-600 dark:ci-text-gray-50">Theme</div>}
-      {themes && THEMES.map((t) => (
+      {themes && (
         <button
-          key={t.value}
           type="button"
-          role="menuitemradio"
-          aria-checked={theme === t.value}
+          role="menuitem"
           onClick={() => {
-            emit('chat-island-theme-change', { theme: t.value })
+            emit('chat-island-theme-change', { theme: dark ? 'light' : 'dark' })
             onClose()
           }}
           className="ci-w-full ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-2 ci-border-0 ci-bg-transparent ci-text-left ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700"
         >
-          <span className="ci-text-gray-600 dark:ci-text-gray-100">{t.icon}</span>
-          {t.label}
-          {/* The tick on the right, like phone-island's menu. */}
-          <span className="ci-ml-auto ci-pl-6 ci-w-10 ci-shrink-0 ci-flex ci-justify-end ci-text-accent-600 dark:ci-text-accent-400">{theme === t.value && Icon.check}</span>
+          <span className="ci-text-gray-600 dark:ci-text-gray-100">{dark ? Icon.sun : Icon.moon}</span>
+          {dark ? 'Switch to light theme' : 'Switch to dark theme'}
         </button>
-      ))}
+      )}
     </div>
   )
 }
