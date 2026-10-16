@@ -16,11 +16,12 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
     return (
       <div className="ci-flex ci-flex-col ci-items-center ci-gap-4">
         <div className="ci-w-6 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700" />
+        {/* First, so it stays put as heads come and go. */}
+        <NewChat rail />
         {order.slice(0, maxHeads).map((peer) => (
           <Head key={peer} peer={peer} size={36} rail />
         ))}
         {order.length > maxHeads && <Overflow peers={order.slice(maxHeads)} rail />}
-        <NewChat rail />
       </div>
     )
   // Reversed column: the most recent head sits at the bottom, beside the open
