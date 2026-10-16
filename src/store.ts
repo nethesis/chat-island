@@ -17,6 +17,7 @@ interface State {
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
   open: string | null      // the conversation whose window is open
   picker: boolean          // the "new chat" panel
+  synced: boolean          // groups and recent messages loaded once since start
   push: 'unavailable' | 'ask' | 'enabled' | 'denied'
   enablePush: () => void
   maxHeads: number
@@ -102,6 +103,7 @@ export const useStore = create<State>((set, get) => ({
   order: [],
   open: null,
   picker: false,
+  synced: false,
   push: 'unavailable',
   enablePush: () => {},
   maxHeads: 5,
@@ -122,7 +124,7 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, muted: {} }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, synced: false, muted: {} }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
   setContacts: (list) =>

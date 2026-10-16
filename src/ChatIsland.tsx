@@ -369,6 +369,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
               restored.clear()
             })
             .catch(() => {})
+            .then(() => useStore.setState({ synced: true }))
         }
       },
       typing: (peer, composing) => s.setTyping(peer, composing),
@@ -475,7 +476,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
     const offGroup = listen<{ name: string; members: string[] }>('chat-island-group-create', ({ name, members }) => name && members?.length && actions.createGroup(name, members))
     const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
-    const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize() }))
+    const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }))
     return () => {
       window.removeEventListener('pagehide', bye)
       window.clearInterval(mobileTimer)
@@ -509,9 +510,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(','),
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + (st.synced ? '#synced' : ''),
   )
-  useEffect(() => emit('chat-island-conversations', { conversations: summarize() }), [listKey])
+  useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
 
   // Unread badge for the host, whenever it changes.
   const unread = useStore((st) => Object.values(st.conversations).reduce((n, c) => n + c.unread, 0))

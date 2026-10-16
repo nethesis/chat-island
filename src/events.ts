@@ -6,7 +6,7 @@ export function emit(name: 'chat-island-message', detail: Message & { peer: stri
 export function emit(name: 'chat-island-status', detail: { status: Status; error?: string }): void
 export function emit(name: 'chat-island-error', detail: { scope: string; message: string }): void
 export function emit(name: 'chat-island-push', detail: { enabled: boolean }): void
-export function emit(name: 'chat-island-conversations', detail: { conversations: ConversationSummary[] }): void
+export function emit(name: 'chat-island-conversations', detail: { conversations: ConversationSummary[]; ready: boolean }): void
 export function emit(name: 'chat-island-call', detail: { username: string; number: string }): void
 export function emit(
   name: 'chat-island-notify',

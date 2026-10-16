@@ -128,7 +128,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |
 | `chat-island-pin-target` | in | `{ el }` the host's panel for the open conversation while pinned |
-| `chat-island-conversations` | out | `{ conversations }` newest first |
+| `chat-island-conversations` | out | `{ conversations, ready }` newest first; `ready` once groups and recent messages are loaded |
 | `chat-island-unread` | out | `{ total }` |
 | `chat-island-message` | out | every new message |
 | `chat-island-status` | out | `{ status }` connecting, online, offline, error, unauthorized |
