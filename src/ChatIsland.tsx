@@ -508,7 +508,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   // The conversation list for the host: pushed whenever it changes.
   const listKey = useStore((st) =>
     Object.values(st.conversations)
-      .map((c) => `${c.peer}:${c.kind}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
+      .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
       .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(','),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize() }), [listKey])

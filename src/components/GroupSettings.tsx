@@ -65,7 +65,7 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
           aria-label={t('Common.Group name')}
           className="ci-flex-1 ci-min-w-0 ci-h-9 ci-px-3 ci-rounded-full ci-border-0 ci-outline-none ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white"
         />
-        <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4" disabled={busy || !name.trim() || name.trim() === conv.name} onClick={() => run({ name: name.trim() })}>
+        <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4" disabled={busy} onClick={() => name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}>
           {t('Group.Save')}
         </Button>
       </div>
@@ -107,8 +107,8 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
         <>
           <div className="ci-flex ci-items-center ci-justify-between ci-pl-4 ci-pr-3 ci-pt-3 ci-pb-1">
             <span className="ci-text-xs ci-font-medium ci-text-gray-500 dark:ci-text-gray-400">{members.length} members</span>
-            <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1" disabled={busy} onClick={() => setAdding(true)}>
-              {Icon.plus} {t('Group.Add members')}
+            <Button variant="tertiary" className="ci-w-auto" disabled={busy} onClick={() => setAdding(true)}>
+              {Icon.circlePlus} {t('Group.Add members')}
             </Button>
           </div>
           <ul className="ci-flex-1 ci-overflow-y-auto ci-m-0 ci-p-0 ci-list-none">
