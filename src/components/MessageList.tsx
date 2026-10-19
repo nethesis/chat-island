@@ -195,6 +195,12 @@ function Inline({ text, at: mention }: { text: string; at: Mentions }) {
   return <>{out}</>
 }
 
+// Up to three emoji and nothing else: shown large, as WhatsApp does.
+const bigEmoji = (text: string) => {
+  const g = [...new Intl.Segmenter().segment(emojify(text).replace(/\s+/g, ''))]
+  return g.length > 0 && g.length <= 3 && g.every((x) => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(x.segment))
+}
+
 const Body = memo(function Body({ text, mine }: { text: string; mine?: boolean }) {
   const contacts = useStore((st) => st.contacts)
   const me = useStore((st) => st.me)
@@ -447,7 +453,7 @@ export function MessageList({
                   <div
                     title={time(m.ts)}
                     onDoubleClick={() => canReact && react(target!, QUICK_REACTIONS[0])}
-                    className={`ci-px-3.5 ci-py-2 ci-rounded-3xl ci-text-sm ci-select-text ci-cursor-text ${
+                    className={`ci-px-3.5 ci-py-2 ci-rounded-3xl ${!m.reply && !m.files && !m.oob && bigEmoji(m.body) ? 'ci-text-4xl ci-leading-tight' : 'ci-text-sm'} ci-select-text ci-cursor-text ${
                       m.mine
                         ? 'ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900 ci-rounded-br-lg'
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-tl-lg'
