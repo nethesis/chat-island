@@ -1,9 +1,9 @@
 import type { Contact } from './types'
 
-/** CTI operators (the middleware's /user/endpoints/all, all_avatars) as island contacts, without me. */
-export function contactsFromOperators(operators: Record<string, any> | undefined, avatars: Record<string, string> | undefined, me: string, extensions?: Record<string, any>): Contact[] {
+/** CTI operators (the middleware's /user/endpoints/all, all_avatars) as island contacts; my entry tells the island my presence and stays out of the list. */
+export function contactsFromOperators(operators: Record<string, any> | undefined, avatars: Record<string, string> | undefined, _me: string, extensions?: Record<string, any>): Contact[] {
   return Object.values(operators ?? {})
-    .filter((op: any) => op?.username && op.username !== me)
+    .filter((op: any) => op?.username)
     .map((op: any) => ({
       username: op.username,
       name: op.name || op.username,

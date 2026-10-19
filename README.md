@@ -53,7 +53,7 @@ With `pinnable` the chat menu offers Pin to side panel: the host mounts two slot
 
 A group's owner changes its picture, name and members from the chat menu (Group settings); each change is a quiet line in the group (no body: no push, no unread) that every member's client refreshes on.
 
-`contactsFromOperators(operators, avatars, me)` turns the CTI operators into the contacts the island takes with `chat-island-contacts`.
+`contactsFromOperators(operators, avatars, me)` turns the CTI operators into the contacts the island takes with `chat-island-contacts`. My own entry stays out of the list: it tells the island my presence, and in DND no chat sounds or notifies.
 
 ## Integrate in any template
 

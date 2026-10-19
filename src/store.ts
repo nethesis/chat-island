@@ -29,6 +29,7 @@ interface State {
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
   panel: HTMLElement | null // the host's side panel for the open conversation
   muted: Record<string, boolean> // peers whose messages come without sound or notification
+  dnd: boolean // my CTI presence is DND: no sound or notification for any chat
   lang: Lang
 
   setStatus(s: Status, err?: string): void
@@ -110,6 +111,7 @@ export const useStore = create<State>((set, get) => ({
   newChatButton: true,
   pinnable: false,
   muted: {},
+  dnd: false,
   lang: 'en',
   nativeTooltips: false,
   rail: null,
@@ -124,13 +126,15 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, synced: false, muted: {} }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
+  // My own entry, when the host sends it, only carries my presence.
   setContacts: (list) =>
     set((s) => ({
+      dnd: list.some((c) => c?.username === s.me) ? list.some((c) => c?.username === s.me && c.presence === 'dnd') : s.dnd,
       contacts: Object.fromEntries(
-        list.filter((c) => c?.username).map((c) => [c.username, { ...c, name: c.name || c.username, ...('avatar' in c ? {} : { avatar: s.contacts[c.username]?.avatar }), ...(c.devices ? {} : { devices: s.contacts[c.username]?.devices }) }]),
+        list.filter((c) => c?.username && c.username !== s.me).map((c) => [c.username, { ...c, name: c.name || c.username, ...('avatar' in c ? {} : { avatar: s.contacts[c.username]?.avatar }), ...(c.devices ? {} : { devices: s.contacts[c.username]?.devices }) }]),
       ),
     })),
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),

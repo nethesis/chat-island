@@ -405,7 +405,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const notify = (peer: string, m: Message) => {
       const st = useStore.getState()
       const visible = document.visibilityState === 'visible'
-      if ((visible && st.open === peer) || st.muted[peer]) return
+      if ((visible && st.open === peer) || st.muted[peer] || st.dnd) return
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
       const text = m.oob ? t('Common.Attachment') : emojify(m.body)
