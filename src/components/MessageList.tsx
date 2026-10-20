@@ -165,13 +165,13 @@ const namesOnly = (body: string, urls: string[]) => body === urls.map(fileName).
 const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)|(?<![\w@.])@([\w.-]*\w)/g
 
 /** The searched text marked wherever it appears, as WhatsApp does; case does not matter. */
-// The yellow follows the bubble: amber-300 on a dark one, amber-700 on a light one.
-const MARK = { mine: 'ci-bg-amber-300 ci-text-gray-900 dark:ci-bg-amber-700 dark:ci-text-white', theirs: 'ci-bg-amber-700 ci-text-white dark:ci-bg-amber-300 dark:ci-text-gray-900' }
-const RING = { mine: 'ci-ring-amber-300 dark:ci-ring-amber-700', theirs: 'ci-ring-amber-700 dark:ci-ring-amber-300' }
-const mark = (text: string, hl?: string, mine?: boolean): ReactNode[] => {
+// The designer's yellow, the same on every bubble and theme; only the current hit has the border.
+const MARK = 'ci-bg-yellow-400 ci-text-gray-900'
+const RING = 'ci-ring-yellow-600 dark:ci-ring-yellow-400'
+const mark = (text: string, hl?: string): ReactNode[] => {
   if (!hl || hl.length < 2) return [text]
   const parts = text.split(new RegExp(`(${hl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
-  return parts.map((p, i) => (i % 2 ? <mark key={i} className={`ci-rounded-sm ${mine ? MARK.mine : MARK.theirs}`}>{p}</mark> : p))
+  return parts.map((p, i) => (i % 2 ? <mark key={i} className={`ci-rounded-sm ${MARK}`}>{p}</mark> : p))
 }
 
 /** @username of someone the island knows: highlighted, more so when it is me. */
@@ -183,11 +183,11 @@ function Inline({ text, at: mention, hl }: { text: string; at: Mentions; hl?: st
   for (const m of text.matchAll(INLINE)) {
     const s = m[0]
     const at = m.index ?? 0
-    if (at > last) out.push(<Fragment key={`t${at}`}>{mark(emojify(text.slice(last, at)), hl, mention.mine)}</Fragment>)
-    if (m[1]) out.push(<code key={at} className="ci-px-1 ci-py-0.5 ci-rounded ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-[0.85em]">{mark(s.slice(1, -1), hl, mention.mine)}</code>)
-    else if (m[2]) out.push(<strong key={at}>{mark(s.slice(2, -2), hl, mention.mine)}</strong>)
-    else if (m[3]) out.push(<s key={at}>{mark(s.slice(2, -2), hl, mention.mine)}</s>)
-    else if (m[4]) out.push(<em key={at}>{mark(s.slice(1, -1), hl, mention.mine)}</em>)
+    if (at > last) out.push(<Fragment key={`t${at}`}>{mark(emojify(text.slice(last, at)), hl)}</Fragment>)
+    if (m[1]) out.push(<code key={at} className="ci-px-1 ci-py-0.5 ci-rounded ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-[0.85em]">{mark(s.slice(1, -1), hl)}</code>)
+    else if (m[2]) out.push(<strong key={at}>{mark(s.slice(2, -2), hl)}</strong>)
+    else if (m[3]) out.push(<s key={at}>{mark(s.slice(2, -2), hl)}</s>)
+    else if (m[4]) out.push(<em key={at}>{mark(s.slice(1, -1), hl)}</em>)
     else if (m[5]) out.push(<a key={at} href={m[6]} target="_blank" rel="noreferrer" className="ci-underline">{m[5]}</a>)
     else if (m[8] !== undefined) {
       const u = m[8].toLowerCase()
@@ -201,7 +201,7 @@ function Inline({ text, at: mention, hl }: { text: string; at: Mentions; hl?: st
     } else out.push(<a key={at} href={s} target="_blank" rel="noreferrer" className="ci-underline ci-break-all">{s}</a>)
     last = at + s.length
   }
-  if (last < text.length) out.push(<Fragment key="end">{mark(emojify(text.slice(last)), hl, mention.mine)}</Fragment>)
+  if (last < text.length) out.push(<Fragment key="end">{mark(emojify(text.slice(last)), hl)}</Fragment>)
   return <>{out}</>
 }
 
@@ -222,7 +222,7 @@ const Body = memo(function Body({ text, mine, hl }: { text: string; mine?: boole
       {parts.map((p, i) =>
         i % 2 ? (
           <pre key={i} className="ci-my-1 ci-p-2 ci-rounded-xl ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-xs ci-overflow-x-auto ci-whitespace-pre">
-            {mark(p.replace(/\n$/, ''), hl, mine)}
+            {mark(p.replace(/\n$/, ''), hl)}
           </pre>
         ) : (
           <Inline key={i} text={p.replace(/^(\s*)[-*] (?=\S)/gm, '$1• ')} at={at} hl={hl} />
@@ -486,7 +486,7 @@ export function MessageList({
                       m.mine
                         ? 'ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900 ci-rounded-br-lg'
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-tl-lg'
-                    } ${m.pending ? 'ci-opacity-60' : ''} ${current === m.id ? `ci-ring-2 ${m.mine ? RING.mine : RING.theirs}` : ''}`}
+                    } ${m.pending ? 'ci-opacity-60' : ''} ${current === m.id ? `ci-ring-2 ${RING}` : ''}`}
                   >
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? t('Common.You') : nameOf(u))} />}
                     {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} hl={highlight} />}

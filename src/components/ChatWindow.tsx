@@ -140,7 +140,11 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
 
   // The hit on show may be older than what is loaded: page back until it is there.
   const hit = hits[at]
-  const found = (h: SearchHit) => useStore.getState().conversations[peer]?.messages.find((m) => m.id === h.id || (!!h.oid && m.oid === h.oid))
+  // A group message is keyed by its sender's origin-id, which the room's archive does not keep: same text, same moment.
+  const found = (h: SearchHit) => {
+    const ms = useStore.getState().conversations[peer]?.messages ?? []
+    return ms.find((m) => m.id === h.id || (!!h.oid && m.oid === h.oid)) ?? ms.find((m) => m.body === h.body && Math.abs(m.ts - h.ts) < 2000)
+  }
   const [current, setCurrent] = useState<string | undefined>(undefined)
   const [jump, setJump] = useState(0)
   useEffect(() => {
