@@ -117,7 +117,9 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 
 | Event | Direction | Detail |
 | --- | --- | --- |
-| `chat-island-open` | in | `{ username }` operator or group address |
+| `chat-island-open` | in | `{ username, search? }` operator or group address; `search: { query, id? }` opens it on a search, at that message |
+| `chat-island-search` | in | `{ query }` search every conversation's archive (two characters at least) |
+| `chat-island-search-results` | out | `{ query, results }` messages containing it, newest first: `{ peer, id, ts, body, nick? }` |
 | `chat-island-close` | in | |
 | `chat-island-new` | in | open the new chat panel |
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |

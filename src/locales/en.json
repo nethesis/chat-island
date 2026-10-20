@@ -41,7 +41,12 @@
     "Reduce": "Reduce",
     "Cancel reply": "Cancel reply",
     "Switch to light theme": "Switch to light theme",
-    "Switch to dark theme": "Switch to dark theme"
+    "Switch to dark theme": "Switch to dark theme",
+    "Search in this chat": "Search in this chat",
+    "{{n}} of {{total}}": "{{n}} of {{total}}",
+    "No results": "No results",
+    "Older": "Older",
+    "Newer": "Newer"
   },
   "Composer": {
     "Discard": "Discard",
@@ -116,6 +121,8 @@
     "{{who}} renamed the group to \"{{name}}\"": "{{who}} renamed the group to \"{{name}}\"",
     "You renamed the group to \"{{name}}\"": "You renamed the group to \"{{name}}\"",
     "{{who}} changed the group picture": "{{who}} changed the group picture",
-    "You changed the group picture": "You changed the group picture"
+    "You changed the group picture": "You changed the group picture",
+    "You called {{users}}": "You called {{users}}",
+    "{{who}} called you": "{{who}} called you"
   }
 }

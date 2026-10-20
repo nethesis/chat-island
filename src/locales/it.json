@@ -41,7 +41,12 @@
     "Reduce": "Riduci",
     "Cancel reply": "Annulla risposta",
     "Switch to light theme": "Passa al tema chiaro",
-    "Switch to dark theme": "Passa al tema scuro"
+    "Switch to dark theme": "Passa al tema scuro",
+    "Search in this chat": "Cerca in questa chat",
+    "{{n}} of {{total}}": "{{n}} di {{total}}",
+    "No results": "Nessun risultato",
+    "Older": "Precedente",
+    "Newer": "Successivo"
   },
   "Composer": {
     "Discard": "Scarta",
@@ -116,6 +121,8 @@
     "{{who}} renamed the group to \"{{name}}\"": "{{who}} ha rinominato il gruppo in \"{{name}}\"",
     "You renamed the group to \"{{name}}\"": "Hai rinominato il gruppo in \"{{name}}\"",
     "{{who}} changed the group picture": "{{who}} ha cambiato l'immagine del gruppo",
-    "You changed the group picture": "Hai cambiato l'immagine del gruppo"
+    "You changed the group picture": "Hai cambiato l'immagine del gruppo",
+    "You called {{users}}": "Hai chiamato {{users}}",
+    "{{who}} called you": "{{who}} ti ha chiamato"
   }
 }

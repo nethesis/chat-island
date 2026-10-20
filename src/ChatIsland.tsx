@@ -6,7 +6,7 @@ import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
-import { deleteHistory, fetchContacts, fetchInactive, fetchMobile } from './api'
+import { deleteHistory, fetchContacts, fetchInactive, fetchMobile, searchMessages } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -70,7 +70,7 @@ function summarize(): ConversationSummary[] {
         unread: c.unread,
         members: c.members,
         muted: !!st.muted[c.peer],
-        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? '') : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
+        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
       }
     })
     .filter((c) => c.last || c.kind === 'group')
@@ -275,6 +275,19 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         }
       },
       // One page at a time per conversation: scrolling fires this on every pixel near the top.
+      // Hand the call to the host, and keep it in the conversation with that person.
+      call: (username, number) => {
+        emit('chat-island-call', { username, number })
+        const c = chat.current
+        if (!c) return
+        c.callNotice(username)
+          .then((id) => useStore.getState().addMessage(username, { id, oid: id, from: useStore.getState().me, to: username, body: '', ts: Date.now(), mine: true, notice: { event: 'call', users: [username] } }))
+          .catch(() => {})
+      },
+      search: async (q, peer) => {
+        const cfg = cfgRef.current
+        return cfg ? searchMessages(cfg.host, cfg.token, q, peer) : []
+      },
       loadOlder: async (peer) => {
         const c = chat.current
         const conv = useStore.getState().ensure(peer)
@@ -468,7 +481,18 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
       .then(s.setContacts)
       .catch((e) => emit('chat-island-error', { scope: 'contacts', message: (e as Error).message }))
-    const offOpen = listen<{ username: string }>('chat-island-open', ({ username }) => username && s.openChat(username))
+    // With a search: the window opens on it, at that message.
+    const offOpen = listen<{ username: string; search?: { query: string; id?: string } }>('chat-island-open', ({ username, search }) => {
+      if (!username) return
+      if (search?.query) useStore.setState({ find: { peer: username, ...search } })
+      s.openChat(username)
+    })
+    const offSearch = listen<{ query: string }>('chat-island-search', ({ query }) =>
+      actions
+        .search(query)
+        .then((results) => emit('chat-island-search-results', { query, results }))
+        .catch((e) => emit('chat-island-search-results', { query, results: [], error: (e as Error).message })),
+    )
     const offClose = listen('chat-island-close', () => s.closeChat())
     const offNew = listen('chat-island-new', () => s.setPicker(true))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
@@ -482,6 +506,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       window.clearInterval(mobileTimer)
       unsave()
       offList()
+      offSearch()
       offNew()
       offDelete()
       offSend()

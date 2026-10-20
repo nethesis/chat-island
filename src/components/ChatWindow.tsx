@@ -8,6 +8,7 @@ import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { GroupSettings } from './GroupSettings'
 import type { Message, Reply } from '../types'
+import type { SearchHit } from '../api'
 import { t } from '../i18n'
 
 export interface WindowActions {
@@ -16,7 +17,9 @@ export interface WindowActions {
   editGroup: (room: string, change: { add?: string[]; remove?: string; name?: string; avatar?: string }) => Promise<void>
   typing: (peer: string, composing: boolean) => void
   upload: (peer: string, file: File) => void
-  loadOlder: (peer: string) => void
+  loadOlder: (peer: string) => Promise<void>
+  search: (q: string, peer?: string) => Promise<SearchHit[]>
+  call: (username: string, number: string) => void
   remove: (peer: string) => Promise<void>
   react: (peer: string, target: string, emoji: string) => Promise<void>
   seen: (peer: string) => void
@@ -59,6 +62,20 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   // The message being answered, and a tick that puts the cursor in the composer.
   const [reply, setReply] = useState<Reply | null>(null)
   const [focusTick, setFocusTick] = useState(0)
+  // Search in this conversation: hits newest first, `at` the one shown.
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
+  const [hits, setHits] = useState<SearchHit[]>([])
+  const [at, setAt] = useState(0)
+  const [nav, setNav] = useState(0) // bumped on every search, Enter or arrow: the view goes to the hit again
+  // Older (+1) or newer (-1), round the ends: with one hit it is a jump back to it.
+  const go = (step: number) => {
+    if (!hits.length) return
+    setAt((i) => (i + step + hits.length) % hits.length)
+    setNav((n) => n + 1)
+  }
+  const [busy, setBusy] = useState(false)
+  const target = useRef<string | undefined>(undefined) // the hit to start from, when the host opened us on one
   const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? u)
   const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
 
@@ -77,7 +94,69 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
     setMenu(false)
     setSettings(false)
     setReply(null)
-  }, [peer])
+    // The host's list opened this chat on a search: show it, at that message.
+    const find = useStore.getState().find
+    if (find?.peer === peer) {
+      useStore.setState({ find: null })
+      target.current = find.id
+      setQuery(find.query)
+      setSearching(true)
+    } else {
+      setSearching(false)
+      setQuery('')
+    }
+  }, [peer]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ask the server once typing pauses; nothing under two characters.
+  useEffect(() => {
+    const q = query.trim()
+    if (!searching || q.length < 2) return setHits([])
+    setBusy(true)
+    let stale = false
+    const timer = window.setTimeout(() => {
+      actions
+        .search(q, peer)
+        .then((h) => {
+          if (stale) return
+          const i = target.current ? h.findIndex((x) => x.id === target.current) : -1
+          target.current = undefined
+          setHits(h)
+          setAt(Math.max(0, i))
+          setNav((n) => n + 1)
+        })
+        // No server search (an older gateway): what is loaded here, newest first.
+        .catch(() => {
+          if (stale) return
+          const lq = q.toLowerCase()
+          const local = (useStore.getState().conversations[peer]?.messages ?? []).filter((m) => !m.notice && m.body.toLowerCase().includes(lq))
+          setHits(local.reverse().map((m) => ({ peer, id: m.id, oid: m.oid, ts: m.ts, body: m.body, nick: m.nick })))
+          setAt(0)
+          setNav((n) => n + 1)
+        })
+        .finally(() => !stale && setBusy(false))
+    }, 300)
+    return () => ((stale = true), window.clearTimeout(timer))
+  }, [query, searching, peer]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The hit on show may be older than what is loaded: page back until it is there.
+  const hit = hits[at]
+  const found = (h: SearchHit) => useStore.getState().conversations[peer]?.messages.find((m) => m.id === h.id || (!!h.oid && m.oid === h.oid))
+  const [current, setCurrent] = useState<string | undefined>(undefined)
+  const [jump, setJump] = useState(0)
+  useEffect(() => {
+    if (!hit) return setCurrent(undefined)
+    let stop = false
+    ;(async () => {
+      for (let i = 0; i < 200 && !stop && !found(hit) && !useStore.getState().conversations[peer]?.complete; i++) {
+        await actions.loadOlder(peer)
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      if (!stop) (setCurrent(found(hit)?.id), setJump((j) => j + 1))
+    })()
+    return () => {
+      stop = true
+    }
+  }, [hit, nav]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const startReply = (m: Message) => {
     if (!m.oid) return
@@ -92,7 +171,8 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Escape') return
     e.stopPropagation()
-    if (menu) setMenu(false)
+    if (searching) setSearching(false)
+    else if (menu) setMenu(false)
     else if (settings) setSettings(false)
     else if (reply) setReply(null)
     else if (showMembers) setShowMembers(false)
@@ -159,10 +239,13 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         </div>
         {/* Call when the CTI says the person is reachable on a phone (webrtc, desk phone, NethLink, mobile): being in the chat alone is not enough. */}
         {!gone && c.kind !== 'group' && contact?.number && callable(contact.presence) && (
-          <Button variant="call" title={t('Chat.Call {{number}}', { number: contact.number })} aria-label={t('Chat.Call')} onClick={() => emit('chat-island-call', { username: peer, number: contact.number! })}>
+          <Button variant="call" title={t('Chat.Call {{number}}', { number: contact.number })} aria-label={t('Chat.Call')} onClick={() => actions.call(peer, contact.number!)}>
             {Icon.phone}
           </Button>
         )}
+        <Button variant="small" onClick={() => setSearching((v) => !v)} aria-label={t('Chat.Search in this chat')} title={t('Chat.Search in this chat')} aria-expanded={searching}>
+          {Icon.search}
+        </Button>
         {/* Window menu, before minimize so the last button is the one that closes. */}
         <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu}>
           {Icon.gear}
@@ -198,24 +281,54 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
                 {m !== me && <PresenceDot online={online[m]} presence={contacts[m]?.presence} mobile={mobile[m]} />}
               </span>
               <span className="ci-flex-1 ci-min-w-0 ci-truncate">{nameOf(m)} <span className="ci-text-gray-500 dark:ci-text-gray-400">@{m}</span></span>
-              {/* Reach one member directly: a one-to-one chat, or a call when the CTI says they can be called. */}
+              {/* Reach one member directly: a call when the CTI says they can be called, then a one-to-one chat, always last so the chat icons line up. */}
               {m !== me && (
                 <>
-                  <Button variant="small" title={t('Chat.Chat')} aria-label={t('Chat.Chat')} onClick={() => openChat(m)}>
-                    {Icon.chat}
-                  </Button>
                   {contacts[m]?.number && callable(contacts[m]?.presence) && (
-                    <Button variant="call" title={t('Chat.Call {{number}}', { number: contacts[m]?.number ?? '' })} aria-label={t('Chat.Call')} onClick={() => emit('chat-island-call', { username: m, number: contacts[m]!.number! })}>
+                    <Button variant="call" title={t('Chat.Call {{number}}', { number: contacts[m]?.number ?? '' })} aria-label={t('Chat.Call')} onClick={() => actions.call(m, contacts[m]!.number!)}>
                       {Icon.phone}
                     </Button>
                   )}
+                  <Button variant="small" title={t('Chat.Chat')} aria-label={t('Chat.Chat')} onClick={() => openChat(m)}>
+                    {Icon.chat}
+                  </Button>
                 </>
               )}
             </div>
           ))}
         </div>
       )}
-      <div className={`ci-flex-1 ci-min-h-0 ci-flex ci-flex-col ci-overflow-hidden ${docked ? '' : 'ci-rounded-b-3xl'}`}>
+      <div className={`ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col ci-overflow-hidden ${docked ? '' : 'ci-rounded-b-3xl'}`}>
+      {/* Floating over the list: messages scroll under it instead of being cut at its edge. */}
+      {searching && (
+        <div className="ci-absolute ci-inset-x-4 ci-top-2 ci-z-10 ci-flex ci-items-center ci-gap-1 ci-pl-3 ci-pr-1 ci-h-10 ci-rounded-full ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-border ci-border-solid ci-border-gray-200 dark:ci-border-gray-700 focus-within:ci-ring-2 focus-within:ci-ring-gray-400 dark:focus-within:ci-ring-gray-500 ci-text-gray-500 dark:ci-text-gray-400">
+          {Icon.search}
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter goes back in time, Shift+Enter forward, as the arrows do.
+              if (e.key === 'Enter') (e.preventDefault(), go(e.shiftKey ? -1 : 1))
+            }}
+            placeholder={t('Chat.Search in this chat')}
+            aria-label={t('Chat.Search in this chat')}
+            className="ci-flex-1 ci-min-w-0 ci-ml-1 ci-bg-transparent ci-border-0 ci-outline-none ci-text-sm ci-text-gray-900 dark:ci-text-white"
+          />
+          <span className="ci-shrink-0 ci-text-xs ci-tabular-nums" aria-live="polite">
+            {query.trim().length < 2 ? '' : busy ? '…' : hits.length ? t('Chat.{{n}} of {{total}}', { n: at + 1, total: hits.length }) : t('Chat.No results')}
+          </span>
+          <Button variant="small" disabled={!hits.length} onClick={() => go(1)} aria-label={t('Chat.Older')} title={t('Chat.Older')}>
+            {Icon.up}
+          </Button>
+          <Button variant="small" disabled={!hits.length} onClick={() => go(-1)} aria-label={t('Chat.Newer')} title={t('Chat.Newer')}>
+            {Icon.down}
+          </Button>
+          <Button variant="small" onClick={() => setSearching(false)} aria-label={t('Common.Close')} title={t('Common.Close')}>
+            {Icon.close}
+          </Button>
+        </div>
+      )}
       <MessageList
         key={`list:${peer}`}
         messages={c.messages}
@@ -229,6 +342,10 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         me={me}
         onReact={(target, emoji) => actions.react(peer, target, emoji)}
         onReply={startReply}
+        highlight={searching ? query.trim() : undefined}
+        current={searching ? current : undefined}
+        jump={jump}
+        padTop={searching}
       />
       {reply && (
         <div className="ci-mx-3 ci-mt-1 ci-flex ci-items-center ci-gap-2 ci-pl-3 ci-pr-1 ci-py-1.5 ci-rounded-2xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-border-0 ci-border-l-4 ci-border-solid ci-border-iconSecondary dark:ci-border-iconSecondaryDark">

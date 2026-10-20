@@ -1,5 +1,6 @@
 // Host <-> island window CustomEvents, like phone-island; the list is in README.md.
 import type { Contact, ConversationSummary, Message, Status } from './types'
+import type { SearchHit } from './api'
 
 export function emit(name: 'chat-island-unread', detail: { total: number }): void
 export function emit(name: 'chat-island-message', detail: Message & { peer: string }): void
@@ -14,6 +15,7 @@ export function emit(
 ): void
 export function emit(name: 'chat-island-theme-change', detail: { theme: 'light' | 'dark' | 'system' }): void
 export function emit(name: 'chat-island-pin', detail: { pinned: boolean }): void
+export function emit(name: 'chat-island-search-results', detail: { query: string; results: SearchHit[]; error?: string }): void
 export function emit(name: 'chat-island-window', detail: { open: string | null; picker: boolean }): void
 export function emit(name: string, detail: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }))

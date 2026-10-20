@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '../types'
 import { useStore } from '../store'
 import { Avatar } from './Avatar'
@@ -164,20 +164,30 @@ const namesOnly = (body: string, urls: string[]) => body === urls.map(fileName).
 /** Small Markdown as React elements (nothing injected): code, bold, italic, strike, links, bullets, @mentions. */
 const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)|(?<![\w@.])@([\w.-]*\w)/g
 
+/** The searched text marked wherever it appears, as WhatsApp does; case does not matter. */
+// The yellow follows the bubble: amber-300 on a dark one, amber-700 on a light one.
+const MARK = { mine: 'ci-bg-amber-300 ci-text-gray-900 dark:ci-bg-amber-700 dark:ci-text-white', theirs: 'ci-bg-amber-700 ci-text-white dark:ci-bg-amber-300 dark:ci-text-gray-900' }
+const RING = { mine: 'ci-ring-amber-300 dark:ci-ring-amber-700', theirs: 'ci-ring-amber-700 dark:ci-ring-amber-300' }
+const mark = (text: string, hl?: string, mine?: boolean): ReactNode[] => {
+  if (!hl || hl.length < 2) return [text]
+  const parts = text.split(new RegExp(`(${hl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  return parts.map((p, i) => (i % 2 ? <mark key={i} className={`ci-rounded-sm ${mine ? MARK.mine : MARK.theirs}`}>{p}</mark> : p))
+}
+
 /** @username of someone the island knows: highlighted, more so when it is me. */
 type Mentions = { known: (u: string) => boolean; me: string; mine?: boolean }
 
-function Inline({ text, at: mention }: { text: string; at: Mentions }) {
+function Inline({ text, at: mention, hl }: { text: string; at: Mentions; hl?: string }) {
   const out: ReactNode[] = []
   let last = 0
   for (const m of text.matchAll(INLINE)) {
     const s = m[0]
     const at = m.index ?? 0
-    if (at > last) out.push(emojify(text.slice(last, at)))
-    if (m[1]) out.push(<code key={at} className="ci-px-1 ci-py-0.5 ci-rounded ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-[0.85em]">{s.slice(1, -1)}</code>)
-    else if (m[2]) out.push(<strong key={at}>{s.slice(2, -2)}</strong>)
-    else if (m[3]) out.push(<s key={at}>{s.slice(2, -2)}</s>)
-    else if (m[4]) out.push(<em key={at}>{s.slice(1, -1)}</em>)
+    if (at > last) out.push(<Fragment key={`t${at}`}>{mark(emojify(text.slice(last, at)), hl, mention.mine)}</Fragment>)
+    if (m[1]) out.push(<code key={at} className="ci-px-1 ci-py-0.5 ci-rounded ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-[0.85em]">{mark(s.slice(1, -1), hl, mention.mine)}</code>)
+    else if (m[2]) out.push(<strong key={at}>{mark(s.slice(2, -2), hl, mention.mine)}</strong>)
+    else if (m[3]) out.push(<s key={at}>{mark(s.slice(2, -2), hl, mention.mine)}</s>)
+    else if (m[4]) out.push(<em key={at}>{mark(s.slice(1, -1), hl, mention.mine)}</em>)
     else if (m[5]) out.push(<a key={at} href={m[6]} target="_blank" rel="noreferrer" className="ci-underline">{m[5]}</a>)
     else if (m[8] !== undefined) {
       const u = m[8].toLowerCase()
@@ -191,7 +201,7 @@ function Inline({ text, at: mention }: { text: string; at: Mentions }) {
     } else out.push(<a key={at} href={s} target="_blank" rel="noreferrer" className="ci-underline ci-break-all">{s}</a>)
     last = at + s.length
   }
-  if (last < text.length) out.push(emojify(text.slice(last)))
+  if (last < text.length) out.push(<Fragment key="end">{mark(emojify(text.slice(last)), hl, mention.mine)}</Fragment>)
   return <>{out}</>
 }
 
@@ -201,7 +211,7 @@ const bigEmoji = (text: string) => {
   return g.length > 0 && g.length <= 3 && g.every((x) => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(x.segment))
 }
 
-const Body = memo(function Body({ text, mine }: { text: string; mine?: boolean }) {
+const Body = memo(function Body({ text, mine, hl }: { text: string; mine?: boolean; hl?: string }) {
   const contacts = useStore((st) => st.contacts)
   const me = useStore((st) => st.me)
   const at: Mentions = { known: (u) => u === me || !!contacts[u], me, mine }
@@ -212,10 +222,10 @@ const Body = memo(function Body({ text, mine }: { text: string; mine?: boolean }
       {parts.map((p, i) =>
         i % 2 ? (
           <pre key={i} className="ci-my-1 ci-p-2 ci-rounded-xl ci-bg-black/10 dark:ci-bg-white/10 ci-font-mono ci-text-xs ci-overflow-x-auto ci-whitespace-pre">
-            {p.replace(/\n$/, '')}
+            {mark(p.replace(/\n$/, ''), hl, mine)}
           </pre>
         ) : (
-          <Inline key={i} text={p.replace(/^(\s*)[-*] (?=\S)/gm, '$1• ')} at={at} />
+          <Inline key={i} text={p.replace(/^(\s*)[-*] (?=\S)/gm, '$1• ')} at={at} hl={hl} />
         ),
       )}
     </span>
@@ -304,6 +314,10 @@ export function MessageList({
   me = '',
   onReact,
   onReply,
+  highlight,
+  current,
+  jump,
+  padTop,
 }: {
   messages: Message[]
   typing: boolean
@@ -316,6 +330,10 @@ export function MessageList({
   me?: string
   onReact?: (target: string, emoji: string) => void
   onReply?: (m: Message) => void
+  highlight?: string // searched text, marked in every bubble
+  current?: string // id of the search hit on show: scrolled to and outlined
+  jump?: number // changes whenever the view must go to `current` again
+  padTop?: boolean // room at the top for the search bar floating over the list
 }) {
   const contacts = useStore((s) => s.contacts)
   const box = useRef<HTMLDivElement>(null)
@@ -329,6 +347,15 @@ export function MessageList({
     const el = box.current
     if (el && stick.current) el.scrollTop = el.scrollHeight
   }, [messages.length, typing, reactions])
+
+  // The search hit on show, in the middle of the list.
+  useEffect(() => {
+    if (!current) return
+    const el = box.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(current)}"]`)
+    if (!el) return
+    stick.current = false
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [current, jump])
 
   // A click anywhere else closes the quick reactions.
   useEffect(() => {
@@ -356,7 +383,7 @@ export function MessageList({
 
   return (
     <div className="ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col">
-      <div ref={box} onScroll={onScroll} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className="ci-flex-1 ci-overflow-y-auto ci-px-4 ci-py-2 ci-space-y-1">
+      <div ref={box} onScroll={onScroll} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className={`ci-flex-1 ci-overflow-y-auto ci-px-4 ${padTop ? 'ci-pt-14 ci-pb-2' : 'ci-py-2'} ci-space-y-1`}>
         {hasOlder && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">{t('Messages.Scroll up for older messages')}</div>}
         {messages.map((m, i) => {
           const prev = messages[i - 1]
@@ -367,7 +394,9 @@ export function MessageList({
               <div key={m.id}>
                 {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
                 <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">
-                  {noticeText(m.notice, nameOf, me, m.mine ? me : m.nick ?? '')}
+                  {m.notice.event === 'call' && <span className="ci-inline-flex ci-align-middle ci-mr-1.5 [&>svg]:ci-w-3 [&>svg]:ci-h-3">{Icon.phone}</span>}
+                  {noticeText(m.notice, nameOf, me, m.mine ? me : m.nick ?? m.from)}
+                  {m.notice.event === 'call' && <span className="ci-opacity-70"> · {time(m.ts)}</span>}
                 </div>
               </div>
             )
@@ -405,7 +434,7 @@ export function MessageList({
             </button>
           )
           return (
-            <div key={m.id} data-oid={m.oid}>
+            <div key={m.id} data-oid={m.oid} data-id={m.id} data-current={current === m.id || undefined}>
               {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
               <div className={`ci-group ci-flex ci-items-start ci-gap-1.5 ${m.mine ? 'ci-justify-end' : 'ci-justify-start'} ${grouped ? 'ci-mt-0.5' : 'ci-mt-2'}`}>
                 {sender && (
@@ -457,11 +486,11 @@ export function MessageList({
                       m.mine
                         ? 'ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900 ci-rounded-br-lg'
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-tl-lg'
-                    } ${m.pending ? 'ci-opacity-60' : ''}`}
+                    } ${m.pending ? 'ci-opacity-60' : ''} ${current === m.id ? `ci-ring-2 ${m.mine ? RING.mine : RING.theirs}` : ''}`}
                   >
                     {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? t('Common.You') : nameOf(u))} />}
-                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} />}
-                    {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} mine={m.mine} /></div>}
+                    {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} hl={highlight} />}
+                    {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} mine={m.mine} hl={highlight} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
                       <span className="ci-opacity-60">{time(m.ts)}</span>
                       {m.mine && <Ticks state={m.pending ? 'pending' : m.ts <= read ? 'read' : m.ts <= delivered ? 'delivered' : 'sent'} />}

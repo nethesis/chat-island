@@ -435,6 +435,13 @@ export class Chat {
     await this.xmpp.send(xml('message', { to: room, type: 'groupchat', id: crypto.randomUUID() }, xml('x', attrs), xml('store', { xmlns: NS.hints })))
   }
 
+  /** A call placed from the chat, kept in both archives as a line of the conversation. */
+  async callNotice(peer: string): Promise<string> {
+    const id = crypto.randomUUID()
+    await this.xmpp.send(xml('message', { to: `${peer}@${this.domain}`, type: 'chat', id }, xml('x', { xmlns: NS.group, event: 'call', users: peer }), xml('store', { xmlns: NS.hints })))
+    return id
+  }
+
   async leaveGroup(room: string, owner: boolean) {
     if (owner) await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('query', { xmlns: NS.mucOwner }, xml('destroy', {}))), 10000)
     else await this.xmpp.iqCaller.request(xml('iq', { type: 'set', to: room }, xml('unsubscribe', { xmlns: NS.mucsub })), 10000)
@@ -746,14 +753,17 @@ export class Chat {
         notice: noticeOf(inner),
       }
     }
-    const body = st.getChildText('body') ?? (st.attrs.type === 'groupchat' && noticeOf(st) ? '' : null)
+    // A line without a body: a group's change in a room, a call in a one-to-one chat.
+    const notice = noticeOf(st)
+    const fits = !!notice && (st.attrs.type === 'groupchat' ? notice.event !== 'call' : notice.event === 'call')
+    const body = st.getChildText('body') ?? (fits ? '' : null)
     if (body === null || body === undefined) return undefined
     const from = bare(st.attrs.from)
     if (st.attrs.type === 'groupchat') {
       if (!this.isGroup(from)) return undefined
       // A live echo from a room I happen to be joined in (creation): same shape as a subscription message.
       const nick = (st.attrs.from ?? '').split('/')[1] ?? ''
-      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, ...oobsOf(st), room: from, nick, notice: noticeOf(st) }
+      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, ...oobsOf(st), room: from, nick, notice: fits ? notice : undefined }
     }
     if (st.attrs.type !== 'chat') return undefined
     const mine = from === this.me
@@ -766,6 +776,7 @@ export class Chat {
       ts,
       mine,
       ...oobsOf(st),
+      notice: fits ? notice : undefined,
     }
   }
 }
@@ -776,7 +787,7 @@ const oobsOf = (st: Element): { oob?: string; files?: string[] } => {
   return { oob: links[0], files: links.length > 1 ? links : undefined }
 }
 
-const NOTICES = ['add', 'remove', 'rename', 'avatar']
+const NOTICES = ['add', 'remove', 'rename', 'avatar', 'call']
 const noticeOf = (st: Element): GroupNotice | undefined => {
   const x = st.getChild('x', NS.group)
   return x && NOTICES.includes(x.attrs.event) ? { event: x.attrs.event as GroupNotice['event'], users: String(x.attrs.users ?? '').split(',').filter(Boolean), name: x.attrs.name || undefined } : undefined

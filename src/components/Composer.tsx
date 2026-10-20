@@ -243,7 +243,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
           ))}
         </div>
       )}
-    <div className="ci-relative ci-flex ci-items-center ci-gap-2 ci-px-3 ci-py-3">
+    <div className="ci-relative ci-flex ci-items-center ci-gap-2 ci-px-3 ci-pb-3">
       {emoji && <EmojiPicker className="ci-absolute ci-bottom-full ci-left-3 ci-mb-1" onPick={insert} onClose={() => setEmoji(false)} />}
       {candidates.length > 0 && (
         <div role="listbox" aria-label={t('Composer.Group members')} className="ci-absolute ci-bottom-full ci-left-3 ci-right-3 ci-mb-1 ci-z-30 ci-py-2 ci-rounded-2xl ci-shadow-xl ci-bg-gray-50 dark:ci-bg-gray-900 ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
@@ -270,7 +270,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
       )}
       <input ref={file} type="file" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
       {/* One box, as in the phone island: attach and emoji on the left, the microphone or send on the right. */}
-      <div className="ci-flex-1 ci-min-w-0 ci-flex ci-items-end ci-gap-0.5 ci-px-1 ci-py-1 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark focus-within:ci-ring-2 focus-within:ci-ring-gray-400 dark:focus-within:ci-ring-gray-500">
+      <div className="ci-flex-1 ci-min-w-0 ci-flex ci-items-end ci-gap-0.5 ci-px-1 ci-py-1 ci-rounded-3xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-border ci-border-solid ci-border-gray-200 dark:ci-border-gray-700 focus-within:ci-ring-2 focus-within:ci-ring-gray-400 dark:focus-within:ci-ring-gray-500">
         <button type="button" disabled={disabled || busy} title={t('Composer.Attach files')} aria-label={t('Composer.Attach files')} onClick={() => file.current?.click()} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.clip}
         </button>

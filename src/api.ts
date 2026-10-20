@@ -43,3 +43,16 @@ export async function deleteHistory(host: string, token: string, peer: string): 
   const r = await fetch(`https://${host}/chat-gw/conversations/${encodeURIComponent(peer)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
   if (!r.ok) throw new Error(`delete: HTTP ${r.status}`)
 }
+
+/** An archived message that contains the searched text. */
+export interface SearchHit { peer: string; id: string; oid?: string; ts: number; body: string; nick?: string }
+
+/** My archived messages containing `q`, newest first: with one operator or group, or with everyone. */
+export async function searchMessages(host: string, token: string, q: string, peer?: string): Promise<SearchHit[]> {
+  const u = new URL(`https://${host}/chat-gw/search`)
+  u.searchParams.set('q', q)
+  if (peer) u.searchParams.set('peer', peer)
+  const r = await fetch(u, { headers: { Authorization: `Bearer ${token}` } })
+  if (!r.ok) throw new Error(`search: HTTP ${r.status}`)
+  return ((await r.json()) as { results: SearchHit[] }).results
+}
