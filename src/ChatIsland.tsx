@@ -6,7 +6,7 @@ import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
-import { deleteHistory, fetchContacts, fetchInactive, fetchMobile, searchMessages } from './api'
+import { chatHost, deleteHistory, fetchContacts, fetchInactive, fetchMobile, searchMessages } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -46,6 +46,9 @@ export interface ChatIslandProps {
   language?: string
   /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
   accent?: 'emerald' | 'blue'
+  /** The other app the chat windows can move to (NethLink and the CTI): a "Move to" item in each chat's menu.
+   *  Where they live is the person's choice, kept on the server; told to the host as chat-island-host. */
+  moveTo?: { host: 'cti' | 'nethlink'; label: string }
   /** Drag the island around the page (default true); off when the host moves its own window. */
   drag?: boolean
   /** Host drag from the dock and the window header, instead of the island's own (e.g. to move an app window). */
@@ -124,7 +127,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
 
 useStore.setState({ lang: toLang() })
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, moveTo }: ChatIslandProps) {
   // Every string follows the language: a change remounts the island in the new one.
   useLayoutEffect(() => useStore.setState({ lang: toLang(language) }), [language])
   const lang = useStore((st) => st.lang)
@@ -141,6 +144,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     notificationsRef.current = notifications
   }, [cfg, sound, notifications])
   useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable, nativeTooltips }), [maxHeads, newChatButton, pinnable, nativeTooltips])
+  useEffect(() => useStore.setState({ moveTo }), [moveTo?.host, moveTo?.label]) // eslint-disable-line react-hooks/exhaustive-deps
   // A pinnable host tells where its rail and panel are; while the rail is there the heads live in it and nothing floats.
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-rail-target', ({ el }) => useStore.setState({ rail: el ?? null })), [])
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-pin-target', ({ el }) => useStore.setState({ panel: el ?? null })), [])
@@ -276,6 +280,20 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           emit('chat-island-error', { scope: 'reaction', message: (e as Error).message })
         }
       },
+      // The chat windows go to the other app: remembered on the server, told to my other clients.
+      move: async (host, open) => {
+        const c = chat.current
+        const cfg = cfgRef.current
+        if (!c || !cfg) return
+        try {
+          await chatHost(cfg.host, cfg.token, host)
+          await c.tellHost(host, open)
+          useStore.getState().closeChat()
+          emit('chat-island-host', { host })
+        } catch (e) {
+          emit('chat-island-error', { scope: 'move', message: (e as Error).message })
+        }
+      },
       // For everyone, mine only: gone at once here, from the server's archive, and from the other side.
       retract: async (peer, m) => {
         const c = chat.current
@@ -378,6 +396,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           if (p === 'granted' || (notificationsRef.current === 'auto' && p === 'default')) enable()
         }
         if (st === 'online') {
+          chatHost(cfg.host, cfg.token)
+            .then((host) => emit('chat-island-host', { host }))
+            .catch(() => {})
           c.listGroups()
             .then((groups) => groups.forEach((g) => s.setGroup(g.peer, g.name, g.members, g.avatar, g.owner)))
             .catch(() => {})
@@ -408,6 +429,11 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       presence: (peer, online) => s.setOnline(peer, online),
       // The owner destroyed the group: it leaves the list here and in the host.
       groupDestroyed: (room) => s.removeConversation(room),
+      // Another client of mine moved the chat; the one it went to opens the conversation it was on.
+      host: (host, open) => {
+        emit('chat-island-host', { host })
+        if (open && useStore.getState().moveTo && useStore.getState().moveTo?.host !== host) s.openChat(open)
+      },
       // Anybody can send an invitation: the group shows only once the server says I am in it.
       groupInvite: (room) => {
         c.subscribed(room)
@@ -513,6 +539,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         .catch((e) => emit('chat-island-search-results', { query, results: [], error: (e as Error).message })),
     )
     const offClose = listen('chat-island-close', () => s.closeChat())
+    // The host moves the chat itself (NethLink opening a chat from its command bar takes it back).
+    const offMove = listen<{ host: 'cti' | 'nethlink'; open?: string }>('chat-island-move', ({ host, open }) => (host === 'cti' || host === 'nethlink') && actions.move(host, open))
     const offNew = listen('chat-island-new', () => s.setPicker(true))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
@@ -534,6 +562,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       unsaveMuted()
       offOpen()
       offClose()
+      offMove()
       offContacts()
       // Unmounting is a logout or an account change, never a page close (that is pagehide): stop waking this browser for this account.
       if (pushNode.current) c.disablePush(pushNode.current.service, pushNode.current.node).catch(() => {})

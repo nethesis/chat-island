@@ -27,6 +27,7 @@ interface State {
   place: { x: 'left' | 'right'; y: 'up' | 'down' } // where panels open beside the dock
   pinnable: boolean // the host has a side panel for the chat
   nativeTooltips: boolean // the browser's tooltips on the heads, not drawn ones
+  moveTo?: { host: 'cti' | 'nethlink'; label: string } // the other app the chat windows can move to
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
   panel: HTMLElement | null // the host's side panel for the open conversation
   muted: Record<string, boolean> // peers whose messages come without sound or notification

@@ -14,6 +14,7 @@ import { t } from '../i18n'
 export interface WindowActions {
   send: (peer: string, text: string, reply?: Reply, files?: File[]) => Promise<void>
   createGroup: (name: string, members: string[], avatar?: string) => Promise<void>
+  move: (host: 'cti' | 'nethlink', open?: string) => Promise<void>
   editGroup: (room: string, change: { add?: string[]; remove?: string; name?: string; avatar?: string }) => Promise<void>
   typing: (peer: string, composing: boolean) => void
   upload: (peer: string, file: File) => void
@@ -51,8 +52,8 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted })),
+  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted, moveTo } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted, moveTo: s.moveTo })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -273,6 +274,8 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
             muted ? { label: t('Chat.Unmute notifications'), icon: Icon.bellOn, run: () => setMuted(peer, false) } : { label: t('Chat.Mute notifications'), icon: Icon.bellSlash, run: () => setMuted(peer, true) },
             // Expand: twice as wide, half again as tall, never past the viewport (a host may lift the cap).
             ...(docked ? [] : [{ label: expanded ? t('Chat.Reduce') : t('Chat.Expand'), icon: expanded ? Icon.shrink : Icon.expand, run: () => useStore.getState().setExpanded(!expanded) }]),
+            // NethLink and the CTI: the chat windows move to the other one, this conversation open there.
+            ...(moveTo ? [{ label: t('Chat.Move to {{app}}', { app: moveTo.label }), icon: Icon.arrowRight, run: () => actions.move(moveTo.host, peer) }] : []),
           ]}
         />
       )}

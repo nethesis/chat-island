@@ -23,6 +23,7 @@ const NS = {
   discoInfo: 'http://jabber.org/protocol/disco#info',
   push: 'urn:xmpp:push:0',
   hello: 'urn:nethvoice:chat:presence',
+  host: 'urn:nethvoice:chat:host',
   data: 'jabber:x:data',
   muc: 'http://jabber.org/protocol/muc',
   mucOwner: 'http://jabber.org/protocol/muc#owner',
@@ -83,6 +84,7 @@ type Handlers = {
   status: (s: 'connecting' | 'online' | 'offline' | 'error' | 'unauthorized', err?: string) => void
   groupInvite: (room: string) => void
   groupDestroyed: (room: string) => void
+  host: (host: 'cti' | 'nethlink', open?: string) => void
 }
 
 export class Chat {
@@ -304,6 +306,11 @@ export class Chat {
     await this.xmpp.send(
       xml('message', { to: group ? peer : `${peer}@${this.domain}`, type: group ? 'groupchat' : 'chat', id: crypto.randomUUID() }, xml('retract', { xmlns: NS.retract, id: ref }), xml('store', { xmlns: NS.hints })),
     )
+  }
+
+  /** My chat moved between NethLink and the CTI: tell my other clients, with the conversation to open there. */
+  async tellHost(host: 'cti' | 'nethlink', open?: string) {
+    await this.xmpp.send(xml('message', { to: this.me, type: 'headline', id: crypto.randomUUID() }, xml('x', { xmlns: NS.host, host, ...(open ? { open } : {}) })))
   }
 
   /** Tell these operators I am here (directed presence). Those online answer, so both sides see each other. */
@@ -631,6 +638,12 @@ export class Chat {
       if (!fromMe) return
       const inner = carbon.getChild('forwarded', NS.forward)?.getChild('message')
       if (inner) this.deliver(inner)
+      return
+    }
+    // Where my chat lives, from another client of mine.
+    const moved = st.getChild('x', NS.host)
+    if (moved) {
+      if (fromMe && (moved.attrs.host === 'cti' || moved.attrs.host === 'nethlink')) this.h.host(moved.attrs.host, moved.attrs.open || undefined)
       return
     }
     // A group its owner destroyed: ejabberd tells subscribers on the config node.

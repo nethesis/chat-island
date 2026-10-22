@@ -46,6 +46,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI) or `'blue'` (NethLink) |
 | `language` | browser | `'it'` or `'en'`, as in phone-island; strings in `src/locales/{en,it}.json` |
 | `pinnable` | `false` | the host has a side rail and panel the chat can be pinned to (see below) |
+| `moveTo` | | `{ host, label }`: the other app the chat windows can move to (NethLink and the CTI), a Move to item in each chat's menu |
 
 The expand button in a chat's header doubles its width (one and a half times its height), within the viewport: a host whose window follows the island, like NethLink, lifts that cap with `--ci-max-w` / `--ci-max-h` on `.chat-island-root`.
 
@@ -130,6 +131,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |
 | `chat-island-pin-target` | in | `{ el }` the host's panel for the open conversation while pinned |
+| `chat-island-move` | in | `{ host, open? }` move the chat windows to `cti` or `nethlink`, opening `open` there |
 | `chat-island-conversations` | out | `{ conversations, ready }` newest first; `ready` once groups and recent messages are loaded |
 | `chat-island-unread` | out | `{ total }` |
 | `chat-island-message` | out | every new message |
@@ -139,6 +141,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-call` | out | `{ username, number }` |
 | `chat-island-pin` | out | `{ pinned }` the person asked to pin to, or unpin from, the host's panel |
 | `chat-island-window` | out | `{ open, picker }` what a pinned host should show: a conversation, the picker or nothing |
+| `chat-island-host` | out | `{ host }` where the person keeps the chat windows while NethLink runs: `nethlink` (default) or `cti`; on start and on every move, from any of their clients |
 | `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
 
 ## Integrate in an existing app

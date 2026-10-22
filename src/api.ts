@@ -56,3 +56,14 @@ export async function searchMessages(host: string, token: string, q: string, pee
   if (!r.ok) throw new Error(`search: HTTP ${r.status}`)
   return ((await r.json()) as { results: SearchHit[] }).results
 }
+
+/** Where my chat windows live while NethLink runs: NethLink (default) or the CTI. */
+export async function chatHost(host: string, token: string, set?: 'cti' | 'nethlink'): Promise<'cti' | 'nethlink'> {
+  const r = await fetch(`https://${host}/chat-gw/prefs/host`, {
+    method: set ? 'PUT' : 'GET',
+    headers: { Authorization: `Bearer ${token}`, ...(set ? { 'Content-Type': 'application/json' } : {}) },
+    body: set ? JSON.stringify({ host: set }) : undefined,
+  })
+  if (!r.ok) throw new Error(`prefs/host: HTTP ${r.status}`)
+  return ((await r.json()) as { host: 'cti' | 'nethlink' }).host
+}
