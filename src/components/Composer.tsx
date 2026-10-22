@@ -60,7 +60,11 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
   const [busy, setBusy] = useState(false)
   const previews = useMemo(() => files.map((f) => (f.type.startsWith('image/') ? URL.createObjectURL(f) : '')), [files])
   useEffect(() => () => previews.forEach((u) => u && URL.revokeObjectURL(u)), [previews])
-  const addFiles = (list: FileList | File[] | null) => list && list.length && setFiles((cur) => [...cur, ...Array.from(list)].slice(0, 10))
+  // Copy now: the input's FileList empties when its value is reset, before a deferred updater runs.
+  const addFiles = (list: FileList | File[] | null) => {
+    const add = Array.from(list ?? [])
+    if (add.length) setFiles((cur) => [...cur, ...add].slice(0, 10))
+  }
   const [emoji, setEmoji] = useState(false)
   const cursor = useRef<number | null>(null) // where the cursor goes once the converted text is on screen
   const file = useRef<HTMLInputElement>(null)
