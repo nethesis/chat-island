@@ -475,7 +475,8 @@ export function MessageList({
                       onClick={(e) => e.stopPropagation()}
                       className="ci-absolute ci-bottom-full ci-mb-1 ci-right-0 ci-z-20 ci-flex ci-items-center ci-gap-2 ci-py-1.5 ci-pl-3 ci-pr-1.5 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm ci-whitespace-nowrap ci-text-gray-900 dark:ci-text-gray-50"
                     >
-                      {t('Messages.Delete for everyone?')}
+                      {/* Everyone is only worth saying with more than one other person. */}
+                      {m.room ? t('Messages.Delete for everyone?') : t('Messages.Delete message?')}
                       <button type="button" onClick={() => setDeleteFor(null)} className="ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-gray-700 dark:ci-text-gray-200 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800">
                         {t('Common.Cancel')}
                       </button>
