@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Contact, Conversation, Message, Reaction, Status } from './types'
+import type { Contact, Conversation, Message, Reaction, Retraction, Status } from './types'
 import type { Marker } from './xmpp'
 import type { Lang } from './i18n'
 
@@ -14,6 +14,7 @@ interface State {
   mobile: Record<string, boolean>   // operators reachable through the mobile app
   inactive: Record<string, string>  // operators gone from the CTI: username -> last name
   conversations: Record<string, Conversation>
+  gone: Record<string, string> // retracted messages, peer|ref -> author: a copy loaded later stays out
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
   open: string | null      // the conversation whose window is open
   picker: boolean          // the "new chat" panel
@@ -48,6 +49,7 @@ interface State {
   setTyping(peer: string, typing: boolean): void
   applyReactions(list: Reaction[]): void
   applyMarkers(list: Marker[]): void
+  applyRetractions(list: Retraction[]): void
   openChat(peer: string): void
   closeChat(peer?: string): void
   removeHead(peer: string): void
@@ -89,6 +91,12 @@ const withHead = (order: string[], peer: string, max: number, open: string | nul
   return [...rest.slice(0, max - 1), open, ...rest.slice(max - 1)]
 }
 
+/** Taken back by its author: a group message by its room id, a one-to-one by its oid. */
+const isGone = (gone: Record<string, string>, peer: string, m: Message, me: string) => {
+  const ref = m.room ? m.sid : m.oid
+  return !!ref && gone[`${peer}|${ref}`] === (m.room ? m.nick : m.mine ? me : m.from)
+}
+
 /** One message, whether it carries the archive id or the sender's own (oid). */
 const same = (a: Message, b: Message) => a.id === b.id || (!!a.oid && a.oid === b.oid)
 
@@ -102,6 +110,7 @@ export const useStore = create<State>((set, get) => ({
   mobile: {},
   inactive: {},
   conversations: {},
+  gone: {},
   order: [],
   open: null,
   picker: false,
@@ -128,7 +137,7 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, gone: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
   // My own entry, when the host sends it, only carries my presence.
@@ -167,7 +176,7 @@ export const useStore = create<State>((set, get) => ({
         const peer = peerOf(m)
         if (!peer || peer === me) continue
         const c = conversations[peer] ?? empty(peer, s.mucHost)
-        if (c.messages.some((x) => same(x, m))) continue
+        if (c.messages.some((x) => same(x, m)) || isGone(s.gone, peer, m, me)) continue
         if (c.loaded) {
           conversations[peer] = { ...c, messages: [...c.messages, m].sort((a, b) => a.ts - b.ts) }
           continue
@@ -180,6 +189,7 @@ export const useStore = create<State>((set, get) => ({
 
   addMessage: (peer, m, opts) =>
     set((s) => {
+      if (isGone(s.gone, peer, m, s.me)) return {}
       const c = s.conversations[peer] ?? empty(peer, s.mucHost)
       // Replace the pending copy of my own message with the archived one, dedupe by id.
       const messages = c.messages.filter((x) => !same(x, m) && !(x.pending && m.mine && x.body === m.body && x.oob === m.oob))
@@ -197,7 +207,7 @@ export const useStore = create<State>((set, get) => ({
     set((s) => {
       const c = s.conversations[peer] ?? empty(peer, s.mucHost)
       // The archive copy of a message sent while the history loads has another id, the same oid.
-      const messages = [...msgs.filter((m) => !c.messages.some((x) => same(x, m))), ...c.messages].sort((a, b) => a.ts - b.ts)
+      const messages = [...msgs.filter((m) => !c.messages.some((x) => same(x, m)) && !isGone(s.gone, peer, m, s.me)), ...c.messages].sort((a, b) => a.ts - b.ts)
       return { conversations: { ...s.conversations, [peer]: { ...c, messages, loaded: true, complete, oldest: oldest ?? c.oldest } } }
     }),
 
@@ -226,6 +236,24 @@ export const useStore = create<State>((set, get) => ({
         conversations[mk.peer] = mk.kind === 'displayed' ? { ...c, delivered, read: Math.max(c.read ?? 0, ts) } : { ...c, delivered }
       }
       return { conversations }
+    }),
+
+  // Out of the conversation for good; an unread one no longer counts.
+  applyRetractions: (list) =>
+    set((s) => {
+      if (!list.length) return {}
+      const gone = { ...s.gone }
+      for (const r of list) gone[`${r.peer}|${r.ref}`] = r.user
+      const conversations = { ...s.conversations }
+      for (const peer of new Set(list.map((r) => r.peer))) {
+        const c = conversations[peer]
+        if (!c) continue
+        const messages = c.messages.filter((m) => !isGone(gone, peer, m, s.me))
+        if (messages.length === c.messages.length) continue
+        const removed = c.messages.filter((m) => !m.mine && !messages.includes(m)).length
+        conversations[peer] = { ...c, messages, unread: Math.max(0, c.unread - removed) }
+      }
+      return { gone, conversations }
     }),
 
   // In order: each one replaces that person's earlier set for the same message.

@@ -276,6 +276,18 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           emit('chat-island-error', { scope: 'reaction', message: (e as Error).message })
         }
       },
+      // For everyone, mine only: gone at once here, from the server's archive, and from the other side.
+      retract: async (peer, m) => {
+        const c = chat.current
+        const me = cfgRef.current?.username
+        if (!c || !me) return
+        try {
+          await c.retract(peer, m)
+          useStore.getState().applyRetractions([{ peer, ref: (m.room ? m.sid : m.oid)!, user: me }])
+        } catch (e) {
+          emit('chat-island-error', { scope: 'retract', message: (e as Error).message })
+        }
+      },
       // One page at a time per conversation: scrolling fires this on every pixel near the top.
       // Hand the call to the host, and keep it in the conversation with that person.
       call: (username, number) => {
@@ -297,6 +309,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         loading.current.add(peer)
         try {
           const page = await c.history(peer, conv.oldest)
+          useStore.getState().applyRetractions(page.retractions)
           useStore.getState().prependHistory(peer, page.messages, page.complete, page.first)
           useStore.getState().applyReactions(page.reactions)
           useStore.getState().applyMarkers(page.markers)
@@ -371,6 +384,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
             .then(() => c.recent())
             .then((page) => {
               if (!page) return
+              useStore.getState().applyRetractions(page.retractions)
               useStore.getState().seed(page.messages, cfg.username)
               useStore.getState().applyReactions(page.reactions)
               useStore.getState().applyMarkers(page.markers)
@@ -389,6 +403,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       },
       typing: (peer, composing) => s.setTyping(peer, composing),
       reaction: (r) => s.applyReactions([r]),
+      retract: (r) => s.applyRetractions([r]),
       marker: (mk) => s.applyMarkers([mk]),
       presence: (peer, online) => s.setOnline(peer, online),
       // The owner destroyed the group: it leaves the list here and in the host.

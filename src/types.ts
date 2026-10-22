@@ -14,6 +14,7 @@ export interface Message {
   room?: string     // group address when the message belongs to a group
   nick?: string     // sender's username inside a group
   oid?: string      // the id its sender gave it: the same on every side, what reactions point to
+  sid?: string      // a group message's id in the room: what a retraction names it by
   reply?: Reply     // the message this one answers (XEP-0461)
   notice?: GroupNotice // a change to the group, told to its members, or a call placed from the chat
 }
@@ -38,6 +39,13 @@ export interface Reaction {
   target: string   // oid of the message
   user: string     // who reacted
   emojis: string[]
+}
+
+/** A message taken back by its author, for everyone (XEP-0424): ref is its oid, or its sid in a group. */
+export interface Retraction {
+  peer: string
+  ref: string
+  user: string // who took it back: only the author's own message goes
 }
 
 export interface Conversation {

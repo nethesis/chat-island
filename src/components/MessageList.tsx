@@ -314,6 +314,7 @@ export function MessageList({
   me = '',
   onReact,
   onReply,
+  onDelete,
   highlight,
   current,
   jump,
@@ -330,6 +331,7 @@ export function MessageList({
   me?: string
   onReact?: (target: string, emoji: string) => void
   onReply?: (m: Message) => void
+  onDelete?: (m: Message) => void
   highlight?: string // searched text, marked in every bubble
   current?: string // id of the search hit on show: scrolled to and outlined
   jump?: number // changes whenever the view must go to `current` again
@@ -340,6 +342,7 @@ export function MessageList({
   const stick = useRef(true)
   const [menuFor, setMenuFor] = useState<string | null>(null) // quick reactions open on this message
   const [pickerFor, setPickerFor] = useState<string | null>(null) // the full picker, for this message
+  const [deleteFor, setDeleteFor] = useState<string | null>(null) // "delete for everyone?" asked on this message
   const nameOf = (u: string) => contacts[u]?.name ?? u
 
   // Pinned to the bottom, also when a picture loads later and grows the list.
@@ -357,16 +360,19 @@ export function MessageList({
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [current, jump])
 
-  // A click anywhere else closes the quick reactions.
+  // A click anywhere else closes the quick reactions or the delete question.
   useEffect(() => {
-    if (!menuFor) return
-    const close = () => setMenuFor(null)
+    if (!menuFor && !deleteFor) return
+    const close = () => {
+      setMenuFor(null)
+      setDeleteFor(null)
+    }
     const t = window.setTimeout(() => document.addEventListener('click', close, { once: true }), 0)
     return () => {
       window.clearTimeout(t)
       document.removeEventListener('click', close)
     }
-  }, [menuFor])
+  }, [menuFor, deleteFor])
 
   const onScroll = () => {
     const el = box.current
@@ -433,6 +439,23 @@ export function MessageList({
               {Icon.reply}
             </button>
           )
+          // Mine only, once the server has it: a group message is taken back by the room's id.
+          const canDelete = !!onDelete && m.mine && !m.pending && !!(m.room ? m.sid : m.oid)
+          const deleteButton = canDelete && (
+            <button
+              type="button"
+              title={t('Messages.Delete')}
+              aria-label={t('Messages.Delete this message')}
+              onClick={(e) => {
+                e.stopPropagation()
+                setMenuFor(null)
+                setDeleteFor(deleteFor === m.id ? null : m.id)
+              }}
+              className={`ci-self-center ci-h-7 ci-w-7 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-text-gray-500 dark:ci-text-gray-400 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 focus:ci-opacity-100 ${deleteFor === m.id ? 'ci-opacity-100' : 'ci-opacity-0 group-hover:ci-opacity-100'}`}
+            >
+              {Icon.trash}
+            </button>
+          )
           return (
             <div key={m.id} data-oid={m.oid} data-id={m.id} data-current={current === m.id || undefined}>
               {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
@@ -442,9 +465,32 @@ export function MessageList({
                     {!grouped && <Avatar contact={contacts[m.nick!]} username={m.nick!} size={28} />}
                   </span>
                 )}
+                {m.mine && deleteButton}
                 {m.mine && replyButton}
                 {m.mine && reactButton}
                 <div className={`ci-relative ci-flex ci-flex-col ci-max-w-[80%] ${m.mine ? 'ci-items-end' : 'ci-items-start'}`}>
+                  {deleteFor === m.id && (
+                    <div
+                      role="dialog"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ci-absolute ci-bottom-full ci-mb-1 ci-right-0 ci-z-20 ci-flex ci-items-center ci-gap-2 ci-py-1.5 ci-pl-3 ci-pr-1.5 ci-rounded-full ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm ci-whitespace-nowrap ci-text-gray-900 dark:ci-text-gray-50"
+                    >
+                      {t('Messages.Delete for everyone?')}
+                      <button type="button" onClick={() => setDeleteFor(null)} className="ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-gray-700 dark:ci-text-gray-200 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800">
+                        {t('Common.Cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteFor(null)
+                          onDelete?.(m)
+                        }}
+                        className="ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-cursor-pointer ci-bg-rose-700 ci-text-white hover:ci-bg-rose-800 dark:ci-bg-rose-500 dark:hover:ci-bg-rose-400 dark:ci-text-gray-950"
+                      >
+                        {t('Messages.Delete')}
+                      </button>
+                    </div>
+                  )}
                   {menuFor === target && target && (
                     <div
                       role="menu"

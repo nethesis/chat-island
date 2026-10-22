@@ -2,7 +2,7 @@
 // members are subscribed, so messages reach their archive and push without joining.
 import { client, xml, type Client } from '@xmpp/client'
 import type { Element } from '@xmpp/xml'
-import type { Config, GroupNotice, Message, Reaction, Reply } from './types'
+import type { Config, GroupNotice, Message, Reaction, Reply, Retraction } from './types'
 
 /** The XMPP domain of every NethVoice chat: fixed, so addresses survive a change of the CTI host,
  *  which only reaches the server. No federation, so the same name in every tenant is fine. */
@@ -39,6 +39,7 @@ const NS = {
   reply: 'urn:xmpp:reply:0',
   fallback: 'urn:xmpp:fallback:0',
   markers: 'urn:xmpp:chat-markers:0',
+  retract: 'urn:xmpp:message-retract:1',
   group: 'urn:nethesis:chat:group:0',
 }
 
@@ -59,6 +60,7 @@ export interface HistoryPage {
   messages: Message[]
   reactions: Reaction[] // in archive order: a later one replaces an earlier one of the same person
   markers: Marker[]
+  retractions: Retraction[]
   complete: boolean
   first?: string
 }
@@ -75,6 +77,7 @@ type Handlers = {
   message: (m: Message) => void
   reaction: (r: Reaction) => void
   marker: (m: Marker) => void
+  retract: (r: Retraction) => void
   presence: (peer: string, online: boolean) => void
   typing: (peer: string, composing: boolean) => void
   status: (s: 'connecting' | 'online' | 'offline' | 'error' | 'unauthorized', err?: string) => void
@@ -91,6 +94,7 @@ export class Chat {
   private mamQueries = new Map<string, Message[]>()
   private mamReactions = new Map<string, Reaction[]>()
   private mamMarkers = new Map<string, Marker[]>()
+  private mamRetractions = new Map<string, Retraction[]>()
   private stopped = false
   private attempt = 0 // failed connections in a row, drives the retry delay
   private retryTimer?: number
@@ -292,6 +296,16 @@ export class Chat {
     )
   }
 
+  /** XEP-0424: take back my message for everyone. No body, so nobody is notified; archived, so every client and the app drop it. */
+  async retract(peer: string, m: Message) {
+    const group = this.isGroup(peer)
+    const ref = group ? m.sid : m.oid
+    if (!ref) throw new Error('message not archived yet')
+    await this.xmpp.send(
+      xml('message', { to: group ? peer : `${peer}@${this.domain}`, type: group ? 'groupchat' : 'chat', id: crypto.randomUUID() }, xml('retract', { xmlns: NS.retract, id: ref }), xml('store', { xmlns: NS.hints })),
+    )
+  }
+
   /** Tell these operators I am here (directed presence). Those online answer, so both sides see each other. */
   async announce(peers: string[]) {
     for (const peer of peers) {
@@ -327,7 +341,7 @@ export class Chat {
     let page = await this.mam(peer, before, max)
     for (let i = 0; i < 4 && max > 1 && page.messages.length < 10 && !page.complete && page.first; i++) {
       const more = await this.mam(peer, page.first, max)
-      page = { messages: [...more.messages, ...page.messages], reactions: [...more.reactions, ...page.reactions], markers: [...more.markers, ...page.markers], complete: more.complete, first: more.first ?? page.first }
+      page = { messages: [...more.messages, ...page.messages], reactions: [...more.reactions, ...page.reactions], markers: [...more.markers, ...page.markers], retractions: [...more.retractions, ...page.retractions], complete: more.complete, first: more.first ?? page.first }
     }
     return page
   }
@@ -337,6 +351,7 @@ export class Chat {
     this.mamQueries.set(queryid, [])
     this.mamReactions.set(queryid, [])
     this.mamMarkers.set(queryid, [])
+    this.mamRetractions.set(queryid, [])
     const rsm = xml('set', { xmlns: NS.rsm }, xml('max', {}, String(max)), xml('before', {}, before ?? ''))
     const fields = [xml('field', { var: 'FORM_TYPE', type: 'hidden' }, xml('value', {}, NS.mam))]
     if (peer) fields.push(xml('field', { var: 'with' }, xml('value', {}, this.isGroup(peer) ? peer : `${peer}@${this.domain}`)))
@@ -345,19 +360,22 @@ export class Chat {
     let messages: Message[]
     let reactions: Reaction[]
     let markers: Marker[]
+    let retractions: Retraction[]
     try {
       res = await this.xmpp.iqCaller.request(xml('iq', { type: 'set', id: queryid }, xml('query', { xmlns: NS.mam, queryid }, form, rsm)), 30000)
     } finally {
       messages = this.mamQueries.get(queryid) ?? []
       reactions = this.mamReactions.get(queryid) ?? []
       markers = this.mamMarkers.get(queryid) ?? []
+      retractions = this.mamRetractions.get(queryid) ?? []
       this.mamQueries.delete(queryid)
       this.mamReactions.delete(queryid)
       this.mamMarkers.delete(queryid)
+      this.mamRetractions.delete(queryid)
     }
     const fin = res.getChild('fin', NS.mam)
     const first = fin?.getChild('set', NS.rsm)?.getChildText('first') ?? undefined
-    return { messages, reactions, markers, complete: fin?.attrs.complete === 'true', first }
+    return { messages, reactions, markers, retractions, complete: fin?.attrs.complete === 'true', first }
   }
 
   // ---- groups ----
@@ -600,7 +618,9 @@ export class Chat {
         if (mk) this.mamMarkers.get(result.attrs.queryid)?.push(mk)
         const r = mk ? undefined : this.reactionOf(inner)
         if (r) this.mamReactions.get(result.attrs.queryid)?.push(r)
-        const m = r || mk ? undefined : this.toMessage(inner, result.attrs.id, stampOf(result.getChild('forwarded', NS.forward)))
+        const rt = mk || r ? undefined : this.retractionOf(inner)
+        if (rt) this.mamRetractions.get(result.attrs.queryid)?.push(rt)
+        const m = r || mk || rt ? undefined : this.toMessage(inner, result.attrs.id, stampOf(result.getChild('forwarded', NS.forward)))
         if (m) list.push(m)
       }
       return
@@ -639,6 +659,11 @@ export class Chat {
     const r = this.reactionOf(st)
     if (r) {
       this.h.reaction(r)
+      return
+    }
+    const rt = this.retractionOf(st)
+    if (rt) {
+      this.h.retract(rt)
       return
     }
     const m = this.toMessage(st, st.getChild('stanza-id', NS.sid)?.attrs.id, stampOf(st))
@@ -708,6 +733,33 @@ export class Chat {
     return peer ? { peer, target, user: mine ? this.cfg.username : local(from), emojis } : undefined
   }
 
+  /** A retraction (XEP-0424), live, carbon, archived or wrapped by MucSub; in a group only from the room. */
+  private retractionOf(st: Element): Retraction | undefined {
+    const event = st.getChild('event', NS.pubsubEvent)
+    let msg = st
+    let room: string | undefined
+    if (event && event.getChild('items')?.attrs.node === NS.mucsubMessages) {
+      room = bare(st.attrs.from)
+      const inner = findMessage(event)
+      if (!this.isGroup(room) || !inner || bare(inner.attrs.from) !== room) return undefined
+      msg = inner
+    } else if (st.attrs.type === 'groupchat') {
+      room = bare(st.attrs.from)
+      if (!this.isGroup(room)) return undefined
+    }
+    const ref = msg.getChild('retract', NS.retract)?.attrs.id
+    if (!ref) return undefined
+    if (room) {
+      const nick = (msg.attrs.from ?? '').split('/')[1] ?? ''
+      return nick ? { peer: room, ref, user: nick } : undefined
+    }
+    if (msg.attrs.type !== 'chat') return undefined
+    const from = bare(msg.attrs.from)
+    const mine = from === this.me || !msg.attrs.from
+    const peer = mine ? local(bare(msg.attrs.to)) : local(from)
+    return peer ? { peer, ref, user: mine ? this.cfg.username : local(from) } : undefined
+  }
+
   /** Flatten a message stanza; a MucSub wrapper is unwrapped to the group message inside. */
   private toMessage(st: Element, archiveId: string | undefined, ts: number): Message | undefined {
     const m = this.parseMessage(st, archiveId, ts)
@@ -742,6 +794,7 @@ export class Chat {
         // The origin-id is the one the sender chose: my own copy shown while sending is replaced by the echo.
         id: inner.getChild('origin-id', NS.sid)?.attrs.id ?? archiveId ?? inner.getChild('stanza-id', NS.sid)?.attrs.id ?? inner.attrs.id ?? crypto.randomUUID(),
         oid: inner.getChild('origin-id', NS.sid)?.attrs.id ?? inner.attrs.id,
+        sid: roomId(inner, room),
         from: room,
         to: this.cfg.username,
         body,
@@ -763,7 +816,7 @@ export class Chat {
       if (!this.isGroup(from)) return undefined
       // A live echo from a room I happen to be joined in (creation): same shape as a subscription message.
       const nick = (st.attrs.from ?? '').split('/')[1] ?? ''
-      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, ...oobsOf(st), room: from, nick, notice: fits ? notice : undefined }
+      return { id: archiveId ?? st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id ?? crypto.randomUUID(), oid: st.getChild('origin-id', NS.sid)?.attrs.id ?? st.attrs.id, sid: roomId(st, from), from, to: this.cfg.username, body, ts, mine: nick === this.cfg.username, ...oobsOf(st), room: from, nick, notice: fits ? notice : undefined }
     }
     if (st.attrs.type !== 'chat') return undefined
     const mine = from === this.me
@@ -794,6 +847,8 @@ const noticeOf = (st: Element): GroupNotice | undefined => {
 }
 
 const bare = (jid = '') => jid.split('/')[0]
+/** The id the room gave a group message (XEP-0359 stanza-id by the room). */
+const roomId = (st: Element, room: string): string | undefined => st.getChildren('stanza-id', NS.sid).find((x: Element) => x.attrs.by === room)?.attrs.id
 
 /** XEP-0461 reply on a parsed message: the target, and the body without the quote (XEP-0428 fallback range). */
 function withReply(m: Message, el?: Element): Message {

@@ -22,6 +22,7 @@ export interface WindowActions {
   call: (username: string, number: string) => void
   remove: (peer: string) => Promise<void>
   react: (peer: string, target: string, emoji: string) => Promise<void>
+  retract: (peer: string, m: Message) => Promise<void>
   seen: (peer: string) => void
 }
 
@@ -346,6 +347,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         me={me}
         onReact={(target, emoji) => actions.react(peer, target, emoji)}
         onReply={startReply}
+        onDelete={(m) => actions.retract(peer, m)}
         highlight={searching ? query.trim() : undefined}
         current={searching ? current : undefined}
         jump={jump}
