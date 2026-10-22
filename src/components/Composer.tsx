@@ -278,7 +278,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
         <button type="button" disabled={disabled || busy} title={t('Composer.Attach files')} aria-label={t('Composer.Attach files')} onClick={() => file.current?.click()} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.clip}
         </button>
-        <button type="button" disabled={disabled} title={t('Common.Emoji')} aria-label={t('Common.Emoji')} aria-expanded={emoji} onClick={() => setEmoji((v) => !v)} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
+        <button type="button" disabled={disabled} title={emoji ? undefined : t('Common.Emoji')} aria-label={t('Common.Emoji')} aria-expanded={emoji} onClick={() => setEmoji((v) => !v)} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-secondaryNeutral dark:ci-text-secondaryNeutralDark hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
           {Icon.smile}
         </button>
           <textarea
