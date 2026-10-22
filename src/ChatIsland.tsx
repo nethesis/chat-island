@@ -238,6 +238,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         if (!c || !cfg) return
         try {
           const room = await c.createGroup(name, members, avatar)
+          // told to the group: each member is notified of the new group
+          await c.groupNotice(room, { event: 'add', users: members }).catch(() => {})
           const st = useStore.getState()
           st.setGroup(room, name, [...members, cfg.username], avatar, true)
           st.openChat(room)
@@ -404,13 +406,15 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       message: (m) => {
         const peer = peerOf(m)
         if (m.room && (m.notice || !useStore.getState().conversations[m.room]?.name)) c.groupInfo(m.room).then((g) => s.setGroup(g.peer, g.name, g.members, g.avatar, g.owner)).catch(() => {})
-        s.addMessage(peer, m, { live: !m.notice })
+        // A notice is quiet, unless it tells me I was added to a group.
+        const loud = !m.notice || (!m.mine && m.notice.event === 'add' && m.notice.users.includes(useStore.getState().me))
+        s.addMessage(peer, m, { live: loud })
         emit('chat-island-message', { ...m, peer })
         emit('chat-island-unread', { total: useStore.getState().totalUnread() })
         // In a group the read receipt of an open window covers it: one marker less per member.
         const shown = m.room && !headlessRef.current && document.visibilityState === 'visible' && useStore.getState().open === peer
         if (!m.mine && m.oid && !shown) c.marker(peer, 'received', m.oid).catch(() => {})
-        if (!m.mine && !m.notice && !headlessRef.current) notify(peer, m)
+        if (!m.mine && loud && !headlessRef.current) notify(peer, m)
       },
     })
     // A message the person is not looking at: chime, tell the host (a toast), and when the
@@ -421,10 +425,10 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       if ((visible && st.open === peer) || st.muted[peer] || st.dnd) return
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
-      const text = m.oob ? t('Common.Attachment') : emojify(m.body)
+      const text = m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.nick ?? m.from) : m.oob ? t('Common.Attachment') : emojify(m.body)
       const group = conv?.kind === 'group'
       const author = group && m.nick ? st.contacts[m.nick]?.name ?? m.nick : name
-      const body = group && m.nick ? `${author}: ${text}` : text
+      const body = group && m.nick && !m.notice ? `${author}: ${text}` : text
       if (soundRef.current) chime()
       const avatar = group ? conv?.avatar : st.contacts[peer]?.avatar
       emit('chat-island-notify', { peer, name, body, kind: group ? 'group' : 'chat', author, text, attachment: !!m.oob, avatar, ts: m.ts })
