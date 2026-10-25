@@ -44,8 +44,11 @@ const NS = {
   group: 'urn:nethesis:chat:group:0',
 }
 
-const PING_EVERY = 30000 // a socket half-open after sleep or a network change is found within a minute
-const CONNECT_TIMEOUT = 30000 // from opening the socket to online
+// A socket half-open after sleep or a network change (Wi-Fi, VPN: the browser stays online) is found within 15 s.
+const PING_EVERY = 10000
+const PING_TIMEOUT = 5000
+const CONNECT_TIMEOUT = 15000 // from opening the socket to online
+const RETRY_MAX = 10000 // the network may come back without an 'online' event
 
 /** XEP-0333 chat marker: the peer (in a group, the member `user`) received or read it; mine = sent by another client of mine. */
 export interface Marker {
@@ -203,7 +206,7 @@ export class Chat {
   /** XEP-0199: a server that does not answer means a dead socket; drop it so the retry logic takes over. */
   private ping() {
     if (!this.connected) return
-    this.xmpp.iqCaller.request(xml('iq', { type: 'get', to: this.domain }, xml('ping', { xmlns: NS.ping })), 10000).catch((e: Error) => {
+    this.xmpp.iqCaller.request(xml('iq', { type: 'get', to: this.domain }, xml('ping', { xmlns: NS.ping })), PING_TIMEOUT).catch((e: Error) => {
       if (this.stopped || !this.connected || e.name === 'StanzaError') return // an error reply is still an answer
       ;(this.xmpp as unknown as { disconnect(): Promise<void> }).disconnect().catch(() => {})
     })
@@ -241,14 +244,16 @@ export class Chat {
     if (this.stopped || this.retryTimer !== undefined) return
     this.refused++
     window.clearTimeout(this.connectTimer)
+    // Close the refused stream: left open, the server drops it 2 minutes later and takes the next session with it.
+    ;(this.xmpp as unknown as { disconnect(): Promise<void> }).disconnect().catch(() => {})
     this.h.status('unauthorized', e.message)
     this.scheduleRetry()
   }
 
-  /** 1s, 2s, 4s… up to a minute, or 1, 2, 4… up to 10 minutes after a refused login; with jitter, one timer at a time. */
+  /** 1s, 2s, 4s… up to 10 s, or 1, 2, 4… up to 10 minutes after a refused login; with jitter, one timer at a time. */
   private scheduleRetry() {
     if (this.stopped || this.retryTimer !== undefined) return
-    const delay = (this.refused ? Math.min(600000, 60000 * 2 ** (this.refused - 1)) : Math.min(60000, 1000 * 2 ** this.attempt)) * (0.7 + Math.random() * 0.6)
+    const delay = (this.refused ? Math.min(600000, 60000 * 2 ** (this.refused - 1)) : Math.min(RETRY_MAX, 1000 * 2 ** this.attempt)) * (0.7 + Math.random() * 0.6)
     this.attempt++
     this.retryTimer = window.setTimeout(() => this.connectNow(), delay)
   }
