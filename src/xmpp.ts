@@ -102,7 +102,7 @@ export class Chat {
   private retryTimer?: number
   private pingTimer?: number
   private connectTimer?: number
-  private unauthorized = false // the token was refused: retrying would only hammer the server
+  private refused = 0 // logins refused in a row: retried slowly, as a middleware outage is refused too
   private connected = false
   private online = new Map<string, Set<string>>() // user -> resources seen available
   private cfg: Config
@@ -124,7 +124,7 @@ export class Chat {
     // The library's own reconnect retries every second forever; ours backs off.
     ;(this.xmpp as unknown as { reconnect?: { stop(): void } }).reconnect?.stop()
     this.xmpp.on('status', (s: string) => {
-      if (this.stopped || this.unauthorized) return
+      if (this.stopped || this.refused) return
       if (s === 'connecting' || s === 'opening' || s === 'connect') this.h.status('connecting')
       if (s === 'disconnect' || s === 'close') {
         this.connected = false
@@ -136,12 +136,7 @@ export class Chat {
     })
     this.xmpp.on('error', (e: Error) => {
       if (this.stopped) return
-      if (isAuthError(e)) {
-        this.unauthorized = true
-        window.clearTimeout(this.retryTimer)
-        this.h.status('unauthorized', e.message)
-        return
-      }
+      if (isAuthError(e)) return this.onRefused(e)
       this.h.status('error', e.message)
     })
     this.xmpp.on('online', () => this.onOnline())
@@ -157,6 +152,7 @@ export class Chat {
       return
     }
     this.attempt = 0
+    this.refused = 0
     this.connected = true
     try {
       await this.xmpp.send(xml('iq', { type: 'set', id: 'carbons' }, xml('enable', { xmlns: NS.carbons })))
@@ -190,7 +186,7 @@ export class Chat {
 
   /** The network is back, or the tab is looked at again: check now instead of waiting for the timer. */
   private wake = () => {
-    if (this.stopped || this.unauthorized) return
+    if (this.stopped) return
     if (this.connected) {
       this.ping()
       return
@@ -221,7 +217,7 @@ export class Chat {
 
   /** Connect, or reconnect: a failure (network, or a token the server no longer accepts) schedules another try. */
   private connectNow() {
-    if (this.stopped || this.unauthorized) return
+    if (this.stopped) return
     this.retryTimer = undefined
     const x = this.xmpp as unknown as { status: string; options: { service: string; domain: string }; connect(s: string): Promise<void>; open(o: { domain: string }): Promise<unknown> }
     // An attempt that never gets online (a half-open socket after a standby) is dropped and retried.
@@ -234,20 +230,25 @@ export class Chat {
     const attempt = x.status === 'offline' ? this.xmpp.start() : x.connect(x.options.service).then(() => x.open({ domain: x.options.domain }))
     attempt.catch((e: Error) => {
       if (this.stopped) return
-      if (isAuthError(e)) {
-        this.unauthorized = true
-        this.h.status('unauthorized', e.message)
-        return
-      }
+      if (isAuthError(e)) return this.onRefused(e)
       this.h.status('error', e.message)
       this.scheduleRetry()
     })
   }
 
-  /** 1s, 2s, 4s… up to a minute, with jitter; one timer at a time. */
+  /** The login was refused; the client and the library may both report the same refusal. */
+  private onRefused(e: Error) {
+    if (this.stopped || this.retryTimer !== undefined) return
+    this.refused++
+    window.clearTimeout(this.connectTimer)
+    this.h.status('unauthorized', e.message)
+    this.scheduleRetry()
+  }
+
+  /** 1s, 2s, 4s… up to a minute, or 1, 2, 4… up to 10 minutes after a refused login; with jitter, one timer at a time. */
   private scheduleRetry() {
-    if (this.stopped || this.unauthorized || this.retryTimer !== undefined) return
-    const delay = Math.min(60000, 1000 * 2 ** this.attempt) * (0.7 + Math.random() * 0.6)
+    if (this.stopped || this.retryTimer !== undefined) return
+    const delay = (this.refused ? Math.min(600000, 60000 * 2 ** (this.refused - 1)) : Math.min(60000, 1000 * 2 ** this.attempt)) * (0.7 + Math.random() * 0.6)
     this.attempt++
     this.retryTimer = window.setTimeout(() => this.connectNow(), delay)
   }
@@ -877,8 +878,8 @@ function withReply(m: Message, el?: Element): Message {
   const quote = chars.slice(start, end).join('').replace(/^> ?/gm, '').trim()
   return { ...m, body: (chars.slice(0, start).join('') + chars.slice(end).join('')).trim(), reply: { id: r.attrs.id, author, quote } }
 }
-/** SASL refused the token: an expired or revoked CTI session, not a network problem. */
-const isAuthError = (e: Error & { condition?: string }) => e.name === 'SASLError' || e.condition === 'not-authorized'
+/** SASL refused the token: a revoked CTI session, or the middleware failing to check it. */
+const isAuthError = (e: Error) => e.name === 'SASLError'
 const local = (jid = '') => jid.split('@')[0]
 const stampOf = (el?: Element | null) => {
   const stamp = el?.getChild('delay', NS.delay)?.attrs.stamp

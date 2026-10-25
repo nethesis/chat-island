@@ -1,4 +1,4 @@
-// unauthorized: the server refused the token; nothing is retried until the host passes a new one.
+// unauthorized: the server refused the token; retried every few minutes, and at once when the tab is shown again.
 export type Status = 'connecting' | 'online' | 'offline' | 'error' | 'unauthorized'
 
 export interface Message {
