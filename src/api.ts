@@ -38,6 +38,13 @@ export async function fetchInactive(host: string, token: string): Promise<Record
   return Object.fromEntries(users.map((u) => [u.username, u.name || u.username]))
 }
 
+/** Everyone I have a chat with, operators and groups, the latest first. */
+export async function fetchConversations(host: string, token: string): Promise<string[]> {
+  const r = await fetch(`https://${host}/chat-gw/conversations`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!r.ok) throw new Error(`conversations: HTTP ${r.status}`)
+  return ((await r.json()) as { peers: string[] }).peers
+}
+
 /** Forget a conversation on the server: my archive with that operator or group is purged. */
 export async function deleteHistory(host: string, token: string, peer: string): Promise<void> {
   const r = await fetch(`https://${host}/chat-gw/conversations/${encodeURIComponent(peer)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })

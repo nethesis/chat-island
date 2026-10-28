@@ -6,7 +6,7 @@ import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
-import { chatHost, deleteHistory, fetchContacts, fetchInactive, fetchMobile, searchMessages } from './api'
+import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, searchMessages } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -419,6 +419,35 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
               restored.clear()
             })
             .catch(() => {})
+            .then(async () => {
+              // The newest page can be all one busy chat: the others come one by one, from the server's list.
+              const st = useStore.getState()
+              const isRoom = (p: string) => !!st.mucHost && p.endsWith('@' + st.mucHost)
+              // Operators are known here by username, groups by address.
+              const peers = (await fetchConversations(cfg.host, cfg.token).catch(() => [] as string[])).map((p) => (isRoom(p) ? p : p.split('@')[0]))
+              const groups = Object.values(st.conversations).filter((cv) => cv.kind === 'group').map((cv) => cv.peer)
+              const todo = [...new Set([...peers, ...groups])].filter((p) => {
+                const cv = st.conversations[p]
+                // A group I am no longer in keeps its archive: it is not listed again.
+                return cv ? !cv.messages.length : !isRoom(p)
+              })
+              for (let i = 0; i < todo.length; i += 8) {
+                await Promise.all(
+                  todo.slice(i, i + 8).map((p) =>
+                    c
+                      .history(p, undefined, 20)
+                      .then((page) => {
+                        const st = useStore.getState()
+                        st.applyRetractions(page.retractions)
+                        st.seed(page.messages, cfg.username)
+                        st.applyReactions(page.reactions)
+                        st.applyMarkers(page.markers)
+                      })
+                      .catch(() => {}),
+                  ),
+                )
+              }
+            })
             .then(() => useStore.setState({ synced: true }))
         }
       },
