@@ -96,6 +96,7 @@
     "{{emoji}} {{count}}": "{{emoji}} {{count}}",
     "{{emoji}} {{count}}, yours: press to remove": "{{emoji}} {{count}}, yours: press to remove",
     "Scroll up for older messages": "Scroll up for older messages",
+    "Loading older messages": "Loading older messages",
     "React": "React",
     "React to this message": "React to this message",
     "Reply": "Reply",

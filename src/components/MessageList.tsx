@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '../types'
 import { useStore } from '../store'
 import { Avatar } from './Avatar'
@@ -323,7 +323,7 @@ export function MessageList({
   messages: Message[]
   typing: boolean
   hasOlder: boolean
-  onLoadOlder: () => void
+  onLoadOlder: () => Promise<void>
   group?: boolean
   reactions?: Reactions
   delivered?: number
@@ -374,11 +374,40 @@ export function MessageList({
     }
   }, [menuFor, deleteFor])
 
+  // Older pages, like an infinite scroll upwards: what is on screen stays put while they land above it.
+  const [loading, setLoading] = useState(false)
+  const older = useRef<{ height: number; top: number; count: number } | null>(null)
+  const loadOlder = async () => {
+    const el = box.current
+    if (!el || older.current || !hasOlder) return
+    older.current = { height: el.scrollHeight, top: el.scrollTop, count: messages.length }
+    setLoading(true)
+    try {
+      await onLoadOlder()
+    } finally {
+      setLoading(false)
+    }
+  }
+  useLayoutEffect(() => {
+    const el = box.current
+    const o = older.current
+    if (!el || !o || loading) return
+    older.current = null
+    el.scrollTop = el.scrollHeight - o.height + o.top
+    // Still at the top (a wheel there fires no scroll event): the next page follows, as long as pages bring something.
+    if (el.scrollTop < 30 && messages.length > o.count) loadOlder()
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A short history that does not fill the window cannot be scrolled: it pages back on its own.
+  useEffect(() => {
+    const el = box.current
+    if (el && hasOlder && el.scrollHeight <= el.clientHeight) loadOlder()
+  }, [hasOlder, messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const onScroll = () => {
     const el = box.current
     if (!el) return
     stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
-    if (el.scrollTop < 30 && hasOlder) onLoadOlder()
+    if (el.scrollTop < 30) loadOlder()
   }
 
   const react = (target: string, emoji: string) => {
@@ -389,8 +418,19 @@ export function MessageList({
 
   return (
     <div className="ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col">
-      <div ref={box} onScroll={onScroll} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className={`ci-flex-1 ci-overflow-y-auto ci-px-4 ${padTop ? 'ci-pt-14 ci-pb-2' : 'ci-py-2'} ci-space-y-1`}>
-        {hasOlder && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">{t('Messages.Scroll up for older messages')}</div>}
+      <div ref={box} onScroll={onScroll} style={{ overflowAnchor: 'none' }} onLoadCapture={() => stick.current && box.current && (box.current.scrollTop = box.current.scrollHeight)} className={`ci-flex-1 ci-overflow-y-auto ci-px-4 ${padTop ? 'ci-pt-14 ci-pb-2' : 'ci-py-2'} ci-space-y-1`}>
+        {hasOlder && (
+          <div className="ci-flex ci-justify-center ci-items-center ci-gap-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-1">
+            {loading ? (
+              <>
+                <span className="ci-w-3 ci-h-3 ci-rounded-full ci-border-2 ci-border-current ci-border-t-transparent ci-animate-spin" aria-hidden="true" />
+                {t('Messages.Loading older messages')}
+              </>
+            ) : (
+              t('Messages.Scroll up for older messages')
+            )}
+          </div>
+        )}
         {messages.map((m, i) => {
           const prev = messages[i - 1]
           const newDay = !prev || !sameDay(prev.ts, m.ts)
