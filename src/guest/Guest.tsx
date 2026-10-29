@@ -435,6 +435,8 @@ export function Guest() {
             </div>
           )}
         </header>
+        {/* The chat's column below the header, framed at the sides. */}
+        <div className="ci-flex-1 ci-min-h-0 ci-w-full ci-max-w-3xl ci-mx-auto ci-box-border ci-flex ci-flex-col ci-border-0 md:ci-border-x ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
         {ended ? (
           <div className="ci-m-auto ci-px-6 ci-text-center">
             <div className="ci-font-medium">{ended[0]}</div>
@@ -457,7 +459,7 @@ export function Guest() {
             {joinError && <div role="alert" className="ci-text-center ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{joinError}</div>}
           </form>
         ) : (
-          <main className="ci-relative ci-flex-1 ci-min-h-0 ci-w-full ci-max-w-3xl ci-mx-auto ci-flex ci-flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <main className="ci-relative ci-flex-1 ci-min-h-0 ci-flex ci-flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             {state === 'ready' && (notify === 'default' || notify === 'denied') && (
               <div className="ci-mx-3 ci-mt-3 ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-2 ci-rounded-2xl ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-xs">
                 <span className="ci-flex ci-text-gray-600 dark:ci-text-gray-300">{Icon.bell}</span>
@@ -504,6 +506,7 @@ export function Guest() {
             <Composer disabled={state !== 'ready'} focusKey={focusTick} onSend={(text, files) => send(text, files)} onTyping={() => {}} onFile={(f) => send('', [f]).catch(() => {})} />
           </main>
         )}
+        </div>
       </div>
     </div>
   )
