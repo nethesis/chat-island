@@ -497,7 +497,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
       const text = m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.nick ?? m.from) : m.oob ? t('Common.Attachment') : emojify(m.body)
       const group = conv?.kind === 'group'
-      const author = group && m.nick ? st.contacts[m.nick]?.name ?? m.nick : name
+      // The nick is the sender's choice: a colleague's name only when that colleague is in the group.
+      const member = !conv?.members || conv.members.includes(m.nick ?? '')
+      const author = group && m.nick ? (member ? st.contacts[m.nick]?.name : undefined) ?? m.nick : name
       const body = group && m.nick && !m.notice ? `${author}: ${text}` : text
       if (soundRef.current) chime()
       const avatar = group ? conv?.avatar : st.contacts[peer]?.avatar
