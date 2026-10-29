@@ -319,6 +319,7 @@ export function MessageList({
   current,
   jump,
   padTop,
+  members,
 }: {
   messages: Message[]
   typing: boolean
@@ -336,6 +337,7 @@ export function MessageList({
   current?: string // id of the search hit on show: scrolled to and outlined
   jump?: number // changes whenever the view must go to `current` again
   padTop?: boolean // room at the top for the search bar floating over the list
+  members?: string[] // a group's members: only theirs is a colleague's name and face
 }) {
   const contacts = useStore((s) => s.contacts)
   const box = useRef<HTMLDivElement>(null)
@@ -344,6 +346,8 @@ export function MessageList({
   const [pickerFor, setPickerFor] = useState<string | null>(null) // the full picker, for this message
   const [deleteFor, setDeleteFor] = useState<string | null>(null) // "delete for everyone?" asked on this message
   const nameOf = (u: string) => contacts[u]?.name ?? u
+  // In a group the author is the nick its sender chose: a colleague's name only when that colleague is in the group.
+  const author = (u: string) => (!members || members.includes(u) ? nameOf(u) : u)
 
   // Pinned to the bottom, also when a picture loads later and grows the list.
   useEffect(() => {
@@ -448,7 +452,7 @@ export function MessageList({
             )
           const grouped = prev && !newDay && prev.mine === m.mine && prev.nick === m.nick && m.ts - prev.ts < 120000
           // In a group, who wrote it: the avatar sits beside the first bubble of a run, the name is its tooltip.
-          const sender = group && !m.mine && m.nick ? nameOf(m.nick) : null
+          const sender = group && !m.mine && m.nick ? author(m.nick) : null
           const target = m.oid
           const canReact = !!onReact && !!target && !m.pending
           const reactButton = canReact && (
@@ -502,7 +506,7 @@ export function MessageList({
               <div className={`ci-group ci-flex ci-items-start ci-gap-1.5 ${m.mine ? 'ci-justify-end' : 'ci-justify-start'} ${grouped ? 'ci-mt-0.5' : 'ci-mt-2'}`}>
                 {sender && (
                   <span className="ci-w-7 ci-shrink-0" title={sender}>
-                    {!grouped && <Avatar contact={contacts[m.nick!]} username={m.nick!} size={28} />}
+                    {!grouped && <Avatar contact={!members || members.includes(m.nick!) ? contacts[m.nick!] : undefined} username={m.nick!} size={28} />}
                   </span>
                 )}
                 {m.mine && deleteButton}

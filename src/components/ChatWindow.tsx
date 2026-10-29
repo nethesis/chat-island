@@ -342,6 +342,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         messages={c.messages}
         typing={c.typing}
         group={c.kind === 'group'}
+        members={c.kind === 'group' ? c.members : undefined}
         hasOlder={c.loaded && !c.complete}
         onLoadOlder={() => actions.loadOlder(peer)}
         reactions={c.reactions}
