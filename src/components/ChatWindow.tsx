@@ -7,8 +7,8 @@ import { Button, Icon } from './Button'
 import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { GroupSettings } from './GroupSettings'
-import type { Message, Reply } from '../types'
-import type { SearchHit } from '../api'
+import { isExternal, isGuest, type Message, type Reply } from '../types'
+import type { GuestInfo, SearchHit } from '../api'
 import { t } from '../i18n'
 
 export interface WindowActions {
@@ -25,6 +25,13 @@ export interface WindowActions {
   react: (peer: string, target: string, emoji: string) => Promise<void>
   retract: (peer: string, m: Message) => Promise<void>
   seen: (peer: string) => void
+  inviteGuest: (name: string) => Promise<GuestInfo>
+  guest: (room: string, op?: 'get' | 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>
+}
+
+/** A room with someone outside the PBX. */
+export function ExternalBadge() {
+  return <span className="ci-shrink-0 ci-px-1.5 ci-rounded ci-text-[0.625rem] ci-leading-4 ci-font-semibold ci-uppercase ci-tracking-wide ci-bg-amber-100 ci-text-amber-800 dark:ci-bg-amber-900/60 dark:ci-text-amber-200">{t('Group.External')}</span>
 }
 
 const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
@@ -52,8 +59,8 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted, moveTo } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted, moveTo: s.moveTo })),
+  const { c, contacts, guests, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted, moveTo } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, guests: s.guests, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted, moveTo: s.moveTo })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
@@ -78,7 +85,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   }
   const [busy, setBusy] = useState(false)
   const target = useRef<string | undefined>(undefined) // the hit to start from, when the host opened us on one
-  const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? u)
+  const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? guests[u] ?? u)
   const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
 
   useEffect(() => {
@@ -229,7 +236,10 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           </span>
         )}
         <div className="ci-flex-1 ci-min-w-0">
-          <div className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</div>
+          <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
+            <span className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
+            {isExternal(peer) && <ExternalBadge />}
+          </div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
               ? t('Chat.No longer active')
@@ -279,18 +289,29 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           ]}
         />
       )}
-      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onClose={() => setSettings(false)} />}
+      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isExternal(peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
         <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (
             <div key={m} className="ci-flex ci-items-center ci-gap-3 ci-px-2 ci-py-1.5 ci-text-sm">
+              {isGuest(m) ? (
+                // Someone outside the PBX: in this room only, no presence, no call, no chat of their own.
+                <>
+                  <Avatar contact={{ username: m, name: guests[m] ?? m }} username={m} size={28} />
+                  <span className="ci-flex-1 ci-min-w-0 ci-truncate">{guests[m] ?? m}</span>
+                  <ExternalBadge />
+                </>
+              ) : (
+                <>
               <span className="ci-relative">
                 <Avatar contact={contacts[m]} username={m} size={28} />
                 {m !== me && <PresenceDot online={online[m]} presence={contacts[m]?.presence} mobile={mobile[m]} />}
               </span>
               <span className="ci-flex-1 ci-min-w-0 ci-truncate">{nameOf(m)} <span className="ci-text-gray-500 dark:ci-text-gray-400">@{m}</span></span>
+                </>
+              )}
               {/* Reach one member directly: a call when the CTI says they can be called, then a one-to-one chat, always last so the chat icons line up. */}
-              {m !== me && (
+              {m !== me && !isGuest(m) && (
                 <>
                   {contacts[m]?.number && callable(contacts[m]?.presence) && (
                     <Button variant="call" title={t('Chat.Call {{number}}', { number: contacts[m]?.number ?? '' })} aria-label={t('Chat.Call')} onClick={() => actions.call(m, contacts[m]!.number!)}>

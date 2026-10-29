@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store'
 import type { Conversation } from '../types'
@@ -6,12 +6,15 @@ import { Avatar, GroupAvatar } from './Avatar'
 import { Button, Icon } from './Button'
 import { shrink } from './NewChat'
 import { t } from '../i18n'
+import { isGuest } from '../types'
+import type { GuestInfo } from '../api'
+import { SecretLink } from './SecretLink'
 
 type Change = { add?: string[]; remove?: string; name?: string; avatar?: string }
 
 /** The owner's panel for a group: picture, name, members in and out. */
-export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onClose: () => void }) {
-  const { contacts, inactive, me } = useStore(useShallow((s) => ({ contacts: s.contacts, inactive: s.inactive, me: s.me })))
+export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onClose: () => void }) {
+  const { contacts, inactive, guests, me } = useStore(useShallow((s) => ({ contacts: s.contacts, inactive: s.inactive, guests: s.guests, me: s.me })))
   const [name, setName] = useState(conv.name ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -20,8 +23,14 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const picture = useRef<HTMLInputElement>(null)
+  // A room with someone outside the PBX: their link, to copy again or revoke.
+  const [guest, setGuest] = useState<GuestInfo | null>(null)
+  const [revoking, setRevoking] = useState(false)
+  useEffect(() => {
+    onGuest?.().then(setGuest).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const members = [...(conv.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me) || (contacts[a]?.name ?? a).localeCompare(contacts[b]?.name ?? b))
-  const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? inactive[u] ?? u)
+  const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? inactive[u] ?? guests[u] ?? u)
   const candidates = useMemo(() => {
     const s = q.trim().toLowerCase()
     return Object.values(contacts)
@@ -70,6 +79,47 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
         </Button>
       </div>
       {error && <div className="ci-px-4 ci-pb-2 ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
+      {guest && !adding && (() => {
+        // The link only lets people in: closed (revoked or expired), who joined stays.
+        const open = !guest.revoked && guest.expires * 1000 > Date.now()
+        const relink = (
+          <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => onGuest?.('link').then(setGuest).catch((e) => setError((e as Error).message))}>
+            {Icon.link} {t('Group.New link')}
+          </Button>
+        )
+        return (
+          <div className="ci-flex ci-flex-col ci-gap-1.5 ci-px-4 ci-pb-3">
+            <span className="ci-text-xs ci-font-medium ci-text-gray-500 dark:ci-text-gray-400">
+              {t('Group.External link')}
+              {open && ` · ${t('Group.Expires {{date}}', { date: new Date(guest.expires * 1000).toLocaleDateString() })}`}
+            </span>
+            {!open && <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{guest.revoked ? t('Group.Link revoked') : t('Group.Link expired')}</span>}
+            {!guest.owner ? (
+              <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Only who invited manages the link')}</span>
+            ) : revoking ? (
+              <div className="ci-flex ci-items-center ci-gap-2">
+                <span className="ci-flex-1 ci-text-xs">{t('Group.Revoke link?')}</span>
+                <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRevoking(false)}>
+                  {t('Common.Cancel')}
+                </Button>
+                <Button variant="red" className="ci-w-auto ci-h-8 ci-px-3" disabled={busy} onClick={() => onGuest?.('revoke').then((g) => (setGuest(g), setRevoking(false))).catch((e) => setError((e as Error).message))}>
+                  {t('Group.Revoke')}
+                </Button>
+              </div>
+            ) : (
+              <div className="ci-flex ci-items-center ci-gap-2">
+                {/* Shown once, when made: the server keeps only its hash. A new one replaces it. */}
+                {guest.link && open ? <SecretLink link={guest.link} /> : relink}
+                {open && (
+                  <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRevoking(true)}>
+                    {t('Group.Revoke')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
       <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       {adding ? (
         // Operators to add: search, tick, add.
@@ -114,10 +164,21 @@ export function GroupSettings({ conv, onEdit, onClose }: { conv: Conversation; o
           <ul className="ci-flex-1 ci-overflow-y-auto ci-m-0 ci-p-0 ci-list-none">
             {members.map((u) => (
               <li key={u} className="ci-flex ci-items-center ci-gap-3 ci-pl-4 ci-pr-2 ci-py-1.5">
-                <Avatar contact={contacts[u]} username={u} size={28} />
+                <Avatar contact={isGuest(u) ? { username: u, name: guests[u] ?? u } : contacts[u]} username={u} size={28} />
                 <span className="ci-flex-1 ci-truncate">{nameOf(u)}</span>
                 {u === me ? (
                   <span className="ci-pr-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Owner')}</span>
+                ) : isGuest(u) && !guest?.owner ? (
+                  <span className="ci-pr-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.External')}</span>
+                ) : isGuest(u) && removing === u ? (
+                  <>
+                    <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRemoving(null)}>
+                      {t('Common.Cancel')}
+                    </Button>
+                    <Button variant="red" className="ci-w-auto ci-h-8 ci-px-3" disabled={busy} onClick={() => onGuest?.('remove', u).then((g) => (setGuest(g), setRemoving(null))).catch((e) => setError((e as Error).message))}>
+                      {t('Common.Remove')}
+                    </Button>
+                  </>
                 ) : removing === u ? (
                   <>
                     <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRemoving(null)}>

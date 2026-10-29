@@ -26,3 +26,4 @@ dist-ssr
 # build outputs and local packs
 dist-widget
 *.tgz
+dist-guest

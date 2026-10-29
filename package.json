@@ -8,13 +8,14 @@
     "build:widget": "BUILD=widget vite build",
     "build:types": "tsc -p tsconfig.lib.json",
     "test": "tsc --noEmit -p tsconfig.app.json",
-    "prepublishOnly": "npm run build && npm run build:widget",
+    "prepublishOnly": "npm run build && npm run build:widget && npm run build:guest",
     "release": "npm publish",
     "publish:patch": "node check-publish.cjs patch && npm version patch -m v%s",
     "publish:minor": "node check-publish.cjs minor && npm version minor -m v%s",
     "publish:major": "node check-publish.cjs major && npm version major -m v%s",
     "preversion": "npm test",
-    "postversion": "git push origin main --tags"
+    "postversion": "git push origin main --tags",
+    "build:guest": "BUILD=guest vite build"
   },
   "dependencies": {
     "@xmpp/client": "^0.14.0",
@@ -41,7 +42,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "dist-widget"
+    "dist-widget",
+    "dist-guest"
   ],
   "license": "AGPL-3.0-or-later",
   "peerDependencies": {

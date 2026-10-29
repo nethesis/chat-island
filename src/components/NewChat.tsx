@@ -3,6 +3,8 @@ import { useStore } from '../store'
 import { Avatar, PresenceDot } from './Avatar'
 import { Button, Icon } from './Button'
 import { t } from '../i18n'
+import type { GuestInfo } from '../api'
+import { SecretLink } from './SecretLink'
 
 /** Pick one operator for a chat, or several for a group. */
 /** A picture for the group: whatever was chosen, squared and shrunk so it travels in the room's vCard. */
@@ -15,7 +17,7 @@ export async function shrink(file: File): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.8)
 }
 
-export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen: (peer: string) => void; onCreateGroup: (name: string, members: string[], avatar?: string) => Promise<void>; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
+export function NewChat({ onOpen, onCreateGroup, onInvite, onDragStart, docked }: { onOpen: (peer: string) => void; onCreateGroup: (name: string, members: string[], avatar?: string) => Promise<void>; onInvite?: (name: string) => Promise<GuestInfo>; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   const { contacts, online, mobile, setPicker, myName } = useStore()
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<string[]>([])
@@ -23,6 +25,23 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
   const [busy, setBusy] = useState(false)
   const [avatar, setAvatar] = useState<string>()
   const picture = useRef<HTMLInputElement>(null)
+  // Someone outside the PBX: a name, then the link to send them.
+  const [inviting, setInviting] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [guest, setGuest] = useState<GuestInfo | null>(null)
+  const [error, setError] = useState('')
+  const invite = async () => {
+    if (!onInvite || !guestName.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      setGuest(await onInvite(guestName.trim()))
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const list = useMemo(() => {
     const all = Object.values(contacts)
@@ -104,11 +123,52 @@ export function NewChat({ onOpen, onCreateGroup, onDragStart, docked }: { onOpen
         })}
       </ul>
       <div className="ci-border-t ci-border-solid ci-border-x-0 ci-border-b-0 ci-border-gray-300 dark:ci-border-gray-700 ci-px-4 ci-py-4 ci-flex ci-items-center ci-gap-2">
-        {selected.length < 2 ? (
-          <Button variant="default" className="ci-w-auto ci-px-6 ci-gap-3 ci-ml-auto ci-font-medium" disabled={!selected.length} onClick={() => onOpen(selected[0])}>
-            {Icon.arrowRight}
-            {t('NewChat.Start chat')}
-          </Button>
+        {guest ? (
+          <div className="ci-flex ci-flex-col ci-gap-2 ci-w-full ci-text-sm">
+            <span className="ci-text-gray-600 dark:ci-text-gray-300">{t('NewChat.Link ready')}</span>
+            <div className="ci-flex ci-items-center ci-gap-2">
+              <SecretLink link={guest.link} />
+              <Button variant="default" className="ci-w-auto ci-h-10 ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" onClick={() => onOpen(guest.room)}>
+                {Icon.arrowRight}
+                {t('NewChat.Open chat')}
+              </Button>
+            </div>
+          </div>
+        ) : inviting ? (
+          <div className="ci-flex ci-flex-col ci-gap-2 ci-w-full">
+            <div className="ci-flex ci-items-center ci-gap-2">
+              <Button variant="small" aria-label={t('Common.Cancel')} title={t('Common.Cancel')} onClick={() => (setInviting(false), setError(''))}>
+                {Icon.close}
+              </Button>
+              <input
+                autoFocus
+                value={guestName}
+                maxLength={64}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder={t('NewChat.External name')}
+                onKeyDown={(e) => e.key === 'Enter' && !busy && invite()}
+                className={`ci-flex-1 ci-min-w-0 ci-w-0 ci-box-border ci-px-4 ci-bg-transparent ci-text-sm ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none focus:ci-border-transparent focus:ci-ring-2 focus:ci-ring-accent-500 dark:focus:ci-ring-accent-300 ${field}`}
+              />
+              <Button variant="default" className="ci-w-auto ci-px-5 ci-gap-2 ci-whitespace-nowrap ci-font-medium" disabled={busy || !guestName.trim()} onClick={invite}>
+                {Icon.link}
+                {busy ? '…' : t('NewChat.Create link')}
+              </Button>
+            </div>
+            {error && <span className="ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</span>}
+          </div>
+        ) : selected.length < 2 ? (
+          <>
+            {onInvite && !selected.length && (
+              <Button variant="tertiary" className="ci-w-auto ci-gap-2" onClick={() => setInviting(true)}>
+                {Icon.link}
+                {t('NewChat.Invite external')}
+              </Button>
+            )}
+            <Button variant="default" className="ci-w-auto ci-px-6 ci-gap-3 ci-ml-auto ci-font-medium" disabled={!selected.length} onClick={() => onOpen(selected[0])}>
+              {Icon.arrowRight}
+              {t('NewChat.Start chat')}
+            </Button>
+          </>
         ) : (
           <>
             <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then(setAvatar).catch(() => {})} />

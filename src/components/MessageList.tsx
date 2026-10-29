@@ -451,7 +451,7 @@ export function MessageList({
               </div>
             )
           const grouped = prev && !newDay && prev.mine === m.mine && prev.nick === m.nick && m.ts - prev.ts < 120000
-          // In a group, who wrote it: the avatar sits beside the first bubble of a run, the name is its tooltip.
+          // In a group, who wrote it: avatar and name by the first bubble of a run (a tooltip alone is no use on a phone).
           const sender = group && !m.mine && m.nick ? author(m.nick) : null
           const target = m.oid
           const canReact = !!onReact && !!target && !m.pending
@@ -513,6 +513,7 @@ export function MessageList({
                 {m.mine && replyButton}
                 {m.mine && reactButton}
                 <div className={`ci-relative ci-flex ci-flex-col ci-max-w-[80%] ${m.mine ? 'ci-items-end' : 'ci-items-start'}`}>
+                  {sender && !grouped && <span className="ci-max-w-full ci-truncate ci-pl-1 ci-pb-0.5 ci-text-xs ci-font-medium ci-text-accent-700 dark:ci-text-accent-400">{sender}</span>}
                   {deleteFor === m.id && (
                     <div
                       role="dialog"

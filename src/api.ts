@@ -74,3 +74,37 @@ export async function chatHost(host: string, token: string, set?: 'cti' | 'nethl
   if (!r.ok) throw new Error(`prefs/host: HTTP ${r.status}`)
   return ((await r.json()) as { host: 'cti' | 'nethlink' }).host
 }
+
+/** A room with people outside the PBX: its invite link (only right after it is made: the server keeps
+ * its hash), whether it still lets people in, who joined; owner: I made it. */
+export interface GuestInfo {
+  room: string
+  title: string
+  link: string
+  expires: number
+  revoked: boolean
+  owner: boolean
+  guests: { id: string; name: string; nick: string; joined: number }[]
+}
+
+async function guestCall(host: string, token: string, method: string, path: string, body?: unknown): Promise<GuestInfo> {
+  const r = await fetch(`https://${host}/chat-gw/guests${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!r.ok) throw new Error(`guests: HTTP ${r.status}`)
+  return (await r.json()) as GuestInfo
+}
+
+const roomPath = (room: string) => '/' + encodeURIComponent(room)
+/** A new room named name, mine, and its invite link: whoever opens it gives a name and joins. */
+export const inviteGuest = (host: string, token: string, name: string) => guestCall(host, token, 'POST', '', { name })
+/** The link's state and the guests of a room I am in. */
+export const getGuest = (host: string, token: string, room: string) => guestCall(host, token, 'GET', roomPath(room))
+/** Who made the room makes a new link, open for 30 days; the old one stops working. */
+export const newGuestLink = (host: string, token: string, room: string) => guestCall(host, token, 'POST', roomPath(room) + '/link')
+/** The link lets nobody new in; who joined stays. */
+export const revokeGuest = (host: string, token: string, room: string) => guestCall(host, token, 'DELETE', roomPath(room))
+/** That guest leaves the room. */
+export const removeGuest = (host: string, token: string, room: string, guest: string) => guestCall(host, token, 'DELETE', roomPath(room) + '/' + encodeURIComponent(guest))

@@ -6,7 +6,7 @@ import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
 import { peerOf, useStore } from './store'
-import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, searchMessages } from './api'
+import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, newGuestLink, removeGuest, revokeGuest, searchMessages } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -14,7 +14,7 @@ import { ChatWindow, type WindowActions } from './components/ChatWindow'
 import { NewChat } from './components/NewChat'
 import { appAttachment } from './components/MessageList'
 import { emojify } from './shortcodes'
-import type { Config, ConversationSummary, Message } from './types'
+import { isExternal, isGuest, type Config, type ConversationSummary, type Message } from './types'
 import { useDark, type Theme } from './theme'
 import './index.css'
 import { t, toLang } from './i18n'
@@ -72,6 +72,7 @@ function summarize(): ConversationSummary[] {
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
+        guests: c.kind === 'group' && isExternal(c.peer) ? Object.fromEntries((c.members ?? []).filter(isGuest).map((u) => [u, st.guests[u] ?? ''])) : undefined,
         muted: !!st.muted[c.peer],
         last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
       }
@@ -153,6 +154,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const [dark] = useDark(theme, !!rail)
   // Back from the browser's page cache the old connection is gone: start a new one.
   const [epoch, setEpoch] = useState(0)
+  // Chats with people outside the PBX need a gateway that has them: older ones answer 404.
+  const [canInvite, setCanInvite] = useState(false)
   useEffect(() => {
     const onShow = (e: PageTransitionEvent) => e.persisted && setEpoch((n) => n + 1)
     window.addEventListener('pageshow', onShow)
@@ -250,6 +253,23 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         } catch (e) {
           emit('chat-island-error', { scope: 'group', message: (e as Error).message })
         }
+      },
+      // A person outside the PBX: the gateway makes the room and the link; I own the room.
+      inviteGuest: async (name) => {
+        const c = chat.current
+        const cfg = cfgRef.current
+        if (!c || !cfg) throw new Error('not connected')
+        const g = await inviteGuest(cfg.host, cfg.token, name)
+        const st = useStore.getState()
+        st.setGroup(g.room, g.title, [cfg.username], undefined, true)
+        return g
+      },
+      guest: async (room, op = 'get', guest = '') => {
+        const cfg = cfgRef.current
+        if (!cfg) throw new Error('not connected')
+        const g = op === 'remove' ? await removeGuest(cfg.host, cfg.token, room, guest) : await { get: getGuest, link: newGuestLink, revoke: revokeGuest }[op](cfg.host, cfg.token, room)
+        g.guests.forEach((x) => useStore.getState().setGuest(x.id, x.nick))
+        return g
       },
       // Delete a conversation: my archive is purged on the server; a group is left, or destroyed when I own it.
       remove: async (peer) => {
@@ -553,10 +573,24 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       fetchInactive(cfg.host, cfg.token).then(s.setInactive).catch(() => {})
     }
     mobile()
+    fetch(`https://${cfg.host}/chat-gw/guest/link`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then((r) => setCanInvite(r.status !== 404))
+      .catch(() => {})
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
       .then(s.setContacts)
       .catch((e) => emit('chat-island-error', { scope: 'contacts', message: (e as Error).message }))
+    // Guests have no CTI name: the gateway knows theirs. Asked again when someone new is in the room.
+    const asked = new Set<string>()
+    const offGuests = useStore.subscribe((st) => {
+      for (const c of Object.values(st.conversations)) {
+        const unknown = c.kind === 'group' && isExternal(c.peer) ? (c.members ?? []).filter((u) => isGuest(u) && !st.guests[u]) : []
+        const key = c.peer + '|' + unknown.join(',')
+        if (!unknown.length || asked.has(key)) continue
+        asked.add(key)
+        getGuest(cfg.host, cfg.token, c.peer).then((g) => g.guests.forEach((x) => s.setGuest(x.id, x.nick))).catch(() => {})
+      }
+    })
     // With a search: the window opens on it, at that message.
     const offOpen = listen<{ username: string; search?: { query: string; id?: string } }>('chat-island-open', ({ username, search }) => {
       if (!username) return
@@ -592,6 +626,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offMute()
       unsaveMuted()
       offOpen()
+      offGuests()
       offClose()
       offMove()
       offContacts()
@@ -613,7 +648,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   // The conversation list for the host: pushed whenever it changes.
   const listKey = useStore((st) =>
     Object.values(st.conversations)
-      .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
+      .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${(c.members ?? []).filter(isGuest).map((u) => st.guests[u] ?? '').join(',')}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
       .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + (st.synced ? '#synced' : ''),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
@@ -700,7 +735,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
-        {panel && (picker || open) && createPortal(root('ci-h-full', picker ? <NewChat docked onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} /> : <ChatWindow docked peer={open!} actions={actions} />), panel)}
+        {panel && (picker || open) && createPortal(root('ci-h-full', picker ? <NewChat docked onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onInvite={canInvite ? actions.inviteGuest : undefined} /> : <ChatWindow docked peer={open!} actions={actions} />), panel)}
       </>
     )
   }
@@ -721,7 +756,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         )}
         {shownPicker && (
           <div ref={pickerRef} className={pickerClosing ? 'ci-anim-close' : 'ci-anim-open'} style={beside(0.75)} onAnimationEnd={pickerClosed}>
-            <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
+            <NewChat onOpen={(peer) => useStore.getState().openChat(peer)} onCreateGroup={actions.createGroup} onInvite={canInvite ? actions.inviteGuest : undefined} onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} />
           </div>
         )}
         <Dock onDragStart={onDragStart ?? (draggable ? drag.start : undefined)} pushButton={notifications !== 'auto'} />

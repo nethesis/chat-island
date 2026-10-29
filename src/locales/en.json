@@ -86,7 +86,19 @@
     "Add": "Add",
     "Add members": "Add members",
     "Owner": "Owner",
-    "Remove from the group": "Remove from the group"
+    "Remove from the group": "Remove from the group",
+    "External link": "Invite link",
+    "Copy": "Copy",
+    "Copied": "Copied",
+    "Revoke": "Revoke",
+    "Revoke link?": "Nobody new can join with this link; who is in stays. Revoke?",
+    "Link revoked": "Revoked: nobody new can join",
+    "External": "External",
+    "Expires {{date}}": "open until {{date}}",
+    "New link": "New link",
+    "Only who invited manages the link": "Only who made the chat manages its link and guests",
+    "Link expired": "Expired: nobody new can join",
+    "Remove guest": "Remove from the chat"
   },
   "Messages": {
     "Pause": "Pause",
@@ -117,7 +129,12 @@
     "Start chat": "Start chat",
     "Group picture": "Group picture",
     "Group name (optional)": "Group name (optional)",
-    "Create group": "Create group"
+    "Create group": "Create group",
+    "Invite external": "Chat with people outside",
+    "External name": "Name of the chat",
+    "Create link": "Create link",
+    "Link ready": "Send this link to the people you want in this chat: whoever opens it gives their name and joins. It works for 30 days.",
+    "Open chat": "Open chat"
   },
   "Notice": {
     "you": "you",
@@ -131,5 +148,30 @@
     "You changed the group picture": "You changed the group picture",
     "You called {{users}}": "You called {{users}}",
     "{{who}} called you": "{{who}} called you"
+  },
+  "Guest": {
+    "You are {{name}}": "You are {{name}}",
+    "Invalid link": "Invalid link",
+    "Check that you opened the whole link.": "Check that you opened the whole link.",
+    "This link is no longer active": "This link is no longer active",
+    "Ask whoever sent it for a new one.": "Ask whoever sent it for a new one.",
+    "No messages yet. Write here: the answer comes on this page.": "No messages yet. Write here: the answer comes on this page.",
+    "Connection lost, retrying…": "Connection lost, retrying…",
+    "Not sent, try again": "Not sent, try again",
+    "Light theme": "Light theme",
+    "Dark theme": "Dark theme",
+    "The chat is full": "The chat is full",
+    "Not joined, try again": "Could not join, try again",
+    "You are no longer in this chat": "You are no longer in this chat",
+    "Search": "Search in this chat",
+    "Turn on notifications to know when someone answers.": "Turn on notifications to know when someone answers.",
+    "Notifications are blocked: turn them on from the icon next to the address.": "Notifications are blocked: turn them on from the icon next to the address.",
+    "Turn on": "Turn on",
+    "This name is already used in this chat: choose another one.": "This name is already used in this chat: choose another one.",
+    "Join chat": "Join chat",
+    "Name": "Name",
+    "e.g. Jenny Wilson": "e.g. Jenny Wilson",
+    "Your name is visible to everyone in this chat": "Your name is visible to everyone in this chat",
+    "Join": "Join"
   }
 }

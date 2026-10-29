@@ -13,6 +13,7 @@ interface State {
   online: Record<string, boolean>   // operators connected to the chat, from XMPP presence
   mobile: Record<string, boolean>   // operators reachable through the mobile app
   inactive: Record<string, string>  // operators gone from the CTI: username -> last name
+  guests: Record<string, string>    // people outside the PBX in a room: guest id -> their name in the room (unique there)
   conversations: Record<string, Conversation>
   gone: Record<string, string> // retracted messages, peer|ref -> author: a copy loaded later stays out
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
@@ -41,6 +42,7 @@ interface State {
   setOnline(peer: string, online: boolean): void
   setMobile(users: string[]): void
   setInactive(users: Record<string, string>): void
+  setGuest(id: string, name: string): void
   ensure(peer: string): Conversation
   setGroup(peer: string, name: string, members: string[], avatar?: string, owner?: boolean): void
   removeConversation(peer: string): void
@@ -110,6 +112,7 @@ export const useStore = create<State>((set, get) => ({
   online: {},
   mobile: {},
   inactive: {},
+  guests: {},
   conversations: {},
   gone: {},
   order: [],
@@ -138,7 +141,7 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, conversations: {}, gone: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, guests: {}, conversations: {}, gone: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
   // My own entry, when the host sends it, only carries my presence.
@@ -151,6 +154,7 @@ export const useStore = create<State>((set, get) => ({
     })),
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),
   setInactive: (inactive) => set({ inactive }),
+  setGuest: (id, name) => set((s) => ({ guests: { ...s.guests, [id]: name } })),
   setOnline: (peer, online) => set((s) => (s.online[peer] === online ? {} : { online: { ...s.online, [peer]: online } })),
 
   ensure: (peer) => {

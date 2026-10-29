@@ -229,7 +229,7 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
     >
       {files.length > 0 && <div className="ci-mx-4 ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />}
       {files.length > 0 && (
-        <div className="ci-flex ci-gap-2 ci-px-3 ci-pt-3 ci-overflow-x-auto">
+        <div className="ci-flex ci-gap-2 ci-px-3 ci-pt-3 ci-pb-3 ci-overflow-x-auto">
           {files.map((f, i) => (
             <div key={i} title={f.name} className="ci-relative ci-shrink-0 ci-w-14 ci-h-14 ci-rounded-xl ci-overflow-hidden ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-flex ci-items-center ci-justify-center">
               {previews[i] ? (

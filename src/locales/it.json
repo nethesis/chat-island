@@ -86,7 +86,19 @@
     "Add": "Aggiungi",
     "Add members": "Aggiungi membri",
     "Owner": "Proprietario",
-    "Remove from the group": "Rimuovi dal gruppo"
+    "Remove from the group": "Rimuovi dal gruppo",
+    "External link": "Link d’invito",
+    "Copy": "Copia",
+    "Copied": "Copiato",
+    "Revoke": "Revoca",
+    "Revoke link?": "Con questo link non entra più nessuno; chi è già dentro resta. Revocare?",
+    "Link revoked": "Revocato: non entra più nessuno",
+    "External": "Esterno",
+    "Expires {{date}}": "aperto fino al {{date}}",
+    "New link": "Nuovo link",
+    "Only who invited manages the link": "Solo chi ha creato la chat gestisce link e ospiti",
+    "Link expired": "Scaduto: non entra più nessuno",
+    "Remove guest": "Rimuovi dalla chat"
   },
   "Messages": {
     "Pause": "Pausa",
@@ -117,7 +129,12 @@
     "Start chat": "Avvia chat",
     "Group picture": "Immagine del gruppo",
     "Group name (optional)": "Nome del gruppo (facoltativo)",
-    "Create group": "Crea gruppo"
+    "Create group": "Crea gruppo",
+    "Invite external": "Chat con persone esterne",
+    "External name": "Nome della chat",
+    "Create link": "Crea link",
+    "Link ready": "Manda questo link alle persone che vuoi in questa chat: chi lo apre scrive il suo nome ed entra. Vale 30 giorni.",
+    "Open chat": "Apri chat"
   },
   "Notice": {
     "you": "te",
@@ -131,5 +148,30 @@
     "You changed the group picture": "Hai cambiato l'immagine del gruppo",
     "You called {{users}}": "Hai chiamato {{users}}",
     "{{who}} called you": "{{who}} ti ha chiamato"
+  },
+  "Guest": {
+    "You are {{name}}": "Sei {{name}}",
+    "Invalid link": "Link non valido",
+    "Check that you opened the whole link.": "Controlla di aver aperto il link completo.",
+    "This link is no longer active": "Questo link non è più attivo",
+    "Ask whoever sent it for a new one.": "Chiedi a chi te lo ha mandato di inviartene uno nuovo.",
+    "No messages yet. Write here: the answer comes on this page.": "Nessun messaggio. Scrivi qui: la risposta arriva in questa pagina.",
+    "Connection lost, retrying…": "Connessione persa, riprovo…",
+    "Not sent, try again": "Non inviato, riprova",
+    "Light theme": "Tema chiaro",
+    "Dark theme": "Tema scuro",
+    "The chat is full": "La chat è piena",
+    "Not joined, try again": "Non è stato possibile entrare, riprova",
+    "You are no longer in this chat": "Non fai più parte di questa chat",
+    "Search": "Cerca nella chat",
+    "Turn on notifications to know when someone answers.": "Attiva le notifiche per sapere quando ti rispondono.",
+    "Notifications are blocked: turn them on from the icon next to the address.": "Le notifiche sono bloccate: attivale dall’icona accanto all’indirizzo.",
+    "Turn on": "Attiva",
+    "This name is already used in this chat: choose another one.": "Questo nome è già usato in questa chat: scegline un altro.",
+    "Join chat": "Entra nella chat",
+    "Name": "Nome",
+    "e.g. Jenny Wilson": "es. Mario Rossi",
+    "Your name is visible to everyone in this chat": "Il tuo nome è visibile a tutti in questa chat",
+    "Join": "Entra"
   }
 }

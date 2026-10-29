@@ -5,13 +5,21 @@ import { resolve } from 'node:path'
 // Two builds from one source:
 //   npm run build         -> dist/        ES module library, React as a peer (nethvoice-cti, NethLink)
 //   npm run build:widget  -> dist-widget/ self-contained script that mounts on every <div class="chat-island">
+//   npm run build:guest   -> dist-guest/  the page of a person outside the PBX, served by the chat gateway
 const widget = process.env.BUILD === 'widget'
+const guest = process.env.BUILD === 'guest'
 
 // The SASL libraries are UMD: their AMD branch (define(["./lib/factory"])) means nothing once bundled,
 // but Turbopack (next dev) tries to resolve its paths and fails. The CommonJS branch is the one that runs.
 const noAmd = { name: 'no-amd', renderChunk: (code: string) => code.replace(/typeof define\s*==+\s*["']function["']\s*&&\s*define\.amd/g, 'false') }
 
-export default defineConfig({
+export default defineConfig(guest ? {
+  plugins: [react()],
+  root: resolve(__dirname, 'src/guest'),
+  base: '/chat-gw/guest-app/',
+  css: { postcss: __dirname },
+  build: { outDir: resolve(__dirname, 'dist-guest'), emptyOutDir: true },
+} : {
   plugins: [react(), noAmd],
   define: widget ? { 'process.env.NODE_ENV': '"production"' } : {},
   build: widget

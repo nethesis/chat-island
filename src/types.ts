@@ -95,6 +95,11 @@ export interface ConversationSummary {
   owner?: boolean // a group I created: deleting it removes it for everyone
   unread: number
   members?: string[]
+  guests?: Record<string, string> // in a group with people outside the PBX: guest id -> their name there
   last?: { body: string; ts: number; mine: boolean; oob?: string; nick?: string }
   muted?: boolean // messages arrive without sound or notification
 }
+
+/** A room with a person outside the PBX, and that person's account. */
+export const isExternal = (peer: string) => peer.startsWith('ext-')
+export const isGuest = (user: string) => user.startsWith('g~')
