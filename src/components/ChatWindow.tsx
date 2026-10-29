@@ -29,9 +29,9 @@ export interface WindowActions {
   guest: (room: string, op?: 'get' | 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>
 }
 
-/** A room with someone outside the PBX. */
-export function ExternalBadge() {
-  return <span className="ci-shrink-0 ci-px-1.5 ci-rounded ci-text-[0.625rem] ci-leading-4 ci-font-semibold ci-uppercase ci-tracking-wide ci-bg-amber-100 ci-text-amber-800 dark:ci-bg-amber-900/60 dark:ci-text-amber-200">{t('Group.External')}</span>
+/** Someone outside the PBX, or (chat) a room with them. */
+export function ExternalBadge({ chat }: { chat?: boolean }) {
+  return <span className="ci-shrink-0 ci-px-1.5 ci-rounded ci-text-[0.625rem] ci-leading-4 ci-font-semibold ci-uppercase ci-tracking-wide ci-bg-amber-100 ci-text-amber-800 dark:ci-bg-amber-900/60 dark:ci-text-amber-200">{t(chat ? 'Group.External chat' : 'Group.External')}</span>
 }
 
 const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
@@ -238,7 +238,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         <div className="ci-flex-1 ci-min-w-0">
           <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
             <span className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
-            {isExternal(peer) && <ExternalBadge />}
+            {isExternal(peer) && <ExternalBadge chat />}
           </div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
