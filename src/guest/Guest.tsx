@@ -39,7 +39,7 @@ const api = (path: string, init?: RequestInit) =>
 
 type GuestReply = { id: string; author: string; quote?: string }
 type GuestMsg = { id: string; oid: string; sid: string; mine: boolean; nick: string; author: string; body: string; files?: string[]; at: number; reply?: GuestReply }
-type GuestPage = { messages: GuestMsg[]; reactions: { target: string; nick: string; emojis: string[] }[]; retractions: string[]; complete: boolean; first: string; last: string }
+type GuestPage = { messages: GuestMsg[]; reactions: { target: string; nick: string; emojis: string[] }[]; retractions: { target: string; nick: string }[]; complete: boolean; first: string; last: string }
 type State = 'loading' | 'join' | 'ready' | 'invalid' | 'closed' | 'removed'
 type Reactions = Record<string, Record<string, string[]>>
 
@@ -117,7 +117,7 @@ export function Guest() {
   const myNick = useRef('')
   const roomRef = useRef('')
   const titleRef = useRef('')
-  const gone = useRef(new Set<string>())
+  const gone = useRef(new Map<string, string>()) // message id -> who took it back
   const live = useRef(false)
   const unread = useRef(0)
 
@@ -143,8 +143,9 @@ export function Guest() {
     const contacts: Record<string, Contact> = { ...useStore.getState().contacts }
     for (const m of p.messages) if (!m.mine && !contacts[m.nick]) contacts[m.nick] = { username: m.nick, name: m.author }
     useStore.setState({ contacts })
-    p.retractions.forEach((ref) => gone.current.add(ref))
-    const visible = (m: Message) => !gone.current.has(m.sid ?? '') && !gone.current.has(m.oid ?? '')
+    // Only its author takes a message back: anyone else's retraction is ignored, as in the island.
+    p.retractions.forEach((r) => gone.current.set(r.target, r.nick === myNick.current ? ME : r.nick))
+    const visible = (m: Message) => gone.current.get(m.sid ?? '') !== m.nick && gone.current.get(m.oid ?? '') !== m.nick
     const add = p.messages.map(toMessage)
     setMessages((cur) => {
       const seen = new Set(cur.map((m) => m.id))
@@ -311,7 +312,7 @@ export function Guest() {
     if (!m.sid) return
     const r = await api('/guest/retract', { method: 'POST', body: JSON.stringify({ sid: m.sid }) })
     if (r.ok) {
-      gone.current.add(m.sid)
+      gone.current.set(m.sid, ME)
       setMessages((cur) => cur.filter((x) => x.id !== m.id))
     }
   }

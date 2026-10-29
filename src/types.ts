@@ -103,3 +103,5 @@ export interface ConversationSummary {
 /** A room with a person outside the PBX, and that person's account. */
 export const isExternal = (peer: string) => peer.startsWith('ext-')
 export const isGuest = (user: string) => user.startsWith('g~')
+/** A group nick no colleague has: colleagues take their username, guests never get one. */
+export const isGuestNick = (nick?: string) => !!nick && !/^[a-z0-9][a-z0-9._-]*$/.test(nick)

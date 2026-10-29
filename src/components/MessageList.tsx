@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { Message } from '../types'
+import { isGuestNick, type Message } from '../types'
 import { useStore } from '../store'
 import { Avatar } from './Avatar'
 import { emojify } from '../shortcodes'
@@ -7,6 +7,7 @@ import { Icon } from './Button'
 import { EmojiPicker, QUICK_REACTIONS } from './EmojiPicker'
 import { noticeText } from '../notice'
 import { t } from '../i18n'
+import { ExternalBadge } from './ChatWindow'
 
 const isImage = (url: string) => /\.(png|jpe?g|gif|webp|avif|svg)(\?|$)/i.test(url)
 const isAudio = (url: string) => /\.(webm|ogg|oga|opus|mp3|m4a|wav)(\?|$)/i.test(url)
@@ -513,7 +514,13 @@ export function MessageList({
                 {m.mine && replyButton}
                 {m.mine && reactButton}
                 <div className={`ci-relative ci-flex ci-flex-col ci-max-w-[80%] ${m.mine ? 'ci-items-end' : 'ci-items-start'}`}>
-                  {sender && !grouped && <span className="ci-max-w-full ci-truncate ci-pl-1 ci-pb-0.5 ci-text-xs ci-font-medium ci-text-accent-700 dark:ci-text-accent-400">{sender}</span>}
+                  {sender && !grouped && (
+                    // Someone outside the PBX is marked on every run: a name alone could be a colleague's.
+                    <span className="ci-flex ci-max-w-full ci-items-center ci-gap-1.5 ci-pl-1 ci-pb-0.5">
+                      <span className="ci-truncate ci-text-xs ci-font-medium ci-text-accent-700 dark:ci-text-accent-400">{sender}</span>
+                      {isGuestNick(m.nick) && <ExternalBadge />}
+                    </span>
+                  )}
                   {deleteFor === m.id && (
                     <div
                       role="dialog"
