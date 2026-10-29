@@ -90,8 +90,6 @@
     "External link": "Link d’invito",
     "Copy": "Copia",
     "Copied": "Copiato",
-    "Revoke": "Revoca",
-    "Revoke link?": "Con questo link non entra più nessuno; chi è già dentro resta. Revocare?",
     "Link revoked": "Revocato: non entra più nessuno",
     "External": "Esterno",
     "Expires {{date}}": "aperto fino al {{date}}",

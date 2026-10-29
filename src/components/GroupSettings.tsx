@@ -13,6 +13,10 @@ import { SecretLink } from './SecretLink'
 type Change = { add?: string[]; remove?: string; name?: string; avatar?: string }
 
 /** The owner's panel for a group: picture, name, members in and out. */
+// Confirmations as in the message menu's delete: two pills.
+const pillCancel = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-sm ci-text-gray-700 dark:ci-text-gray-200 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800'
+const pillDanger = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-cursor-pointer ci-text-sm ci-bg-rose-700 ci-text-white hover:ci-bg-rose-800 dark:ci-bg-rose-500 dark:hover:ci-bg-rose-400 dark:ci-text-gray-950 disabled:ci-opacity-50'
+
 export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onClose: () => void }) {
   const { contacts, inactive, guests, me } = useStore(useShallow((s) => ({ contacts: s.contacts, inactive: s.inactive, guests: s.guests, me: s.me })))
   const [name, setName] = useState(conv.name ?? '')
@@ -25,7 +29,6 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
   const picture = useRef<HTMLInputElement>(null)
   // A room with someone outside the PBX: their link, to copy again or revoke.
   const [guest, setGuest] = useState<GuestInfo | null>(null)
-  const [revoking, setRevoking] = useState(false)
   useEffect(() => {
     onGuest?.().then(setGuest).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,25 +99,10 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
             {!open && <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{guest.revoked ? t('Group.Link revoked') : t('Group.Link expired')}</span>}
             {!guest.owner ? (
               <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Only who invited manages the link')}</span>
-            ) : revoking ? (
-              <div className="ci-flex ci-items-center ci-gap-2">
-                <span className="ci-flex-1 ci-text-xs">{t('Group.Revoke link?')}</span>
-                <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRevoking(false)}>
-                  {t('Common.Cancel')}
-                </Button>
-                <Button variant="red" className="ci-w-auto ci-h-8 ci-px-3" disabled={busy} onClick={() => onGuest?.('revoke').then((g) => (setGuest(g), setRevoking(false))).catch((e) => setError((e as Error).message))}>
-                  {t('Group.Revoke')}
-                </Button>
-              </div>
             ) : (
               <div className="ci-flex ci-items-center ci-gap-2">
                 {/* Shown once, when made: the server keeps only its hash. A new one replaces it. */}
                 {guest.link && open ? <SecretLink link={guest.link} /> : relink}
-                {open && (
-                  <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRevoking(true)}>
-                    {t('Group.Revoke')}
-                  </Button>
-                )}
               </div>
             )}
           </div>
@@ -172,21 +160,21 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
                   <span className="ci-pr-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.External')}</span>
                 ) : isGuest(u) && removing === u ? (
                   <>
-                    <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRemoving(null)}>
+                    <button type="button" className={pillCancel} onClick={() => setRemoving(null)}>
                       {t('Common.Cancel')}
-                    </Button>
-                    <Button variant="red" className="ci-w-auto ci-h-8 ci-px-3" disabled={busy} onClick={() => onGuest?.('remove', u).then((g) => (setGuest(g), setRemoving(null))).catch((e) => setError((e as Error).message))}>
+                    </button>
+                    <button type="button" className={pillDanger} disabled={busy} onClick={() => onGuest?.('remove', u).then((g) => (setGuest(g), setRemoving(null))).catch((e) => setError((e as Error).message))}>
                       {t('Common.Remove')}
-                    </Button>
+                    </button>
                   </>
                 ) : removing === u ? (
                   <>
-                    <Button variant="small" className="ci-w-auto ci-px-2" onClick={() => setRemoving(null)}>
+                    <button type="button" className={pillCancel} onClick={() => setRemoving(null)}>
                       {t('Common.Cancel')}
-                    </Button>
-                    <Button variant="red" className="ci-w-auto ci-h-8 ci-px-3" disabled={busy} onClick={() => run({ remove: u }, () => setRemoving(null))}>
+                    </button>
+                    <button type="button" className={pillDanger} disabled={busy} onClick={() => run({ remove: u }, () => setRemoving(null))}>
                       {t('Common.Remove')}
-                    </Button>
+                    </button>
                   </>
                 ) : (
                   <Button variant="small" aria-label={t('Common.Remove {{name}}', { name: nameOf(u) })} title={t('Group.Remove from the group')} disabled={busy} onClick={() => setRemoving(u)}>

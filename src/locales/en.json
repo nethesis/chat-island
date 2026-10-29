@@ -90,8 +90,6 @@
     "External link": "Invite link",
     "Copy": "Copy",
     "Copied": "Copied",
-    "Revoke": "Revoke",
-    "Revoke link?": "Nobody new can join with this link; who is in stays. Revoke?",
     "Link revoked": "Revoked: nobody new can join",
     "External": "External",
     "Expires {{date}}": "open until {{date}}",
