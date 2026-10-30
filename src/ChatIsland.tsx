@@ -14,7 +14,7 @@ import { ChatWindow, type WindowActions } from './components/ChatWindow'
 import { NewChat } from './components/NewChat'
 import { appAttachment } from './components/MessageList'
 import { emojify } from './shortcodes'
-import { isExternal, isGuest, type Config, type ConversationSummary, type Message } from './types'
+import { isExternal, isGuest, nickName, type Config, type ConversationSummary, type Message } from './types'
 import { useDark, type Theme } from './theme'
 import './index.css'
 import { t, toLang } from './i18n'
@@ -74,7 +74,7 @@ function summarize(): ConversationSummary[] {
         members: c.members,
         guests: c.kind === 'group' && isExternal(c.peer) ? Object.fromEntries((c.members ?? []).filter(isGuest).map((u) => [u, st.guests[u] ?? ''])) : undefined,
         muted: !!st.muted[c.peer],
-        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick } : undefined,
+        last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick && nickName(m.nick) } : undefined,
       }
     })
     .filter((c) => c.last || c.kind === 'group')
@@ -268,7 +268,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         const cfg = cfgRef.current
         if (!cfg) throw new Error('not connected')
         const g = op === 'remove' ? await removeGuest(cfg.host, cfg.token, room, guest) : await { get: getGuest, link: newGuestLink, revoke: revokeGuest }[op](cfg.host, cfg.token, room)
-        g.guests.forEach((x) => useStore.getState().setGuest(x.id, x.nick))
+        g.guests.forEach((x) => useStore.getState().setGuest(x.id, nickName(x.nick)))
         return g
       },
       // Delete a conversation: my archive is purged on the server; a group is left, or destroyed when I own it.
@@ -519,7 +519,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       const group = conv?.kind === 'group'
       // The nick is the sender's choice: a colleague's name only when that colleague is in the group.
       const member = !conv?.members || conv.members.includes(m.nick ?? '')
-      const author = group && m.nick ? (member ? st.contacts[m.nick]?.name : undefined) ?? m.nick : name
+      const author = group && m.nick ? (member ? st.contacts[m.nick]?.name : undefined) ?? nickName(m.nick) : name
       const body = group && m.nick && !m.notice ? `${author}: ${text}` : text
       if (soundRef.current) chime()
       const avatar = group ? conv?.avatar : st.contacts[peer]?.avatar
@@ -588,7 +588,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         const key = c.peer + '|' + unknown.join(',')
         if (!unknown.length || asked.has(key)) continue
         asked.add(key)
-        getGuest(cfg.host, cfg.token, c.peer).then((g) => g.guests.forEach((x) => s.setGuest(x.id, x.nick))).catch(() => {})
+        getGuest(cfg.host, cfg.token, c.peer).then((g) => g.guests.forEach((x) => s.setGuest(x.id, nickName(x.nick)))).catch(() => {})
       }
     })
     // With a search: the window opens on it, at that message.

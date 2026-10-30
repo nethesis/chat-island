@@ -105,3 +105,5 @@ export const isExternal = (peer: string) => peer.startsWith('ext-')
 export const isGuest = (user: string) => user.startsWith('g~')
 /** A group nick no colleague has: colleagues take their username, guests never get one. */
 export const isGuestNick = (nick?: string) => !!nick && !/^[a-z0-9][a-z0-9._-]*$/.test(nick)
+/** A guest's name as shown: without the mark the gateway adds to username-like names. */
+export const nickName = (nick: string) => nick.replace(/ ·$/, '')

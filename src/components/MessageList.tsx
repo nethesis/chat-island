@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { isGuestNick, type Message } from '../types'
+import { isGuestNick, nickName, type Message } from '../types'
 import { useStore } from '../store'
 import { Avatar } from './Avatar'
 import { emojify } from '../shortcodes'
@@ -346,9 +346,9 @@ export function MessageList({
   const [menuFor, setMenuFor] = useState<string | null>(null) // quick reactions open on this message
   const [pickerFor, setPickerFor] = useState<string | null>(null) // the full picker, for this message
   const [deleteFor, setDeleteFor] = useState<string | null>(null) // "delete for everyone?" asked on this message
-  const nameOf = (u: string) => contacts[u]?.name ?? u
+  const nameOf = (u: string) => contacts[u]?.name ?? nickName(u)
   // In a group the author is the nick its sender chose: a colleague's name only when that colleague is in the group.
-  const author = (u: string) => (!members || members.includes(u) ? nameOf(u) : u)
+  const author = (u: string) => (!members || members.includes(u) ? nameOf(u) : nickName(u))
 
   // Pinned to the bottom, also when a picture loads later and grows the list.
   useEffect(() => {

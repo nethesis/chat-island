@@ -7,7 +7,7 @@ import { ExternalBadge } from '../components/ChatWindow'
 import { Button, Icon } from '../components/Button'
 import { t, toLang } from '../i18n'
 import { chime } from '../sound'
-import type { Contact, Message, Reply } from '../types'
+import { nickName, type Contact, type Message, type Reply } from '../types'
 import '../index.css'
 
 // The invite link's token is in the fragment (never sent to a server); the gateway is under the same prefix.
@@ -141,7 +141,7 @@ export function Guest() {
   const apply = (p: GuestPage, older: boolean) => {
     // Names for the list: operators by username, guests by nick.
     const contacts: Record<string, Contact> = { ...useStore.getState().contacts }
-    for (const m of p.messages) if (!m.mine && !contacts[m.nick]) contacts[m.nick] = { username: m.nick, name: m.author }
+    for (const m of p.messages) if (!m.mine && !contacts[m.nick]) contacts[m.nick] = { username: m.nick, name: nickName(m.author) }
     useStore.setState({ contacts })
     // Only its author takes a message back: anyone else's retraction is ignored, as in the island.
     p.retractions.forEach((r) => gone.current.set(r.target, r.nick === myNick.current ? ME : r.nick))
@@ -389,7 +389,7 @@ export function Guest() {
                 <span className="ci-block ci-font-medium ci-text-sm ci-truncate">{title || 'Chat'}</span>
                 {me && (
                   <span className="ci-block ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
-                    {offline ? t('Guest.Connection lost, retrying…') : members.length ? members.map((m) => (m.name === me.nick ? t('Common.You') : m.name)).join(', ') : t('Guest.You are {{name}}', { name: me.name })}
+                    {offline ? t('Guest.Connection lost, retrying…') : members.length ? members.map((m) => (m.name === me.nick ? t('Common.You') : nickName(m.name))).join(', ') : t('Guest.You are {{name}}', { name: me.name })}
                   </span>
                 )}
               </span>
@@ -409,8 +409,8 @@ export function Guest() {
               <div className="ci-anim-drop ci-max-h-80 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
                 {members.map((m) => (
                   <div key={m.name} className="ci-flex ci-items-center ci-gap-3 ci-px-2 ci-py-1.5 ci-text-sm">
-                    <Avatar contact={{ username: m.name, name: m.name }} username={m.name} size={28} />
-                    <span className="ci-flex-1 ci-min-w-0 ci-truncate">{m.name === me?.nick ? `${m.name} (${t('Common.You')})` : m.name}</span>
+                    <Avatar contact={{ username: m.name, name: nickName(m.name) }} username={m.name} size={28} />
+                    <span className="ci-flex-1 ci-min-w-0 ci-truncate">{m.name === me?.nick ? `${nickName(m.name)} (${t('Common.You')})` : nickName(m.name)}</span>
                     {m.external && <ExternalBadge />}
                   </div>
                 ))}
