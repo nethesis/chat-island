@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Contact, Conversation, Message, Reaction, Retraction, Status } from './types'
+import { isExternal, type Contact, type Conversation, type Message, type Reaction, type Retraction, type Status } from './types'
 import type { Marker } from './xmpp'
 import type { Lang } from './i18n'
 
@@ -14,6 +14,8 @@ interface State {
   mobile: Record<string, boolean>   // operators reachable through the mobile app
   inactive: Record<string, string>  // operators gone from the CTI: username -> last name
   guests: Record<string, string>    // people outside the PBX in a room: guest id -> their name in the room (unique there)
+  shared: Record<string, boolean>   // groups opened to people outside, by room name
+  guestsOn: boolean                 // the server takes people outside
   conversations: Record<string, Conversation>
   gone: Record<string, string> // retracted messages, peer|ref -> author: a copy loaded later stays out
   order: string[]          // peers with a head in the dock, bottom first; a head keeps its place
@@ -43,6 +45,7 @@ interface State {
   setMobile(users: string[]): void
   setInactive(users: Record<string, string>): void
   setGuest(id: string, name: string): void
+  setShared(rooms: string[]): void
   ensure(peer: string): Conversation
   setGroup(peer: string, name: string, members: string[], avatar?: string, owner?: boolean): void
   removeConversation(peer: string): void
@@ -113,6 +116,8 @@ export const useStore = create<State>((set, get) => ({
   mobile: {},
   inactive: {},
   guests: {},
+  shared: {},
+  guestsOn: false,
   conversations: {},
   gone: {},
   order: [],
@@ -141,7 +146,7 @@ export const useStore = create<State>((set, get) => ({
   })(),
 
   setStatus: (status, error) => set({ status, error }),
-  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, guests: {}, conversations: {}, gone: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
+  reset: () => set({ status: 'connecting', error: undefined, contacts: {}, online: {}, mobile: {}, inactive: {}, guests: {}, shared: {}, conversations: {}, gone: {}, order: [], open: null, picker: false, synced: false, muted: {}, dnd: false, find: null }),
   // The host may send partial entries: a name is always there, the username at worst.
   // An entry without the avatar key keeps the one already known: hosts may leave avatars out of presence updates.
   // My own entry, when the host sends it, only carries my presence.
@@ -155,6 +160,7 @@ export const useStore = create<State>((set, get) => ({
   setMobile: (users) => set({ mobile: Object.fromEntries(users.map((u) => [u, true])) }),
   setInactive: (inactive) => set({ inactive }),
   setGuest: (id, name) => set((s) => ({ guests: { ...s.guests, [id]: name } })),
+  setShared: (rooms) => set({ shared: Object.fromEntries(rooms.map((r) => [r, true])) }),
   setOnline: (peer, online) => set((s) => (s.online[peer] === online ? {} : { online: { ...s.online, [peer]: online } })),
 
   ensure: (peer) => {
@@ -316,3 +322,6 @@ export const useStore = create<State>((set, get) => ({
   },
   totalUnread: () => Object.values(get().conversations).reduce((n, c) => n + c.unread, 0),
 }))
+
+/** A room with people outside: made for them, or a group its owner opened to them. */
+export const isShared = (shared: Record<string, boolean>, peer: string) => isExternal(peer) || !!shared[peer.split('@')[0]]

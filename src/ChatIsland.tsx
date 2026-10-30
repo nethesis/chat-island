@@ -5,8 +5,8 @@ import { useDrag } from './drag'
 import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
-import { peerOf, useStore } from './store'
-import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, newGuestLink, removeGuest, revokeGuest, searchMessages } from './api'
+import { isShared, peerOf, useStore } from './store'
+import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
 import { registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -14,7 +14,7 @@ import { ChatWindow, type WindowActions } from './components/ChatWindow'
 import { NewChat } from './components/NewChat'
 import { appAttachment } from './components/MessageList'
 import { emojify } from './shortcodes'
-import { isExternal, isGuest, nickName, type Config, type ConversationSummary, type Message } from './types'
+import { isGuest, nickName, type Config, type ConversationSummary, type Message } from './types'
 import { useDark, type Theme } from './theme'
 import './index.css'
 import { t, toLang } from './i18n'
@@ -72,7 +72,7 @@ function summarize(): ConversationSummary[] {
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
-        guests: c.kind === 'group' && isExternal(c.peer) ? Object.fromEntries((c.members ?? []).filter(isGuest).map((u) => [u, st.guests[u] ?? ''])) : undefined,
+        guests: c.kind === 'group' && isShared(st.shared, c.peer) ? Object.fromEntries((c.members ?? []).filter(isGuest).map((u) => [u, st.guests[u] ?? ''])) : undefined,
         muted: !!st.muted[c.peer],
         last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick && nickName(m.nick) } : undefined,
       }
@@ -239,7 +239,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           throw e
         }
       },
-      createGroup: async (name, members, avatar) => {
+      createGroup: async (name, members, avatar, share) => {
         const c = chat.current
         const cfg = cfgRef.current
         if (!c || !cfg) return
@@ -249,6 +249,13 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
           await c.groupNotice(room, { event: 'add', users: members }).catch(() => {})
           const st = useStore.getState()
           st.setGroup(room, name, [...members, cfg.username], avatar, true)
+          // Opened to people outside at once: the link is shown before the chat.
+          if (share) {
+            const local = room.split('@')[0]
+            const g = await shareGroup(cfg.host, cfg.token, name, local)
+            st.setShared([...Object.keys(useStore.getState().shared), local])
+            return g
+          }
           st.openChat(room)
         } catch (e) {
           emit('chat-island-error', { scope: 'group', message: (e as Error).message })
@@ -264,11 +271,23 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         st.setGroup(g.room, g.title, [cfg.username], undefined, true)
         return g
       },
+      // One of my groups opened to people outside: the members stay, the link lets others in.
+      share: async (peer) => {
+        const cfg = cfgRef.current
+        if (!cfg) throw new Error('not connected')
+        const st = useStore.getState()
+        const room = peer.split('@')[0]
+        const g = await shareGroup(cfg.host, cfg.token, st.conversations[peer]?.name ?? room, room)
+        st.setShared([...Object.keys(useStore.getState().shared), room])
+        return g
+      },
       guest: async (room, op = 'get', guest = '') => {
         const cfg = cfgRef.current
         if (!cfg) throw new Error('not connected')
         const g = op === 'remove' ? await removeGuest(cfg.host, cfg.token, room, guest) : await { get: getGuest, link: newGuestLink, revoke: revokeGuest }[op](cfg.host, cfg.token, room)
         g.guests.forEach((x) => useStore.getState().setGuest(x.id, nickName(x.nick)))
+        // Private again: without anyone from outside left, the group loses its mark.
+        if (op === 'revoke') listShared(cfg.host, cfg.token).then(useStore.getState().setShared).catch(() => {})
         return g
       },
       // Delete a conversation: my archive is purged on the server; a group is left, or destroyed when I own it.
@@ -570,11 +589,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // Who has the mobile app: refreshed now and then, it is not a live presence.
     const mobile = () => {
       fetchMobile(cfg.host, cfg.token).then(s.setMobile).catch(() => {})
+      listShared(cfg.host, cfg.token).then(s.setShared).catch(() => {})
       fetchInactive(cfg.host, cfg.token).then(s.setInactive).catch(() => {})
     }
     mobile()
     fetch(`https://${cfg.host}/chat-gw/guest/link`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-      .then((r) => setCanInvite(r.status !== 404))
+      .then((r) => (setCanInvite(r.status !== 404), useStore.setState({ guestsOn: r.status !== 404 })))
       .catch(() => {})
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
@@ -584,7 +604,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const asked = new Set<string>()
     const offGuests = useStore.subscribe((st) => {
       for (const c of Object.values(st.conversations)) {
-        const unknown = c.kind === 'group' && isExternal(c.peer) ? (c.members ?? []).filter((u) => isGuest(u) && !st.guests[u]) : []
+        const unknown = c.kind === 'group' && isShared(st.shared, c.peer) ? (c.members ?? []).filter((u) => isGuest(u) && !st.guests[u]) : []
         const key = c.peer + '|' + unknown.join(',')
         if (!unknown.length || asked.has(key)) continue
         asked.add(key)

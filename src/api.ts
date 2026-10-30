@@ -100,6 +100,14 @@ async function guestCall(host: string, token: string, method: string, path: stri
 const roomPath = (room: string) => '/' + encodeURIComponent(room)
 /** A new room named name, mine, and its invite link: whoever opens it gives a name and joins. */
 export const inviteGuest = (host: string, token: string, name: string) => guestCall(host, token, 'POST', '', { name })
+/** One of my groups opened to people outside: its members stay, a link lets others in. */
+export const shareGroup = (host: string, token: string, name: string, room: string) => guestCall(host, token, 'POST', '', { name, room })
+/** Rooms with people outside, by room name. */
+export const listShared = async (host: string, token: string): Promise<string[]> => {
+  const r = await fetch(`https://${host}/chat-gw/guests`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!r.ok) throw new Error(`guests: HTTP ${r.status}`)
+  return ((await r.json()) as { rooms: string[] }).rooms
+}
 /** The link's state and the guests of a room I am in. */
 export const getGuest = (host: string, token: string, room: string) => guestCall(host, token, 'GET', roomPath(room))
 /** Who made the room makes a new link, open for 30 days; the old one stops working. */
