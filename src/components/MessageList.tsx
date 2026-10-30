@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { isGuestNick, nickName, type Message } from '../types'
 import { useStore } from '../store'
 import { Avatar } from './Avatar'
@@ -30,6 +30,28 @@ export const safeUrl = (url: string) => {
 }
 const time = (ts: number) => new Date(ts).toLocaleTimeString(useStore.getState().lang, { hour: '2-digit', minute: '2-digit' })
 const day = (ts: number) => new Date(ts).toLocaleDateString(useStore.getState().lang, { weekday: 'short', day: 'numeric', month: 'short' })
+// One colour per sender in a group, from Tailwind's palettes but the hosts' accents (emerald, blue) and the External badge's indigo.
+// [on a normal bubble, on my own (inverted) bubble]: a name quoted in my reply keeps its colour.
+const NAME_COLORS: [string, string][] = [
+  ['ci-text-red-700 dark:ci-text-red-400', 'ci-text-red-400 dark:ci-text-red-700'], ['ci-text-orange-700 dark:ci-text-orange-400', 'ci-text-orange-400 dark:ci-text-orange-700'], ['ci-text-yellow-700 dark:ci-text-yellow-400', 'ci-text-yellow-400 dark:ci-text-yellow-700'],
+  ['ci-text-lime-700 dark:ci-text-lime-400', 'ci-text-lime-400 dark:ci-text-lime-700'], ['ci-text-green-700 dark:ci-text-green-400', 'ci-text-green-400 dark:ci-text-green-700'], ['ci-text-teal-700 dark:ci-text-teal-400', 'ci-text-teal-400 dark:ci-text-teal-700'],
+  ['ci-text-cyan-700 dark:ci-text-cyan-400', 'ci-text-cyan-400 dark:ci-text-cyan-700'], ['ci-text-sky-700 dark:ci-text-sky-400', 'ci-text-sky-400 dark:ci-text-sky-700'], ['ci-text-violet-700 dark:ci-text-violet-400', 'ci-text-violet-400 dark:ci-text-violet-700'],
+  ['ci-text-purple-700 dark:ci-text-purple-400', 'ci-text-purple-400 dark:ci-text-purple-700'], ['ci-text-fuchsia-700 dark:ci-text-fuchsia-400', 'ci-text-fuchsia-400 dark:ci-text-fuchsia-700'], ['ci-text-pink-700 dark:ci-text-pink-400', 'ci-text-pink-400 dark:ci-text-pink-700'],
+  ['ci-text-rose-700 dark:ci-text-rose-400', 'ci-text-rose-400 dark:ci-text-rose-700'],
+]
+// Each sender starts from their own colour (FNV-1a of the nick); one already taken in this chat moves to the next free one.
+const nameColors = (nicks: string[]) => {
+  const out = new Map<string, [string, string]>()
+  const used = new Set<number>()
+  for (const nick of nicks) {
+    if (out.has(nick)) continue
+    let i = [...nick].reduce((h, c) => Math.imul(h ^ c.codePointAt(0)!, 16777619) >>> 0, 2166136261) % NAME_COLORS.length
+    for (let n = 0; used.has(i) && n < NAME_COLORS.length; n++) i = (i + 1) % NAME_COLORS.length
+    used.add(i)
+    out.set(nick, NAME_COLORS[i])
+  }
+  return out
+}
 const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
 
 /** Old Acrobits attachment JSON kept in the archive: encrypted on Acrobits, not viewable here. */
@@ -277,7 +299,7 @@ function Chips({ forMsg, me, onReact, nameOf, mine }: { forMsg?: Record<string, 
 }
 
 /** The quoted message on top of a reply; a click goes back to it. */
-function Quote({ reply, messages, mine, name }: { reply: NonNullable<Message['reply']>; messages: Message[]; mine: boolean; name: (u: string) => string }) {
+function Quote({ reply, messages, mine, name, color }: { reply: NonNullable<Message['reply']>; messages: Message[]; mine: boolean; name: (u: string) => string; color?: [string, string] }) {
   const original = messages.find((x) => x.oid === reply.id)
   const text = original ? (original.oob ? t('Common.Attachment') : original.body) : reply.quote?.replace(/^[^:]*: /, '') ?? ''
   const jump = (e: React.MouseEvent) => {
@@ -297,7 +319,7 @@ function Quote({ reply, messages, mine, name }: { reply: NonNullable<Message['re
         mine ? 'ci-bg-black/20 dark:ci-bg-black/10 ci-border-gray-400 dark:ci-border-gray-600' : 'ci-bg-black/5 dark:ci-bg-white/10 ci-border-iconSecondary dark:ci-border-iconSecondaryDark'
       }`}
     >
-      <div className="ci-font-medium">{name(reply.author)}</div>
+      <div className={`ci-font-medium ${color ? color[mine ? 1 : 0] : ''}`}>{name(reply.author)}</div>
       <div className="ci-line-clamp-2 ci-break-words ci-opacity-80">{text}</div>
     </div>
   )
@@ -347,6 +369,7 @@ export function MessageList({
   const [pickerFor, setPickerFor] = useState<string | null>(null) // the full picker, for this message
   const [deleteFor, setDeleteFor] = useState<string | null>(null) // "delete for everyone?" asked on this message
   const nameOf = (u: string) => contacts[u]?.name ?? nickName(u)
+  const colors = useMemo(() => nameColors([...(members ?? []).filter((u) => u !== me && !u.startsWith('g~')), ...messages.map((m) => (m.mine ? '' : m.nick ?? ''))].filter(Boolean)), [me, members, messages])
   // In a group the author is the nick its sender chose: a colleague's name only when that colleague is in the group.
   const author = (u: string) => (!members || members.includes(u) ? nameOf(u) : nickName(u))
 
@@ -504,7 +527,7 @@ export function MessageList({
           return (
             <div key={m.id} data-oid={m.oid} data-id={m.id} data-current={current === m.id || undefined}>
               {newDay && <div className="ci-text-center ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-py-2">{day(m.ts)}</div>}
-              <div className={`ci-group ci-flex ci-items-start ci-gap-1.5 ${m.mine ? 'ci-justify-end' : 'ci-justify-start'} ${grouped ? 'ci-mt-0.5' : 'ci-mt-2'}`}>
+              <div className={`ci-group ci-flex ci-items-start ci-gap-1.5 ${m.mine ? 'ci-justify-end' : 'ci-justify-start'} ${grouped ? 'ci-mt-0.5' : group ? 'ci-mt-4' : 'ci-mt-2'}`}>
                 {sender && (
                   <span className="ci-w-7 ci-shrink-0" title={sender}>
                     {!grouped && <Avatar contact={!members || members.includes(m.nick!) ? contacts[m.nick!] : undefined} username={m.nick!} size={28} />}
@@ -516,8 +539,8 @@ export function MessageList({
                 <div className={`ci-relative ci-flex ci-flex-col ci-max-w-[80%] ${m.mine ? 'ci-items-end' : 'ci-items-start'}`}>
                   {sender && !grouped && (
                     // Someone outside the PBX is marked on every run: a name alone could be a colleague's.
-                    <span className="ci-flex ci-max-w-full ci-items-center ci-gap-1.5 ci-pl-1 ci-pb-0.5">
-                      <span className="ci-truncate ci-text-xs ci-font-medium ci-text-accent-700 dark:ci-text-accent-400">{sender}</span>
+                    <span className="ci-flex ci-max-w-full ci-items-center ci-gap-1.5 ci-pl-1 ci-pb-1">
+                      <span className={`ci-truncate ci-text-xs ci-font-medium ${colors.get(m.nick!)?.[0] ?? ''}`}>{sender}</span>
                       {isGuestNick(m.nick) && <ExternalBadge />}
                     </span>
                   )}
@@ -587,7 +610,7 @@ export function MessageList({
                         : 'ci-bg-elevationL2 ci-text-gray-900 dark:ci-bg-elevationL2Dark dark:ci-text-white ci-rounded-tl-lg'
                     } ${m.pending ? 'ci-opacity-60' : ''} ${current === m.id ? `ci-ring-2 ${RING}` : ''}`}
                   >
-                    {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? t('Common.You') : nameOf(u))} />}
+                    {m.reply && <Quote reply={m.reply} messages={messages} mine={m.mine} name={(u) => (u === me ? t('Common.You') : nameOf(u))} color={m.reply.author === me ? undefined : colors.get(m.reply.author)} />}
                     {m.files ? <Attachments urls={m.files} /> : m.oob ? <Attachment url={m.oob} alone={!m.reply && !(m.body && !namesOnly(m.body, [m.oob]))} /> : appAttachment(m.body) ? <OldAppAttachment {...appAttachment(m.body)!} /> : <Body text={m.body} mine={m.mine} hl={highlight} />}
                     {m.oob && m.body && !namesOnly(m.body, m.files ?? [m.oob]) && <div className="ci-mt-1"><Body text={m.body} mine={m.mine} hl={highlight} /></div>}
                     <span className="ci-flex ci-items-center ci-justify-end ci-gap-1 ci-text-[10px] ci-leading-none ci-mt-1">
