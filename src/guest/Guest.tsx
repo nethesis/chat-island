@@ -4,6 +4,7 @@ import { MessageList } from '../components/MessageList'
 import { Composer } from '../components/Composer'
 import { Avatar, GroupAvatar } from '../components/Avatar'
 import { ExternalBadge } from '../components/ChatWindow'
+import { Confirm } from '../components/GroupSettings'
 import { Button, Icon } from '../components/Button'
 import { t, toLang } from '../i18n'
 import { chime } from '../sound'
@@ -40,7 +41,7 @@ const api = (path: string, init?: RequestInit) =>
 type GuestReply = { id: string; author: string; quote?: string }
 type GuestMsg = { id: string; oid: string; sid: string; mine: boolean; nick: string; author: string; body: string; files?: string[]; at: number; reply?: GuestReply }
 type GuestPage = { messages: GuestMsg[]; reactions: { target: string; nick: string; emojis: string[] }[]; retractions: { target: string; nick: string }[]; complete: boolean; first: string; last: string }
-type State = 'loading' | 'join' | 'ready' | 'invalid' | 'closed' | 'removed'
+type State = 'loading' | 'join' | 'ready' | 'invalid' | 'closed' | 'removed' | 'left'
 type Reactions = Record<string, Record<string, string[]>>
 
 useStore.setState({ me: ME, lang: toLang(), status: 'online' })
@@ -96,6 +97,7 @@ export function Guest() {
   // Who is in the chat, by name; asked again each time the list opens.
   const [members, setMembers] = useState<{ name: string; external: boolean }[]>([])
   const [showMembers, setShowMembers] = useState(false)
+  const [leaving, setLeaving] = useState<'ask' | 'busy' | null>(null) // leave the chat: asked to confirm, then on its way
   const [name, setName] = useState('')
   const [joinError, setJoinError] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -120,13 +122,14 @@ export function Guest() {
   const gone = useRef(new Map<string, string>()) // message id -> who took it back
   const live = useRef(false)
   const unread = useRef(0)
+  const left = useRef(false) // the guest left: the poll's 410 that follows is not a removal
 
   // A refused token ends the page; anything else is retried.
   const check = (r: Response) => {
     if (r.status === 401) setState('invalid')
     else if (r.status === 410) {
       keep(roomRef.current, '')
-      setState('removed')
+      if (!left.current) setState('removed')
     }
     return r.ok
   }
@@ -336,6 +339,17 @@ export function Guest() {
     return () => (document.removeEventListener('pointerdown', close), document.removeEventListener('keydown', esc))
   }, [showMembers])
 
+  const leave = async () => {
+    setLeaving('busy')
+    left.current = true
+    const r = await api('/guest/leave', { method: 'POST' }).catch(() => null)
+    if (r?.ok || r?.status === 410) {
+      keep(roomRef.current, '')
+      setShowMembers(false)
+      setState('left')
+    } else left.current = false
+    setLeaving(null)
+  }
   const toggleMembers = async () => {
     if (!showMembers) {
       const r = await api('/guest/chat')
@@ -346,6 +360,7 @@ export function Guest() {
 
   // Search: the whole conversation is loaded first (these chats are short), then looked through here.
   const openSearch = async () => {
+    setLeaving(null)
     setSearching(true)
     for (let i = 0; i < 20 && first.current; i++) {
       const r = await api(`/guest/messages?before=${encodeURIComponent(first.current)}`)
@@ -369,6 +384,7 @@ export function Guest() {
     invalid: [t('Guest.Invalid link'), t('Guest.Check that you opened the whole link.')],
     closed: [t('Guest.This link is no longer active'), t('Guest.Ask whoever sent it for a new one.')],
     removed: [t('Guest.You are no longer in this chat'), t('Guest.Ask whoever sent it for a new one.')],
+    left: [t('Guest.You left the chat'), t('Guest.To come back, ask whoever invited you for a new link.')],
   }
   const ended = endText[state]
   // The island's reset clears an input's border: the frame is on a box around it, as in New chat.
@@ -402,6 +418,11 @@ export function Guest() {
             <Button variant="small" onClick={toggleTheme} aria-label={dark ? t('Guest.Light theme') : t('Guest.Dark theme')} title={dark ? t('Guest.Light theme') : t('Guest.Dark theme')}>
               {dark ? Icon.sun : Icon.moon}
             </Button>
+            {state === 'ready' && (
+              <Button variant="small" onClick={() => (setLeaving(leaving ? null : 'ask'), setShowMembers(false), setSearching(false))} aria-label={t('Guest.Leave the chat')} title={t('Guest.Leave the chat')}>
+                {Icon.leave}
+              </Button>
+            )}
           </div>
           {showMembers && (
             // Over the chat, as the island's members list: nothing below moves.
@@ -415,6 +436,12 @@ export function Guest() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+          {leaving && (
+            // Leaving for good, asked under the header as search is: the page forgets the chat, the members see one guest less.
+            <div className="ci-max-w-3xl ci-mx-auto ci-px-4 ci-pb-3">
+              <Confirm text={t('Guest.Leave the chat? You will no longer see its messages.')} action={t('Guest.Leave')} busy={leaving === 'busy'} onCancel={() => setLeaving(null)} onConfirm={leave} />
             </div>
           )}
           {searching && (

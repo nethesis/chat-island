@@ -184,6 +184,11 @@
     "Name": "Nome",
     "e.g. Jenny Wilson": "es. Mario Rossi",
     "Your name is visible to everyone in this chat": "Il tuo nome è visibile a tutti in questa chat",
-    "Join": "Entra"
+    "Join": "Entra",
+    "Leave the chat": "Esci dalla chat",
+    "Leave the chat? You will no longer see its messages.": "Uscire dalla chat? Non ne vedrai più i messaggi.",
+    "Leave": "Esci",
+    "You left the chat": "Sei uscito dalla chat",
+    "To come back, ask whoever invited you for a new link.": "Per rientrare, chiedi un nuovo link a chi ti ha invitato."
   }
 }

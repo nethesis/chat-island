@@ -184,6 +184,11 @@
     "Name": "Name",
     "e.g. Jenny Wilson": "e.g. Jenny Wilson",
     "Your name is visible to everyone in this chat": "Your name is visible to everyone in this chat",
-    "Join": "Join"
+    "Join": "Join",
+    "Leave the chat": "Leave the chat",
+    "Leave the chat? You will no longer see its messages.": "Leave the chat? You will no longer see its messages.",
+    "Leave": "Leave",
+    "You left the chat": "You left the chat",
+    "To come back, ask whoever invited you for a new link.": "To come back, ask whoever invited you for a new link."
   }
 }

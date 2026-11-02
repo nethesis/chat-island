@@ -18,7 +18,7 @@ const pillCancel = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-bg-transparent
 const pillDanger = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-cursor-pointer ci-text-sm ci-bg-rose-700 ci-text-white hover:ci-bg-rose-800 dark:ci-bg-rose-500 dark:hover:ci-bg-rose-400 dark:ci-text-gray-950 disabled:ci-opacity-50'
 
 /** A question, then its two answers together on one line. */
-function Confirm({ text, action, busy, onCancel, onConfirm }: { text: string; action: string; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+export function Confirm({ text, action, busy, onCancel, onConfirm }: { text: string; action: string; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
   return (
     <div className="ci-flex ci-flex-col ci-gap-2">
       <span className="ci-text-sm ci-text-gray-900 dark:ci-text-gray-50">{text}</span>
