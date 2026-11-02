@@ -2,7 +2,7 @@
 // members are subscribed, so messages reach their archive and push without joining.
 import { client, xml, type Client } from '@xmpp/client'
 import type { Element } from '@xmpp/xml'
-import type { Config, GroupNotice, Message, Reaction, Reply, Retraction } from './types'
+import { isGuestNick, type Config, type GroupNotice, type Message, type Reaction, type Reply, type Retraction } from './types'
 
 /** The XMPP domain of every NethVoice chat: fixed, so addresses survive a change of the CTI host,
  *  which only reaches the server. No federation, so the same name in every tenant is fine. */
@@ -807,7 +807,8 @@ export class Chat {
       const inner = findMessage(event)
       if (!inner || bare(inner.attrs.from) !== room) return undefined
       const nick = (inner.attrs.from ?? '').split('/')[1] ?? ''
-      const body = inner.getChildText('body') ?? (noticeOf(inner) ? '' : null)
+      const notice = noticeOf(inner, nick)
+      const body = inner.getChildText('body') ?? (notice ? '' : null)
       if (body === null || body === undefined) return undefined
       return {
         // The origin-id is the one the sender chose: my own copy shown while sending is replaced by the echo.
@@ -822,11 +823,11 @@ export class Chat {
         ...oobsOf(inner),
         room,
         nick,
-        notice: noticeOf(inner),
+        notice,
       }
     }
     // A line without a body: a group's change in a room, a call in a one-to-one chat.
-    const notice = noticeOf(st)
+    const notice = noticeOf(st, (st.attrs.from ?? '').split('/')[1])
     const fits = !!notice && (st.attrs.type === 'groupchat' ? notice.event !== 'call' : notice.event === 'call')
     const body = st.getChildText('body') ?? (fits ? '' : null)
     if (body === null || body === undefined) return undefined
@@ -859,9 +860,11 @@ const oobsOf = (st: Element): { oob?: string; files?: string[] } => {
   return { oob: links[0], files: links.length > 1 ? links : undefined }
 }
 
-const NOTICES = ['add', 'remove', 'rename', 'avatar', 'call']
-const noticeOf = (st: Element): GroupNotice | undefined => {
+const NOTICES = ['add', 'remove', 'rename', 'avatar', 'call', 'join']
+// A join is told by the gateway in the guest's own name: from anyone else it is not one.
+const noticeOf = (st: Element, nick?: string): GroupNotice | undefined => {
   const x = st.getChild('x', NS.group)
+  if (x?.attrs.event === 'join' && !isGuestNick(nick)) return undefined
   return x && NOTICES.includes(x.attrs.event) ? { event: x.attrs.event as GroupNotice['event'], users: String(x.attrs.users ?? '').split(',').filter(Boolean), name: x.attrs.name || undefined } : undefined
 }
 

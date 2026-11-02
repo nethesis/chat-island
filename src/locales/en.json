@@ -158,6 +158,7 @@
     "{{who}} changed the group picture": "{{who}} changed the group picture",
     "You changed the group picture": "You changed the group picture",
     "You called {{users}}": "You called {{users}}",
+    "{{who}} (external) joined": "{{who}} (external) joined",
     "{{who}} called you": "{{who}} called you"
   },
   "Guest": {

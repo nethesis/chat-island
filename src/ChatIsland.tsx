@@ -14,7 +14,7 @@ import { ChatWindow, type WindowActions } from './components/ChatWindow'
 import { NewChat } from './components/NewChat'
 import { appAttachment } from './components/MessageList'
 import { emojify } from './shortcodes'
-import { isGuest, nickName, type Config, type ConversationSummary, type Message } from './types'
+import { isGuest, isGuestNick, nickName, type Config, type ConversationSummary, type Message } from './types'
 import { useDark, type Theme } from './theme'
 import './index.css'
 import { t, toLang } from './i18n'
@@ -531,14 +531,14 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const notify = (peer: string, m: Message) => {
       const st = useStore.getState()
       const visible = document.visibilityState === 'visible'
-      if ((visible && st.open === peer) || st.muted[peer] || st.dnd) return
+      if ((visible && st.open === peer) || st.muted[peer] || st.dnd || m.notice?.event === 'join') return
       const conv = st.conversations[peer]
       const name = conv?.kind === 'group' ? conv.name ?? peer : st.contacts[peer]?.name ?? st.inactive[peer] ?? peer
       const text = m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.nick ?? m.from) : m.oob ? t('Common.Attachment') : emojify(m.body)
       const group = conv?.kind === 'group'
       // The nick is the sender's choice: a colleague's name only when that colleague is in the group.
       const member = !conv?.members || conv.members.includes(m.nick ?? '')
-      const author = group && m.nick ? (member ? st.contacts[m.nick]?.name : undefined) ?? nickName(m.nick) : name
+      const author = group && m.nick ? (isGuestNick(m.nick) ? `${nickName(m.nick)} (${t('Group.External')})` : (member ? st.contacts[m.nick]?.name : undefined) ?? nickName(m.nick)) : name
       const body = group && m.nick && !m.notice ? `${author}: ${text}` : text
       if (soundRef.current) chime()
       const avatar = group ? conv?.avatar : st.contacts[peer]?.avatar

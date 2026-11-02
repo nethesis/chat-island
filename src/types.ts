@@ -19,9 +19,9 @@ export interface Message {
   notice?: GroupNotice // a change to the group, told to its members, or a call placed from the chat
 }
 
-/** Who was added or removed, a new name or picture, or a call (users: who was called). Sent without a body: it notifies nobody and other clients skip it. */
+/** Who was added or removed, a new name or picture, a call (users: who was called), or someone from outside who joined by the link. Sent without a body: it notifies nobody and other clients skip it. */
 export interface GroupNotice {
-  event: 'add' | 'remove' | 'rename' | 'avatar' | 'call'
+  event: 'add' | 'remove' | 'rename' | 'avatar' | 'call' | 'join'
   users: string[]
   name?: string // the new name, for rename
 }
