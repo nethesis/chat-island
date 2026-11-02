@@ -17,13 +17,33 @@ type Change = { add?: string[]; remove?: string; name?: string; avatar?: string 
 const pillCancel = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-sm ci-text-gray-700 dark:ci-text-gray-200 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800'
 const pillDanger = 'ci-h-7 ci-px-3 ci-rounded-full ci-border-0 ci-cursor-pointer ci-text-sm ci-bg-rose-700 ci-text-white hover:ci-bg-rose-800 dark:ci-bg-rose-500 dark:hover:ci-bg-rose-400 dark:ci-text-gray-950 disabled:ci-opacity-50'
 
-export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onClose: () => void }) {
+/** A question, then its two answers together on one line. */
+function Confirm({ text, action, busy, onCancel, onConfirm }: { text: string; action: string; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="ci-flex ci-flex-col ci-gap-2">
+      <span className="ci-text-sm ci-text-gray-900 dark:ci-text-gray-50">{text}</span>
+      <div className="ci-flex ci-items-center ci-gap-2">
+        <button type="button" className={pillCancel} onClick={onCancel}>
+          {t('Common.Cancel')}
+        </button>
+        <button type="button" className={pillDanger} disabled={busy} onClick={onConfirm}>
+          {action}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onShare?: () => Promise<GuestInfo>; onClose: () => void }) {
   const { contacts, inactive, guests, me } = useStore(useShallow((s) => ({ contacts: s.contacts, inactive: s.inactive, guests: s.guests, me: s.me })))
   const [name, setName] = useState(conv.name ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [removing, setRemoving] = useState<string | null>(null) // asked to confirm
   const [adding, setAdding] = useState(false)
+  const [sharing, setSharing] = useState(false) // asked to confirm before opening it to people outside
+  const [closing, setClosing] = useState(false) // asked to confirm before making it private again
+  const [relinking, setRelinking] = useState(false) // asked to confirm before replacing the link
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const picture = useRef<HTMLInputElement>(null)
@@ -32,7 +52,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
   useEffect(() => {
     onGuest?.().then(setGuest).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const members = [...(conv.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me) || (contacts[a]?.name ?? a).localeCompare(contacts[b]?.name ?? b))
+  const members = [...(conv.members ?? [])].sort((a, b) => Number(isGuest(a)) - Number(isGuest(b)) || Number(a === me) - Number(b === me) || (contacts[a]?.name ?? a).localeCompare(contacts[b]?.name ?? b))
   const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? inactive[u] ?? guests[u] ?? u)
   const candidates = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -82,11 +102,44 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
         </Button>
       </div>
       {error && <div className="ci-px-4 ci-pb-2 ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
+      {!guest && onShare && !adding && (
+        // A group of mine, not yet open to people outside: a link lets them in, the members stay.
+        <div className="ci-flex ci-flex-col ci-gap-1.5 ci-px-4 ci-pb-3">
+          <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Share outside note')}</span>
+          {sharing ? (
+            <Confirm
+              text={t('Group.Share outside confirm')}
+              action={t('Group.Share')}
+              busy={busy}
+              onCancel={() => setSharing(false)}
+              onConfirm={() => {
+                setBusy(true)
+                onShare()
+                  .then(setGuest)
+                  .catch((e) => setError((e as Error).message))
+                  .finally(() => (setBusy(false), setSharing(false)))
+              }}
+            />
+          ) : (
+            <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setSharing(true)}>
+              {Icon.link} {t('Group.Share outside')}
+            </Button>
+          )}
+        </div>
+      )}
       {guest && !adding && (() => {
         // The link only lets people in: closed (revoked or expired), who joined stays.
         const open = !guest.revoked && guest.expires * 1000 > Date.now()
-        const relink = (
-          <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => onGuest?.('link').then(setGuest).catch((e) => setError((e as Error).message))}>
+        const relink = relinking ? (
+          <Confirm
+            text={t('Group.New link confirm')}
+            action={t('Group.New link')}
+            busy={busy}
+            onCancel={() => setRelinking(false)}
+            onConfirm={() => (onGuest ? onGuest('link') : onShare?.())?.then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setRelinking(false))}
+          />
+        ) : (
+          <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setRelinking(true)}>
             {Icon.link} {t('Group.New link')}
           </Button>
         )
@@ -105,6 +158,20 @@ export function GroupSettings({ conv, onEdit, onGuest, onClose }: { conv: Conver
                 {guest.link && open ? <SecretLink link={guest.link} /> : relink}
               </div>
             )}
+            {guest.owner && open && (closing ? (
+              // Private again: the link stops working; who joined stays, and a new link shares it again.
+              <Confirm
+                text={t('Group.Make private confirm')}
+                action={t('Group.Make private')}
+                busy={busy}
+                onCancel={() => setClosing(false)}
+                onConfirm={() => onGuest?.('revoke').then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setClosing(false))}
+              />
+            ) : (
+              <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setClosing(true)}>
+                {Icon.lock} {t('Group.Make private')}
+              </Button>
+            ))}
           </div>
         )
       })()}

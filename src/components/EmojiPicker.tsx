@@ -103,7 +103,7 @@ export function EmojiPicker({ onPick, onClose, className = '' }: { onPick: (emoj
             aria-label={t(c.label)}
             onClick={() => (setTab(i), setQuery(''))}
             style={{ fontSize: 20, lineHeight: '28px' }}
-            className={`ci-flex-1 ci-pb-1.5 ci-border-0 ci-bg-transparent ci-border-b-2 ci-border-solid ${i === tab && !query.trim() ? 'ci-border-iconSecondary dark:ci-border-iconSecondaryDark' : 'ci-border-transparent ci-opacity-60 hover:ci-opacity-100'}`}
+            className={`ci-flex-1 ci-min-w-0 ci-flex ci-justify-center ci-items-center ci-px-0 ci-pb-1.5 ci-border-0 ci-bg-transparent ci-border-b-2 ci-border-solid ${i === tab && !query.trim() ? 'ci-border-iconSecondary dark:ci-border-iconSecondaryDark' : 'ci-border-transparent ci-opacity-60 hover:ci-opacity-100'}`}
           >
             {c.icon}
           </button>

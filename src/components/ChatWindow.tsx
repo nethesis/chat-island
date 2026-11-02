@@ -1,19 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useStore } from '../store'
+import { isShared, useStore } from '../store'
 import { emit } from '../events'
 import { Avatar, GroupAvatar, PresenceDot } from './Avatar'
 import { Button, Icon } from './Button'
 import { MessageList } from './MessageList'
 import { Composer } from './Composer'
 import { GroupSettings } from './GroupSettings'
-import { isExternal, isGuest, type Message, type Reply } from '../types'
+import { isGuest, type Message, type Reply } from '../types'
 import type { GuestInfo, SearchHit } from '../api'
 import { t } from '../i18n'
 
 export interface WindowActions {
   send: (peer: string, text: string, reply?: Reply, files?: File[]) => Promise<void>
-  createGroup: (name: string, members: string[], avatar?: string) => Promise<void>
+  createGroup: (name: string, members: string[], avatar?: string, share?: boolean) => Promise<GuestInfo | void>
   move: (host: 'cti' | 'nethlink', open?: string) => Promise<void>
   editGroup: (room: string, change: { add?: string[]; remove?: string; name?: string; avatar?: string }) => Promise<void>
   typing: (peer: string, composing: boolean) => void
@@ -27,11 +27,13 @@ export interface WindowActions {
   seen: (peer: string) => void
   inviteGuest: (name: string) => Promise<GuestInfo>
   guest: (room: string, op?: 'get' | 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>
+  share: (room: string) => Promise<GuestInfo>
 }
 
 /** Someone outside the PBX, or (chat) a room with them. */
 export function ExternalBadge({ chat }: { chat?: boolean }) {
-  return <span className="ci-shrink-0 ci-px-1.5 ci-rounded ci-text-[0.625rem] ci-leading-4 ci-font-semibold ci-uppercase ci-tracking-wide ci-bg-amber-100 ci-text-amber-800 dark:ci-bg-amber-900/60 dark:ci-text-amber-200">{t(chat ? 'Group.External chat' : 'Group.External')}</span>
+  // Indigo, as the CTI's badges.
+  return <span className="ci-shrink-0 ci-inline-flex ci-items-center ci-whitespace-nowrap ci-rounded-full ci-px-2.5 ci-py-0.5 ci-text-xs ci-leading-4 ci-font-medium ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100">{t(chat ? 'Group.External chat' : 'Group.External')}</span>
 }
 
 const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
@@ -59,13 +61,25 @@ const callable = (presence?: string) => !!presence && !['offline', 'dnd', 'busy'
 /** The floating conversation: phone-island surface, radius and buttons. */
 export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: string; actions: WindowActions; onDragStart?: (e: React.PointerEvent) => void; docked?: boolean }) {
   // Only what this window shows: a message elsewhere, or an operator's presence, must not re-render it.
-  const { c, contacts, guests, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted, moveTo } = useStore(
-    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, guests: s.guests, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted, moveTo: s.moveTo })),
+  const { c, contacts, guests, shared, guestsOn, online, mobile, inactive, status, closeChat, openChat, markRead, order, me, expanded, place, pinnable, muted, setMuted, moveTo } = useStore(
+    useShallow((s) => ({ c: s.conversations[peer], contacts: s.contacts, guests: s.guests, shared: s.shared, guestsOn: s.guestsOn, online: s.online, mobile: s.mobile, inactive: s.inactive, status: s.status, closeChat: s.closeChat, openChat: s.openChat, markRead: s.markRead, order: s.order, me: s.me, expanded: s.expanded, place: s.place, pinnable: s.pinnable, muted: !!s.muted[peer], setMuted: s.setMuted, moveTo: s.moveTo })),
   )
   // The head this window belongs to: index 0 is the bottom head (its centre 2.25rem above the window bottom), each one 3.75rem higher.
   const slot = Math.max(0, order.indexOf(peer))
   const contact = contacts[peer]
   const [showMembers, setShowMembers] = useState(false)
+  const membersRef = useRef<HTMLDivElement>(null)
+  const membersToggle = useRef<HTMLDivElement>(null)
+  // The members list is a dropdown: a press anywhere else closes it (the island may live in a shadow root).
+  useEffect(() => {
+    if (!showMembers) return
+    const close = (e: PointerEvent) => {
+      const path = e.composedPath()
+      if (!path.includes(membersRef.current!) && !path.includes(membersToggle.current!)) setShowMembers(false)
+    }
+    document.addEventListener('pointerdown', close, true)
+    return () => document.removeEventListener('pointerdown', close, true)
+  }, [showMembers])
   const [menu, setMenu] = useState(false)
   const [settings, setSettings] = useState(false)
   // The message being answered, and a tick that puts the cursor in the composer.
@@ -86,7 +100,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   const [busy, setBusy] = useState(false)
   const target = useRef<string | undefined>(undefined) // the hit to start from, when the host opened us on one
   const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? guests[u] ?? u)
-  const members = [...(c?.members ?? [])].sort((a, b) => Number(a === me) - Number(b === me)) // me last
+  const members = [...(c?.members ?? [])].sort((a, b) => Number(isGuest(a)) - Number(isGuest(b)) || Number(a === me) - Number(b === me)) // colleagues, me last, then people outside
 
   useEffect(() => {
     // Again once online: a chat restored by a reload mounts before the connection.
@@ -217,9 +231,10 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
       <div className={`ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3 ci-rounded-t-3xl ${onDragStart ? 'ci-cursor-grab active:ci-cursor-grabbing ci-touch-none' : ''}`} onPointerDown={onDragStart}>
         {/* A group's picture, name and members: press them for the full list with everyone's presence. */}
         <div
+          ref={membersToggle}
           className={`ci-flex ci-flex-1 ci-min-w-0 ci-items-center ci-gap-3 ${c.kind === 'group' ? 'ci-relative ci-group ci-cursor-pointer' : ''}`}
           {...(c.kind === 'group' ? { role: 'button', tabIndex: 0, 'aria-expanded': showMembers, onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setShowMembers((v) => !v)) } : {})}
-          onClick={() => c.kind === 'group' && setShowMembers((v) => !v)}
+          onClick={() => c.kind === 'group' && (setShowMembers((v) => !v), setSearching(false))}
         >
         {c.kind === 'group' ? (
           <GroupAvatar peer={peer} name={c.name ?? peer} size={36} avatar={c.avatar} />
@@ -238,7 +253,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
         <div className="ci-flex-1 ci-min-w-0">
           <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
             <span className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
-            {isExternal(peer) && <ExternalBadge chat />}
+            {isShared(shared, peer) && <ExternalBadge chat />}
           </div>
           <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
@@ -289,9 +304,9 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           ]}
         />
       )}
-      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isExternal(peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onClose={() => setSettings(false)} />}
+      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer) : undefined} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
-        <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
+        <div ref={membersRef} className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (
             <div key={m} className="ci-flex ci-items-center ci-gap-3 ci-px-2 ci-py-1.5 ci-text-sm">
               {isGuest(m) ? (
