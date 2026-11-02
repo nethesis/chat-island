@@ -669,7 +669,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${(c.members ?? []).filter(isGuest).map((u) => st.guests[u] ?? '').join(',')}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + (st.synced ? '#synced' : ''),
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + (st.synced ? '#synced' : ''),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
 
