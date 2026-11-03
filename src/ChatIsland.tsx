@@ -631,6 +631,18 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
     const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
     const offGroup = listen<{ name: string; members: string[] }>('chat-island-group-create', ({ name, members }) => name && members?.length && actions.createGroup(name, members))
+    // The host invites people outside (an email thread): a room with these members, opened to guests; the link goes back to the host.
+    const offGuest = listen<{ id?: string; name: string; members?: string[] }>('chat-island-guest-invite', ({ id, name, members }) => {
+      if (!name) return
+      const run = members?.length ? actions.createGroup(name, members, undefined, true) : actions.inviteGuest(name)
+      Promise.resolve(run)
+        .then((g) => {
+          if (!g) throw new Error('no link')
+          emit('chat-island-guest-link', { id, room: g.room, link: g.link, expires: g.expires })
+          useStore.getState().openChat(g.room)
+        })
+        .catch((e) => emit('chat-island-guest-link', { id, error: (e as Error).message }))
+    })
     const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
     const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }))
     return () => {
@@ -643,6 +655,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offDelete()
       offSend()
       offGroup()
+      offGuest()
       offMute()
       unsaveMuted()
       offOpen()

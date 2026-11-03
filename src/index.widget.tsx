@@ -16,10 +16,14 @@ document.querySelectorAll<HTMLElement>('.chat-island').forEach((div) => {
         serviceWorker={d.serviceWorker}
         newChatButton={d.newChatButton !== 'false'}
         notifications={d.notifications === 'auto' ? 'auto' : 'click'}
+        // Hosts without React (WebTop): the pinned panel, the language and the dock size.
+        pinnable={d.pinnable === 'true'}
+        language={d.language}
+        maxHeads={Number(d.maxHeads) || undefined}
       />
     </React.StrictMode>,
   )
   render()
   // A new token in data-config reconnects the island in place.
-  new MutationObserver(render).observe(div, { attributes: true, attributeFilter: ['data-config'] })
+  new MutationObserver(render).observe(div, { attributes: true, attributeFilter: ['data-config', 'data-language'] })
 })

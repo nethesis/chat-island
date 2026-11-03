@@ -95,6 +95,9 @@ The widget mounts on the `.chat-island` elements present when its script runs. A
 | `data-service-worker` | URL of `chat-island-sw.js`, served by your site (same origin) |
 | `data-notifications` | `auto` to ask for permission once online |
 | `data-new-chat-button` | `false` to hide the new chat button |
+| `data-pinnable` | `true`: the host has a rail and a panel to pin the chat to |
+| `data-language` | `it` or `en` |
+| `data-max-heads` | chat heads in the dock |
 
 ### Base64 config token
 
@@ -126,6 +129,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |
 | `chat-island-send` | in | `{ username, text }` send a text to an operator or group |
 | `chat-island-group-create` | in | `{ name, members }` create a group with these usernames and open it |
+| `chat-island-guest-invite` | in | `{ id?, name, members? }` a chat with people outside: a group with these usernames (or just me) opened to guests; answered by `chat-island-guest-link` |
 | `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
@@ -142,6 +146,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-pin` | out | `{ pinned }` the person asked to pin to, or unpin from, the host's panel |
 | `chat-island-window` | out | `{ open, picker }` what a pinned host should show: a conversation, the picker or nothing |
 | `chat-island-host` | out | `{ host }` where the person keeps the chat windows while NethLink runs: `nethlink` (default) or `cti`; on start and on every move, from any of their clients |
+| `chat-island-guest-link` | out | `{ id, room, link, expires }` the invite link of a `chat-island-guest-invite` (shown only now: the server keeps its hash), or `{ id, error }` |
 | `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
 
 ## Integrate in an existing app
