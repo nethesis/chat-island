@@ -18,6 +18,7 @@ export function emit(name: 'chat-island-pin', detail: { pinned: boolean }): void
 export function emit(name: 'chat-island-search-results', detail: { query: string; results: SearchHit[]; error?: string }): void
 export function emit(name: 'chat-island-window', detail: { open: string | null; picker: boolean }): void
 export function emit(name: 'chat-island-host', detail: { host: 'cti' | 'nethlink' }): void
+export function emit(name: 'chat-island-guest-link', detail: { id?: string; room?: string; link?: string; expires?: number; error?: string }): void
 export function emit(name: string, detail: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }))
 }
