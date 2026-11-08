@@ -36,3 +36,12 @@ export async function registerWebPush(cfg: Config, serviceWorkerUrl: string): Pr
   listenToWorker()
   return { node: out.node, service: out.service }
 }
+
+/** Logging out: forget this browser on the gateway and at the push service, so nothing wakes it for this account. */
+export async function dropWebPush(cfg: Config, serviceWorkerUrl: string, node?: string) {
+  if (node) fetch(`https://${cfg.host}/chat-gw/push/web/${encodeURIComponent(node)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${cfg.token}` }, keepalive: true }).catch(() => {})
+  if (!('serviceWorker' in navigator)) return
+  const url = new URL(serviceWorkerUrl, location.href).href
+  const reg = (await navigator.serviceWorker.getRegistrations()).find((r) => (r.active ?? r.waiting ?? r.installing)?.scriptURL === url)
+  await (await reg?.pushManager.getSubscription())?.unsubscribe()
+}

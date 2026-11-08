@@ -7,7 +7,7 @@ import { noticeText } from './notice'
 import { chime } from './sound'
 import { isShared, peerOf, useStore } from './store'
 import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
-import { registerWebPush } from './push'
+import { dropWebPush, registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
 import { ChatWindow, type WindowActions } from './components/ChatWindow'
@@ -585,6 +585,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // Closing the page: end the stream so the server sees us gone now, not after the resume window.
     const bye = () => c.stop()
     window.addEventListener('pagehide', bye)
+    // Logout: this browser must not be woken for this account any more, here or at the push service.
+    const dropPush = () => {
+      const p = pushNode.current
+      pushNode.current = null
+      return Promise.allSettled([p && c.disablePush(p.service, p.node), serviceWorker && dropWebPush(cfg, serviceWorker, p?.node)])
+    }
     c.start()
     // Who has the mobile app: refreshed now and then, it is not a live presence.
     const mobile = () => {
@@ -627,6 +633,8 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // The host moves the chat itself (NethLink opening a chat from its command bar takes it back).
     const offMove = listen<{ host: 'cti' | 'nethlink'; open?: string }>('chat-island-move', ({ host, open }) => (host === 'cti' || host === 'nethlink') && actions.move(host, open))
     const offNew = listen('chat-island-new', () => s.setPicker(true))
+    // The host reloads right after logging out, before any unmount: it waits for the answer.
+    const offLogout = listen('chat-island-logout', () => dropPush().then(() => (c.stop(), emit('chat-island-logged-out', {}))))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
     const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
@@ -650,6 +658,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offClose()
       offMove()
       offContacts()
+      offLogout()
       // Unmounting is a logout or an account change, never a page close (that is pagehide): stop waking this browser for this account.
       if (pushNode.current) c.disablePush(pushNode.current.service, pushNode.current.node).catch(() => {})
       pushNode.current = null
