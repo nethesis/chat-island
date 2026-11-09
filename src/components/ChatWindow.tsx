@@ -259,12 +259,12 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
             <span className="ci-absolute ci-left-4 ci--top-1 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100" />
           </span>
         )}
-        <div className="ci-flex-1 ci-min-w-0">
+        <div className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-col ci-gap-0.5">
           <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
-            <span className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
+            <span className="ci-font-medium ci-truncate ci-text-sm ci-leading-5">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
             {isShared(shared, peer) && <ExternalBadge chat locked={locked} />}
           </div>
-          <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
+          <div className="ci-text-xs ci-leading-4 ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
               ? t('Chat.No longer active')
               : status !== 'online'
