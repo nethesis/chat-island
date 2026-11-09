@@ -118,7 +118,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 
 | Event | Direction | Detail |
 | --- | --- | --- |
-| `chat-island-open` | in | `{ username, search? }` operator or group address; `search: { query, id? }` opens it on a search, at that message |
+| `chat-island-open` | in | `{ username, search? }` operator or group address; `search: { query, id? }` opens it on a search, at that message; a `headless` island with `moveTo` opens it in the other app while that is connected, else moves the chats back here |
 | `chat-island-search` | in | `{ query }` search every conversation's archive (two characters at least) |
 | `chat-island-search-results` | out | `{ query, results }` messages containing it, newest first: `{ peer, id, ts, body, nick? }` |
 | `chat-island-close` | in | |

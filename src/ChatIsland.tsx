@@ -620,6 +620,9 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // With a search: the window opens on it, at that message.
     const offOpen = listen<{ username: string; search?: { query: string; id?: string } }>('chat-island-open', ({ username, search }) => {
       if (!username) return
+      // Chats moved to the other app open there while it is connected; with it closed, they come back here.
+      const to = useStore.getState().moveTo
+      if (headlessRef.current && to) return void (c.hasOtherClient() ? c.tellHost(to.host, username).catch(() => {}) : actions.move(to.host === 'cti' ? 'nethlink' : 'cti', username))
       if (search?.query) useStore.setState({ find: { peer: username, ...search } })
       s.openChat(username)
     })
@@ -630,7 +633,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         .catch((e) => emit('chat-island-search-results', { query, results: [], error: (e as Error).message })),
     )
     const offClose = listen('chat-island-close', () => s.closeChat())
-    // The host moves the chat itself (NethLink opening a chat from its command bar takes it back).
+    // The host moves the chat itself (NethLink starting a new chat takes it back).
     const offMove = listen<{ host: 'cti' | 'nethlink'; open?: string }>('chat-island-move', ({ host, open }) => (host === 'cti' || host === 'nethlink') && actions.move(host, open))
     const offNew = listen('chat-island-new', () => s.setPicker(true))
     // The host reloads right after logging out, before any unmount: it waits for the answer.
