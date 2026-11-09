@@ -83,8 +83,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   const [menu, setMenu] = useState(false)
   const [settings, setSettings] = useState(false)
   // A room with people outside whose link no longer lets anyone in: a lock on its badge.
-  const [locked, setLocked] = useState(false)
-  const lock = (g: GuestInfo) => (setLocked(g.revoked || g.expires * 1000 <= Date.now()), g)
+  const locked = useStore((s) => !!s.locked[peer.split('@')[0]])
   // The message being answered, and a tick that puts the cursor in the composer.
   const [reply, setReply] = useState<Reply | null>(null)
   const [focusTick, setFocusTick] = useState(0)
@@ -107,8 +106,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
 
   const sharedHere = c?.kind === 'group' && isShared(shared, peer)
   useEffect(() => {
-    setLocked(false)
-    if (sharedHere && status === 'online') actions.guest(peer).then(lock).catch(() => {})
+    if (sharedHere && status === 'online') actions.guest(peer).catch(() => {})
   }, [peer, sharedHere, status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -313,7 +311,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           ]}
         />
       )}
-      {settings && c.kind === 'group' && <GroupSettings conv={c} wide={docked || expanded} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest).then(lock) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer).then(lock) : undefined} onClose={() => setSettings(false)} />}
+      {settings && c.kind === 'group' && <GroupSettings conv={c} wide={docked || expanded} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer) : undefined} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
         <div ref={membersRef} className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (

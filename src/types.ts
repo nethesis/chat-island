@@ -96,6 +96,7 @@ export interface ConversationSummary {
   unread: number
   members?: string[]
   guests?: Record<string, string> // in a group with people outside the PBX: guest id -> their name there
+  locked?: boolean // that group's link no longer lets anyone in (made private or expired)
   last?: { body: string; ts: number; mine: boolean; oob?: string; nick?: string }
   muted?: boolean // messages arrive without sound or notification
 }
