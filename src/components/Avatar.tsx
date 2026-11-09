@@ -12,7 +12,7 @@ const initials = (name: string) =>
 
 export function Avatar({ contact, username, size = 40 }: { contact?: Contact; username: string; size?: number }) {
   const name = contact?.name || username
-  const style = { width: size, height: size, fontSize: size / 2.6 }
+  const style = { width: size, height: size, fontSize: size / 2.5 }
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
