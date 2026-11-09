@@ -40,7 +40,7 @@ const QUEUE_PREFIX = 'Queue - '
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
  *  Its initials (two letters of a one-word name) everywhere; head: a chat head, the icon small in the corner too. */
 export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }: { peer?: string; name: string; size?: number; avatar?: string; head?: boolean }) {
-  const style = { width: size, height: size, fontSize: size / 2.8 }
+  const style = { width: size, height: size, fontSize: size / 2.5 } // 14px at 36, 16px at 40, as in the mockup
   const queue = name.startsWith(QUEUE_PREFIX)
   const color = peer.startsWith('cti-') ? BLUE : queue ? INDIGO : GRAY
   const icon = queue ? QUEUE_ICON : GROUP_ICON
