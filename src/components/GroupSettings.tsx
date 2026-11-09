@@ -8,7 +8,7 @@ import { shrink } from './NewChat'
 import { t } from '../i18n'
 import { isGuest } from '../types'
 import type { GuestInfo } from '../api'
-import { SecretLink } from './SecretLink'
+import { ExternalBadge } from './ChatWindow'
 
 type Change = { add?: string[]; remove?: string; name?: string; avatar?: string }
 
@@ -44,6 +44,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
   const [sharing, setSharing] = useState(false) // asked to confirm before opening it to people outside
   const [closing, setClosing] = useState(false) // asked to confirm before making it private again
   const [relinking, setRelinking] = useState(false) // asked to confirm before replacing the link
+  const [copied, setCopied] = useState(false)
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const picture = useRef<HTMLInputElement>(null)
@@ -52,7 +53,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
   useEffect(() => {
     onGuest?.().then(setGuest).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const members = [...(conv.members ?? [])].sort((a, b) => Number(isGuest(a)) - Number(isGuest(b)) || Number(a === me) - Number(b === me) || (contacts[a]?.name ?? a).localeCompare(contacts[b]?.name ?? b))
+  const members = [...(conv.members ?? [])].sort((a, b) => Number(b === me) - Number(a === me) || Number(isGuest(a)) - Number(isGuest(b)) || (contacts[a]?.name ?? a).localeCompare(contacts[b]?.name ?? b))
   const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? inactive[u] ?? guests[u] ?? u)
   const candidates = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -75,114 +76,118 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
     }
   }
 
+  // The mockup's buttons: outlined, or accent text alone; the confirming one red.
+  const outline = 'ci-w-auto ci-h-9 ci-px-3 ci-gap-2 ci-rounded-md ci-border ci-border-solid !ci-border-gray-300 dark:!ci-border-gray-600'
+  const text = 'ci-w-auto ci-px-2 ci-gap-2 ci-rounded-md'
+  const danger = 'ci-h-9 ci-px-3 ci-rounded-md ci-border-0 ci-cursor-pointer ci-text-sm ci-font-medium ci-bg-rose-700 ci-text-white hover:ci-bg-rose-800 dark:ci-bg-rose-600 dark:hover:ci-bg-rose-500 disabled:ci-opacity-50'
+  const answers = (action: string, onCancel: () => void, onConfirm: () => void) => (
+    <div className="ci-flex ci-items-center ci-justify-end ci-gap-2 ci-ml-auto">
+      <Button variant="tertiary" className={text} onClick={onCancel}>
+        {t('Common.Cancel')}
+      </Button>
+      <button type="button" className={danger} disabled={busy} onClick={onConfirm}>
+        {action}
+      </button>
+    </div>
+  )
+  // A question in a grey box, its answers beside it or, when narrow, below.
+  const ask = (question: string, action: string, onCancel: () => void, onConfirm: () => void) => (
+    <div className="ci-flex ci-flex-wrap ci-items-center ci-gap-2 ci-p-3 ci-rounded-lg ci-bg-elevationL2 dark:ci-bg-elevationL2Dark">
+      <span className="ci-flex-1 ci-min-w-48 ci-text-gray-700 dark:ci-text-gray-200">{question}</span>
+      {answers(action, onCancel, onConfirm)}
+    </div>
+  )
+  const badge = (label: string, cls: string) => <span className={`ci-shrink-0 ci-inline-flex ci-items-center ci-whitespace-nowrap ci-rounded-full ci-px-2.5 ci-py-0.5 ci-text-xs ci-leading-4 ci-font-medium ${cls}`}>{label}</span>
+  const copy = (link: string) => navigator.clipboard?.writeText(link).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1500))).catch(() => {})
+  const share = () => {
+    setBusy(true)
+    ;(guest && onGuest ? onGuest('link') : onShare!())
+      .then(setGuest)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => (setBusy(false), setSharing(false)))
+  }
+
   return (
     <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-bottom-3 ci-z-30 ci-flex ci-flex-col ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
-      <div className="ci-flex ci-items-center ci-justify-between ci-pl-4 ci-pr-2 ci-pt-2">
-        <span className="ci-font-semibold">{t('Common.Group settings')}</span>
+      <div className="ci-flex ci-items-center ci-justify-between ci-mx-4 ci-pt-3 ci-pb-2 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
+        <span className="ci-text-base ci-font-medium">{t('Common.Group settings')}</span>
         <Button variant="small" onClick={onClose} aria-label={t('Common.Close')} title={t('Common.Close')}>
           {Icon.close}
         </Button>
       </div>
+      <div className="ci-flex-1 ci-overflow-y-auto">
       {/* Picture and name */}
-      <div className="ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-3">
+      <div className="ci-flex ci-items-end ci-gap-3 ci-px-4 ci-pt-4 ci-pb-3">
         <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then((avatar) => run({ avatar })).catch(() => setError(t('Group.Picture not readable')))} />
         <button type="button" title={t('Group.Change picture')} aria-label={t('Group.Change picture')} disabled={busy} onClick={() => picture.current?.click()} className="ci-relative ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-group">
           <GroupAvatar peer={conv.peer} name={conv.name ?? conv.peer} size={48} avatar={conv.avatar} />
           <span className="ci-absolute ci-inset-0 ci-rounded-full ci-bg-black/50 ci-text-white ci-hidden group-hover:ci-flex ci-items-center ci-justify-center">{Icon.camera}</span>
         </button>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}
-          aria-label={t('Common.Group name')}
-          className="ci-flex-1 ci-min-w-0 ci-h-9 ci-px-3 ci-rounded-full ci-border-0 ci-outline-none ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white"
-        />
-        <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4" disabled={busy} onClick={() => name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}>
+        <label className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-col ci-gap-1.5">
+          <span className="ci-font-medium ci-text-gray-700 dark:ci-text-gray-200">{t('Common.Group name')}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}
+            className="ci-w-full ci-box-border ci-h-9 ci-px-3 ci-rounded-md ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-outline-none focus:ci-border-accent-500 ci-bg-white dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white"
+          />
+        </label>
+        <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4 ci-rounded-md ci-font-medium" disabled={busy} onClick={() => name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}>
           {t('Group.Save')}
         </Button>
       </div>
       {error && <div className="ci-px-4 ci-pb-2 ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
-      {!guest && onShare && !adding && (
-        // A group of mine, not yet open to people outside: a link lets them in, the members stay.
-        <div className="ci-flex ci-flex-col ci-gap-1.5 ci-px-4 ci-pb-3">
-          <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Share outside note')}</span>
-          {sharing ? (
-            <Confirm
-              text={t('Group.Share outside confirm')}
-              action={t('Group.Share')}
-              busy={busy}
-              onCancel={() => setSharing(false)}
-              onConfirm={() => {
-                setBusy(true)
-                onShare()
-                  .then(setGuest)
-                  .catch((e) => setError((e as Error).message))
-                  .finally(() => (setBusy(false), setSharing(false)))
-              }}
-            />
-          ) : (
-            <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setSharing(true)}>
-              {Icon.link} {t('Group.Share outside')}
-            </Button>
-          )}
-        </div>
-      )}
-      {guest && !adding && (() => {
+      {(guest || onShare) && !adding && (() => {
         // The link only lets people in: closed (revoked or expired), who joined stays.
-        const open = !guest.revoked && guest.expires * 1000 > Date.now()
-        const relink = relinking ? (
-          <Confirm
-            text={t('Group.New link confirm')}
-            action={t('Group.New link')}
-            busy={busy}
-            onCancel={() => setRelinking(false)}
-            onConfirm={() => (onGuest ? onGuest('link') : onShare?.())?.then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setRelinking(false))}
-          />
-        ) : (
-          <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setRelinking(true)}>
-            {Icon.link} {t('Group.New link')}
-          </Button>
-        )
+        const open = !!guest && !guest.revoked && guest.expires * 1000 > Date.now()
+        const mine = !guest || guest.owner
         return (
-          <div className="ci-flex ci-flex-col ci-gap-1.5 ci-px-4 ci-pb-3">
-            <span className="ci-text-xs ci-font-medium ci-text-gray-500 dark:ci-text-gray-400">
-              {t('Group.External link')}
-              {open && ` · ${t('Group.Expires {{date}}', { date: new Date(guest.expires * 1000).toLocaleDateString() })}`}
-            </span>
-            {!open && <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{guest.revoked ? t('Group.Link revoked') : t('Group.Link expired')}</span>}
-            {!guest.owner ? (
-              <span className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Only who invited manages the link')}</span>
-            ) : (
-              <div className="ci-flex ci-items-center ci-gap-2">
+          <div className="ci-flex ci-flex-col ci-gap-2 ci-mx-4 ci-pb-4 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
+            <div className="ci-flex ci-flex-col ci-gap-0.5">
+              <span className="ci-font-medium ci-text-gray-700 dark:ci-text-gray-200">{t('Group.External link')}</span>
+              <span className="ci-text-gray-500 dark:ci-text-gray-400">
+                {!mine ? t('Group.Only who invited manages the link') : open ? t('Group.Open until {{date}}', { date: new Date(guest!.expires * 1000).toLocaleDateString() }) : guest && !guest.revoked ? t('Group.Link expired') : t('Group.Private note')}
+              </span>
+            </div>
+            {mine && (
+              <div className="ci-flex ci-flex-wrap ci-items-center ci-gap-x-2 ci-gap-y-1">
                 {/* Shown once, when made: the server keeps only its hash. A new one replaces it. */}
-                {guest.link && open ? <SecretLink link={guest.link} /> : relink}
+                {open && guest!.link && (
+                  <Button variant="tertiary" className={outline} onClick={() => copy(guest!.link!)}>
+                    {copied ? Icon.check : Icon.copy} {copied ? t('Group.Copied') : t('Group.Copy link')}
+                  </Button>
+                )}
+                {open && !relinking && (
+                  <Button variant="tertiary" className={text} disabled={busy} onClick={() => (setRelinking(true), setClosing(false))}>
+                    {Icon.link} {t('Group.New link')}
+                  </Button>
+                )}
+                {open && !closing && (
+                  <Button variant="tertiary" className={text} disabled={busy} onClick={() => (setClosing(true), setRelinking(false))}>
+                    {Icon.lock} {t('Group.Make private')}
+                  </Button>
+                )}
+                {!open && !sharing && (
+                  <Button variant="tertiary" className={text} disabled={busy} onClick={() => setSharing(true)}>
+                    {Icon.lockOpen} {t('Group.Make public')}
+                  </Button>
+                )}
               </div>
             )}
-            {guest.owner && open && (closing ? (
-              // Private again: the link stops working; who joined stays, and a new link shares it again.
-              <Confirm
-                text={t('Group.Make private confirm')}
-                action={t('Group.Make private')}
-                busy={busy}
-                onCancel={() => setClosing(false)}
-                onConfirm={() => onGuest?.('revoke').then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setClosing(false))}
-              />
-            ) : (
-              <Button variant="small" className="ci-w-auto ci-px-2 ci-gap-1 ci-mr-auto" disabled={busy} onClick={() => setClosing(true)}>
-                {Icon.lock} {t('Group.Make private')}
-              </Button>
-            ))}
+            {relinking && ask(t('Group.New link confirm'), t('Group.New link'), () => setRelinking(false), () => onGuest?.('link').then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setRelinking(false)))}
+            {/* Private again: the link stops working; who joined stays, and a new link shares it again. */}
+            {closing && ask(t('Group.Make private confirm'), t('Group.Make private'), () => setClosing(false), () => onGuest?.('revoke').then(setGuest).catch((e) => setError((e as Error).message)).finally(() => setClosing(false)))}
+            {sharing && ask(t('Group.Share outside confirm'), t('Group.Make public'), () => setSharing(false), share)}
           </div>
         )
       })()}
-      <div className="ci-border-t ci-border-gray-300 dark:ci-border-gray-700" />
       {adding ? (
         // Operators to add: search, tick, add.
         <>
           <div className="ci-px-4 ci-pt-3 ci-pb-2">
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Common.Search operators')} className="ci-w-full ci-h-9 ci-px-3 ci-rounded-full ci-border-0 ci-outline-none ci-bg-elevationL2 dark:ci-bg-elevationL2Dark ci-text-gray-900 dark:ci-text-white" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Common.Search operators')} className="ci-w-full ci-box-border ci-h-9 ci-px-3 ci-rounded-md ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-outline-none focus:ci-border-accent-500 ci-bg-white dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white" />
           </div>
-          <ul className="ci-flex-1 ci-overflow-y-auto ci-m-0 ci-p-0 ci-list-none">
+          <ul className="ci-m-0 ci-p-0 ci-list-none">
             {candidates.length === 0 && <li className="ci-px-4 ci-py-4 ci-text-center ci-text-gray-500 dark:ci-text-gray-400">{t('Group.No operators to add')}</li>}
             {candidates.map((c) => {
               const on = picked.includes(c.username)
@@ -198,60 +203,64 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
               )
             })}
           </ul>
-          <div className="ci-flex ci-justify-end ci-gap-2 ci-px-4 ci-py-3 ci-border-t ci-border-gray-300 dark:ci-border-gray-700">
-            <Button variant="small" className="ci-w-auto ci-px-3" onClick={() => (setAdding(false), setPicked([]), setQ(''))}>
-              {t('Common.Cancel')}
-            </Button>
-            <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4" disabled={busy || !picked.length} onClick={() => run({ add: picked }, () => (setAdding(false), setPicked([]), setQ('')))}>
-              {t('Group.Add')}{picked.length ? ` (${picked.length})` : ''}
-            </Button>
-          </div>
         </>
       ) : (
         // Members, each one removable but me.
         <>
-          <div className="ci-flex ci-items-center ci-justify-between ci-pl-4 ci-pr-3 ci-pt-3 ci-pb-1">
-            <span className="ci-text-xs ci-font-medium ci-text-gray-500 dark:ci-text-gray-400">{members.length} members</span>
-            <Button variant="tertiary" className="ci-w-auto" disabled={busy} onClick={() => setAdding(true)}>
-              {Icon.circlePlus} {t('Group.Add members')}
+          <div className="ci-flex ci-items-center ci-justify-between ci-gap-2 ci-px-4 ci-pt-4 ci-pb-2">
+            <span className="ci-text-base ci-font-medium">
+              {t('Group.Members')} <span className="ci-ml-1 ci-text-sm ci-font-normal ci-text-gray-500 dark:ci-text-gray-400">{members.length}</span>
+            </span>
+            <Button variant="tertiary" className={outline} disabled={busy} onClick={() => setAdding(true)}>
+              {Icon.userPlus} {t('Group.Add members')}
             </Button>
           </div>
-          <ul className="ci-flex-1 ci-overflow-y-auto ci-m-0 ci-p-0 ci-list-none">
-            {members.map((u) => (
-              <li key={u} className="ci-flex ci-items-center ci-gap-3 ci-pl-4 ci-pr-2 ci-py-1.5">
-                <Avatar contact={isGuest(u) ? { username: u, name: guests[u] ?? u } : contacts[u]} username={u} size={28} />
-                <span className="ci-flex-1 ci-truncate">{nameOf(u)}</span>
-                {u === me ? (
-                  <span className="ci-pr-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.Owner')}</span>
-                ) : isGuest(u) && !guest?.owner ? (
-                  <span className="ci-pr-2 ci-text-xs ci-text-gray-500 dark:ci-text-gray-400">{t('Group.External')}</span>
-                ) : isGuest(u) && removing === u ? (
-                  <>
-                    <button type="button" className={pillCancel} onClick={() => setRemoving(null)}>
-                      {t('Common.Cancel')}
-                    </button>
-                    <button type="button" className={pillDanger} disabled={busy} onClick={() => onGuest?.('remove', u).then((g) => (setGuest(g), setRemoving(null))).catch((e) => setError((e as Error).message))}>
-                      {t('Common.Remove')}
-                    </button>
-                  </>
-                ) : removing === u ? (
-                  <>
-                    <button type="button" className={pillCancel} onClick={() => setRemoving(null)}>
-                      {t('Common.Cancel')}
-                    </button>
-                    <button type="button" className={pillDanger} disabled={busy} onClick={() => run({ remove: u }, () => setRemoving(null))}>
-                      {t('Common.Remove')}
-                    </button>
-                  </>
-                ) : (
-                  <Button variant="small" aria-label={t('Common.Remove {{name}}', { name: nameOf(u) })} title={t('Group.Remove from the group')} disabled={busy} onClick={() => setRemoving(u)}>
-                    {Icon.close}
-                  </Button>
-                )}
-              </li>
-            ))}
+          <ul className="ci-m-0 ci-px-4 ci-pb-2 ci-list-none">
+            {members.map((u) => {
+              // Who can go: anyone but me, a guest only when the link is mine.
+              const removable = u !== me && (!isGuest(u) || !!guest?.owner)
+              const asking = removing === u
+              return (
+                <li key={u} className="ci-border-0 ci-border-t first:ci-border-t-0 ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
+                  <div className={`ci-flex ci-flex-col ci-gap-2 ci-my-1 ci-py-1.5 ${asking ? 'ci-px-3 ci-rounded-lg ci-bg-elevationL2 dark:ci-bg-elevationL2Dark' : ''}`}>
+                    <div className="ci-flex ci-items-center ci-gap-3">
+                      <Avatar contact={isGuest(u) ? { username: u, name: guests[u] ?? u } : contacts[u]} username={u} size={32} />
+                      <span className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-wrap ci-items-center ci-gap-x-2 ci-gap-y-0.5">
+                        <span className="ci-truncate ci-max-w-full">{nameOf(u)}</span>
+                        {u === me && badge(t('Group.Owner'), 'ci-bg-gray-200 ci-text-gray-700 dark:ci-bg-gray-700 dark:ci-text-gray-100')}
+                        {isGuest(u) && <ExternalBadge />}
+                      </span>
+                      {removable && !asking && (
+                        <Button variant="tertiary" className={text} aria-label={t('Common.Remove {{name}}', { name: nameOf(u) })} title={t('Group.Remove from the group')} disabled={busy} onClick={() => setRemoving(u)}>
+                          {Icon.circleMinus} {t('Common.Remove')}
+                        </Button>
+                      )}
+                    </div>
+                    {asking && (
+                      <div className="ci-flex ci-flex-wrap ci-items-center ci-gap-2">
+                        <span className="ci-flex-1 ci-min-w-48 ci-text-gray-700 dark:ci-text-gray-200">{t('Group.Remove {{name}} confirm', { name: nameOf(u) })}</span>
+                        {answers(t('Common.Remove'), () => setRemoving(null), () =>
+                          isGuest(u) ? onGuest?.('remove', u).then((g) => (setGuest(g), setRemoving(null))).catch((e) => setError((e as Error).message)) : run({ remove: u }, () => setRemoving(null)),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         </>
+      )}
+      </div>
+      {adding && (
+        <div className="ci-flex ci-justify-end ci-gap-2 ci-px-4 ci-py-3 ci-border-0 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
+          <Button variant="tertiary" className={text} onClick={() => (setAdding(false), setPicked([]), setQ(''))}>
+            {t('Common.Cancel')}
+          </Button>
+          <Button variant="green" className="ci-w-auto ci-h-9 ci-px-4 ci-rounded-md ci-font-medium" disabled={busy || !picked.length} onClick={() => run({ add: picked }, () => (setAdding(false), setPicked([]), setQ('')))}>
+            {t('Group.Add')}{picked.length ? ` (${picked.length})` : ''}
+          </Button>
+        </div>
       )}
     </div>
   )

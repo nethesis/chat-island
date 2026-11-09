@@ -244,7 +244,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
             <PresenceDot online={online[peer]} presence={contact?.presence} mobile={mobile[peer]} />
           </span>
         )}
-        {c.kind === 'group' && !showMembers && (
+        {c.kind === 'group' && !showMembers && !settings && !menu && (
           <span role="tooltip" className="ci-pointer-events-none ci-absolute ci-left-0 ci-top-full ci-mt-2 ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900">
             {t('Chat.Click to see the group details')}
             <span className="ci-absolute ci-left-4 ci--top-1 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100" />
