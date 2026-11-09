@@ -12,11 +12,11 @@ const initials = (name: string) =>
 
 export function Avatar({ contact, username, size = 40 }: { contact?: Contact; username: string; size?: number }) {
   const name = contact?.name || username
-  const style = { width: size, height: size, fontSize: size / 2.6 }
+  const style = { width: size, height: size, fontSize: size / 2.5 }
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900">
+    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
       {initials(name)}
     </div>
   )
@@ -34,34 +34,31 @@ const QUEUE_ICON = { box: '0 0 640 512', d: 'M320 16a104 104 0 1 1 0 208 104 104
 const INDIGO = 'ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100'
 // The CTI's operator group badge.
 const BLUE = 'ci-bg-blue-100 ci-text-blue-800 dark:ci-bg-blue-700 dark:ci-text-blue-100'
-const GRAY = 'ci-bg-gray-200 ci-text-gray-700 dark:ci-bg-gray-700 dark:ci-text-gray-100'
+const GRAY = 'ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950' // as a person's initials, as the CTI's
 const QUEUE_PREFIX = 'Queue - '
 
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
- *  head: a chat head, where groups side by side must differ: its initials (two letters of a one-word name), the icon small in the corner. */
+ *  Its initials (two letters of a one-word name) everywhere; head: a chat head, the icon small in the corner too. */
 export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }: { peer?: string; name: string; size?: number; avatar?: string; head?: boolean }) {
-  const style = { width: size, height: size, fontSize: size / 2.8 }
+  const style = { width: size, height: size, fontSize: size / 2.5 } // 14px at 36, 16px at 40, as in the mockup
   const queue = name.startsWith(QUEUE_PREFIX)
   const color = peer.startsWith('cti-') ? BLUE : queue ? INDIGO : GRAY
   const icon = queue ? QUEUE_ICON : GROUP_ICON
   const words = (queue ? name.slice(QUEUE_PREFIX.length) : name).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
-  ) : head ? (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ${color}`}>
-      {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
-    </div>
   ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ${color}`}>
-      <svg width={size * 0.45} height={size * 0.4} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
+    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ${color}`}>
+      {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
     </div>
   )
   if (!head) return face
   return (
     <span className="ci-relative ci-block">
       {face}
-      <span className={`ci-absolute ci--bottom-0.5 ci--right-0.5 ci-w-4 ci-h-4 ci-rounded-full ci-flex ci-items-center ci-justify-center ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950 ${color}`}>
-        <svg width="10" height="9" viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
+      {/* As in the mockup, in proportion to the head (14px and an 8px icon at 32): the face's colour, a thin ring of the page's background between them. */}
+      <span style={{ width: Math.round(size * 0.44), height: Math.round(size * 0.44) }} className={`ci-absolute ci-bottom-0 ci-right-0 ci-box-border ci-rounded-full ci-flex ci-items-center ci-justify-center ci-border-[1.5px] ci-border-solid ci-border-white dark:ci-border-gray-950 ${color}`}>
+        <svg width={Math.round(size / 4)} height={Math.round(size / 4)} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
       </span>
     </span>
   )

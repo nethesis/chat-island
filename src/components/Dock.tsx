@@ -48,7 +48,7 @@ export function Dock({ onDragStart, pushButton = true, rail = false }: { onDragS
   )
 }
 
-/** One head: avatar, presence and unread count; a click opens its chat, on the open one it closes it. */
+/** One head: avatar, presence and a dot for unread messages; a click opens its chat, on the open one it closes it. */
 function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean }) {
   const { c, contact, active, inactive, online, mobile, openChat, removeHead, place } = useStore(
     useShallow((s) => ({ c: s.conversations[peer], contact: s.contacts[peer], active: s.open === peer, inactive: s.inactive[peer], online: s.online[peer], mobile: s.mobile[peer], openChat: s.openChat, removeHead: s.removeHead, place: s.place })),
@@ -74,9 +74,7 @@ function Head({ peer, size, rail }: { peer: string; size: number; rail?: boolean
           </>
         )}
         {c?.unread > 0 && (
-          <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
-            {c.unread > 99 ? '99+' : c.unread}
-          </span>
+          <span className="ci-absolute ci-top-0 ci-right-0 ci-w-3 ci-h-3 ci-box-border ci-rounded-full ci-bg-red-700 dark:ci-bg-red-500 ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />
         )}
       </button>
       {!rail && <button
@@ -153,9 +151,7 @@ function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) 
       <Button variant="default" title={t('Dock.{{count}} more chats', { count: peers.length })} aria-expanded={show} onClick={() => setShow((v) => !v)} className={`ci-relative ci-shadow-lg ci-font-medium ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950 ${rail ? '!ci-w-9 !ci-h-9 ci-text-sm' : ''}`}>
         +{peers.length}
         {unread > 0 && (
-          <span className="ci-absolute ci--top-1 ci--right-1 ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
-            {unread > 99 ? '99+' : unread}
-          </span>
+          <span className="ci-absolute ci-top-0 ci-right-0 ci-w-3 ci-h-3 ci-box-border ci-rounded-full ci-bg-red-700 dark:ci-bg-red-500 ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />
         )}
       </Button>
       {show && (
@@ -185,9 +181,7 @@ function Overflow({ peers, rail = false }: { peers: string[]; rail?: boolean }) 
                   </span>
                   <span className="ci-flex-1 ci-truncate">{nameOf(p)}</span>
                   {(c?.unread ?? 0) > 0 && (
-                    <span className="ci-min-w-5 ci-h-5 ci-px-1 ci-rounded-full ci-bg-phoneIslandClose dark:ci-bg-phoneIslandCloseDark ci-text-white dark:ci-text-gray-950 ci-text-xs ci-font-medium ci-flex ci-items-center ci-justify-center">
-                      {c!.unread > 99 ? '99+' : c!.unread}
-                    </span>
+                    <span className="ci-shrink-0 ci-w-3 ci-h-3 ci-box-border ci-rounded-full ci-bg-red-700 dark:ci-bg-red-500 ci-ring-2 ci-ring-gray-50 dark:ci-ring-gray-950" />
                   )}
                 </button>
                 <Button variant="small" aria-label={t('Dock.Remove {{name}} from the dock', { name: nameOf(p) })} title={t('Dock.Remove from the dock')} onClick={() => removeHead(p)} className="ci-opacity-0 group-hover:ci-opacity-100 focus:ci-opacity-100">
