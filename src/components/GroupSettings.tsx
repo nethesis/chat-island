@@ -216,13 +216,14 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
             </Button>
           </div>
           <ul className="ci-m-0 ci-px-6 ci-pb-4 ci-list-none">
-            {members.map((u) => {
+            {members.map((u, i) => {
               // Who can go: anyone but me, a guest only when the link is mine.
               const removable = u !== me && (!isGuest(u) || !!guest?.owner)
               const asking = removing === u
               return (
-                <li key={u} className="ci-border-0 ci-border-t first:ci-border-t-0 ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
-                  <div className={`ci-flex ci-flex-col ci-gap-2 ci-my-1 ci-py-1.5 ${asking ? 'ci-px-3 ci-rounded-lg ci-bg-elevationL2 dark:ci-bg-elevationL2Dark' : ''}`}>
+                // Same padding asking or not, so nothing moves; no dividers around the one asked about.
+                <li key={u} className={`ci-border-0 ci-border-t first:ci-border-t-0 ci-border-solid ${asking || removing === members[i - 1] ? 'ci-border-transparent' : 'ci-border-gray-300 dark:ci-border-gray-700'}`}>
+                  <div className={`ci-flex ci-flex-col ci-gap-2 ci--mx-3 ci-my-1 ci-px-3 ci-py-1.5 ci-rounded-lg ${asking ? 'ci-bg-elevationL2 dark:ci-bg-elevationL2Dark' : ''}`}>
                     <div className="ci-flex ci-items-center ci-gap-3">
                       <Avatar contact={isGuest(u) ? { username: u, name: guests[u] ?? u } : contacts[u]} username={u} size={32} />
                       <span className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-wrap ci-items-center ci-gap-x-2 ci-gap-y-0.5">
