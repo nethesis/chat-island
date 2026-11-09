@@ -38,7 +38,7 @@ const GRAY = 'ci-bg-gray-200 ci-text-gray-700 dark:ci-bg-gray-700 dark:ci-text-g
 const QUEUE_PREFIX = 'Queue - '
 
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
- *  head: a chat head, where groups side by side must differ: its initials (two letters of a one-word name), the icon small in the corner. */
+ *  Its initials (two letters of a one-word name) everywhere; head: a chat head, the icon small in the corner too. */
 export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }: { peer?: string; name: string; size?: number; avatar?: string; head?: boolean }) {
   const style = { width: size, height: size, fontSize: size / 2.8 }
   const queue = name.startsWith(QUEUE_PREFIX)
@@ -47,13 +47,9 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   const words = (queue ? name.slice(QUEUE_PREFIX.length) : name).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
-  ) : head ? (
+  ) : (
     <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ${color}`}>
       {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
-    </div>
-  ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ${color}`}>
-      <svg width={size * 0.45} height={size * 0.4} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
     </div>
   )
   if (!head) return face
