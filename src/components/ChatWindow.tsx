@@ -313,7 +313,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           ]}
         />
       )}
-      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest).then(lock) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer).then(lock) : undefined} onClose={() => setSettings(false)} />}
+      {settings && c.kind === 'group' && <GroupSettings conv={c} wide={docked || expanded} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest).then(lock) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer).then(lock) : undefined} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
         <div ref={membersRef} className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (

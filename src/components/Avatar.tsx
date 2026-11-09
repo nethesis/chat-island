@@ -34,7 +34,7 @@ const QUEUE_ICON = { box: '0 0 640 512', d: 'M320 16a104 104 0 1 1 0 208 104 104
 const INDIGO = 'ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100'
 // The CTI's operator group badge.
 const BLUE = 'ci-bg-blue-100 ci-text-blue-800 dark:ci-bg-blue-700 dark:ci-text-blue-100'
-const GRAY = 'ci-bg-gray-200 ci-text-gray-700 dark:ci-bg-gray-700 dark:ci-text-gray-100'
+const GRAY = 'ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900' // as a person's initials
 const QUEUE_PREFIX = 'Queue - '
 
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.

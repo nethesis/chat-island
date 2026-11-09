@@ -34,7 +34,7 @@ export function Confirm({ text, action, busy, onCancel, onConfirm }: { text: str
   )
 }
 
-export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { conv: Conversation; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onShare?: () => Promise<GuestInfo>; onClose: () => void }) {
+export function GroupSettings({ conv, wide, onEdit, onGuest, onShare, onClose }: { conv: Conversation; wide?: boolean; onEdit: (change: Change) => Promise<void>; onGuest?: (op?: 'link' | 'revoke' | 'remove', guest?: string) => Promise<GuestInfo>; onShare?: () => Promise<GuestInfo>; onClose: () => void }) {
   const { contacts, inactive, guests, me } = useStore(useShallow((s) => ({ contacts: s.contacts, inactive: s.inactive, guests: s.guests, me: s.me })))
   const [name, setName] = useState(conv.name ?? '')
   const [busy, setBusy] = useState(false)
@@ -79,6 +79,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
   // The mockup's buttons (px-3 py-2, 16px icon, gap-3): accent text, outlined, primary, danger.
   const btn = 'ci-inline-flex ci-shrink-0 ci-items-center ci-justify-center ci-gap-3 ci-px-3 ci-py-2 ci-rounded-md ci-border ci-border-solid ci-text-sm ci-leading-5 ci-font-medium ci-font-sans ci-whitespace-nowrap ci-cursor-pointer ci-transition-colors ci-outline-none focus-visible:ci-ring-2 focus-visible:ci-ring-accent-500 disabled:ci-opacity-50 disabled:ci-cursor-not-allowed'
   const text = `${btn} ci-border-transparent ci-bg-transparent ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800`
+  const small = 'ci-inline-flex ci-shrink-0 ci-items-center ci-gap-2 ci-px-2.5 ci-py-1.5 ci-rounded ci-border-0 ci-bg-transparent ci-text-xs ci-leading-4 ci-font-medium ci-font-sans ci-whitespace-nowrap ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800 disabled:ci-opacity-50'
   const outline = `${btn} ci-shadow-sm ci-border-gray-300 dark:ci-border-gray-600 ci-bg-transparent ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800`
   const primary = `${btn} ci-shadow-sm ci-border-transparent ci-bg-accent-700 dark:ci-bg-accent-500 hover:ci-bg-accent-600 dark:hover:ci-bg-accent-400 ci-text-white dark:ci-text-gray-950`
   const danger = `${btn} ci-shadow-sm ci-border-transparent ci-bg-rose-700 hover:ci-bg-rose-800 dark:ci-bg-rose-600 dark:hover:ci-bg-rose-500 ci-text-white`
@@ -115,7 +116,8 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
 
   return (
     <div className={`ci-anim-drop ci-absolute ci-left-4 ci-right-4 ci-top-[4.5rem] ci-bottom-4 ci-z-30 ci-flex ci-flex-col ci-rounded-lg ci-bg-gray-50 dark:ci-bg-gray-900 ci-shadow-xl ci-border ci-border-solid ci-border-gray-200 dark:ci-border-gray-700 ci-text-sm ci-leading-5 ci-text-gray-900 dark:ci-text-gray-50`}>
-      <div className="ci-flex-1 ci-flex ci-flex-col ci-gap-6 ci-p-6 ci-overflow-y-auto">
+      {/* The mockup's two layouts: roomy when pinned or expanded, compact in the floating window. */}
+      <div className={`ci-flex-1 ci-flex ci-flex-col ci-overflow-y-auto ${wide ? 'ci-gap-6 ci-p-6' : 'ci-gap-5 ci-p-3'}`}>
       <div className={`ci-flex ci-items-center ci-gap-4 ci-pb-1 ci-border-b ${divider}`}>
         <span className="ci-flex-1 ci-text-lg ci-leading-7 ci-font-medium">{t('Common.Group settings')}</span>
         <button type="button" className={`${btn} ci-p-2.5 ci-border-transparent ci-bg-transparent ci-text-gray-700 dark:ci-text-gray-50 hover:ci-bg-gray-200 dark:hover:ci-bg-gray-800`} onClick={onClose} aria-label={t('Common.Close')} title={t('Common.Close')}>
@@ -124,12 +126,13 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
       </div>
       {/* Picture and name */}
       <div className="ci-flex ci-flex-col ci-gap-2">
-      <div className="ci-flex ci-items-end ci-gap-4">
+      <div className={`ci-flex ci-items-end ${wide ? 'ci-gap-4' : 'ci-gap-3'}`}>
         <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then((avatar) => run({ avatar })).catch(() => setError(t('Group.Picture not readable')))} />
         <button type="button" title={t('Group.Change picture')} aria-label={t('Group.Change picture')} disabled={busy} onClick={() => picture.current?.click()} className="ci-relative ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-cursor-pointer ci-group">
-          <GroupAvatar peer={conv.peer} name={conv.name ?? conv.peer} size={64} avatar={conv.avatar} />
+          <GroupAvatar peer={conv.peer} name={conv.name ?? conv.peer} size={wide ? 64 : 36} avatar={conv.avatar} />
           <span className="ci-absolute ci-inset-0 ci-rounded-full ci-bg-black/50 ci-text-white ci-hidden group-hover:ci-flex ci-items-center ci-justify-center">{Icon.camera}</span>
         </button>
+        <div className={`ci-flex ci-flex-1 ci-min-w-0 ci-items-end ${wide ? 'ci-gap-4' : 'ci-gap-2'}`}>
         <label className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-col ci-gap-2">
           <span className="ci-font-medium ci-text-gray-700 dark:ci-text-gray-200">{t('Common.Group name')}</span>
           <input
@@ -142,6 +145,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
         <button type="button" className={primary} disabled={busy} onClick={() => name.trim() && name.trim() !== conv.name && run({ name: name.trim() })}>
           {t('Group.Save')}
         </button>
+        </div>
       </div>
       {error && <div className="ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
       </div>
@@ -158,7 +162,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
               </span>
             </div>
             {mine && (
-              <div className="ci-flex ci-flex-wrap ci-items-center ci-gap-2">
+              <div className="ci-flex ci-flex-wrap ci-items-center ci-gap-x-2 ci-gap-y-1">
                 {/* Shown once, when made: the server keeps only its hash. A new one replaces it. */}
                 {open && guest!.link && (
                   <button type="button" className={outline} onClick={() => copy(guest!.link!)}>
@@ -214,7 +218,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
         // Members, each one removable but me.
         <div className="ci-flex ci-flex-col ci-gap-3">
           <div className="ci-flex ci-items-center ci-gap-2">
-            <span className="ci-font-medium">{t('Group.Members')}</span>
+            <span className={wide ? 'ci-font-medium' : 'ci-text-base ci-leading-6 ci-font-medium'}>{t('Group.Members')}</span>
             <span className={`ci-flex-1 ${muted}`}>{members.length}</span>
             <button type="button" className={outline} disabled={busy} onClick={() => setAdding(true)}>
               {icon(Icon.userPlus)} {t('Group.Add members')}
@@ -231,14 +235,14 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
                 <li key={u} className={`ci-flex ci-flex-col ci-gap-1.5 ci-p-2 ci-border-b ${divider} ${line ? '' : '!ci-border-transparent'} ${asking ? 'ci-rounded-lg ci-bg-gray-100 dark:ci-bg-gray-800' : ''}`}>
                   <div className="ci-flex ci-min-h-9 ci-items-center ci-gap-3">
                     <Avatar contact={isGuest(u) ? { username: u, name: guests[u] ?? u } : contacts[u]} username={u} size={32} />
-                    <span className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-wrap ci-items-center ci-gap-x-2 ci-gap-y-0.5">
+                    <span className={`ci-flex ci-flex-1 ci-min-w-0 ${wide ? 'ci-items-center ci-gap-2' : 'ci-flex-col ci-items-start ci-gap-0.5'}`}>
                       <span className="ci-truncate ci-max-w-full ci-font-medium">{nameOf(u)}</span>
                       {u === me && badge(t('Group.Owner'))}
                       {isGuest(u) && <ExternalBadge />}
                     </span>
                     {removable && !asking && (
-                      <button type="button" className={text} aria-label={t('Common.Remove {{name}}', { name: nameOf(u) })} title={t('Group.Remove from the group')} disabled={busy} onClick={() => setRemoving(u)}>
-                        {icon(Icon.circleMinus)} {t('Common.Remove')}
+                      <button type="button" className={wide ? text : small} aria-label={t('Common.Remove {{name}}', { name: nameOf(u) })} title={t('Group.Remove from the group')} disabled={busy} onClick={() => setRemoving(u)}>
+                        {wide ? icon(Icon.circleMinus) : <span className="ci-flex ci-w-3 ci-h-3 [&>svg]:ci-w-3 [&>svg]:ci-h-3">{Icon.circleMinus}</span>} {t('Common.Remove')}
                       </button>
                     )}
                   </div>
