@@ -56,9 +56,9 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   return (
     <span className="ci-relative ci-block">
       {face}
-      {/* As in the mockup: 14px, the face's colour, a thin ring of the page's background between them. */}
-      <span className={`ci-absolute ci-bottom-0 ci-right-0 ci-w-3.5 ci-h-3.5 ci-box-border ci-rounded-full ci-flex ci-items-center ci-justify-center ci-border-[1.5px] ci-border-solid ci-border-white dark:ci-border-gray-950 ${color}`}>
-        <svg width="8" height="8" viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
+      {/* As in the mockup, in proportion to the head (14px and an 8px icon at 32): the face's colour, a thin ring of the page's background between them. */}
+      <span style={{ width: Math.round(size * 0.44), height: Math.round(size * 0.44) }} className={`ci-absolute ci-bottom-0 ci-right-0 ci-box-border ci-rounded-full ci-flex ci-items-center ci-justify-center ci-border-[1.5px] ci-border-solid ci-border-white dark:ci-border-gray-950 ${color}`}>
+        <svg width={Math.round(size / 4)} height={Math.round(size / 4)} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
       </span>
     </span>
   )
