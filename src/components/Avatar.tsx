@@ -16,7 +16,7 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900">
+    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
       {initials(name)}
     </div>
   )
@@ -34,7 +34,7 @@ const QUEUE_ICON = { box: '0 0 640 512', d: 'M320 16a104 104 0 1 1 0 208 104 104
 const INDIGO = 'ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100'
 // The CTI's operator group badge.
 const BLUE = 'ci-bg-blue-100 ci-text-blue-800 dark:ci-bg-blue-700 dark:ci-text-blue-100'
-const GRAY = 'ci-bg-gray-700 ci-text-gray-50 dark:ci-bg-gray-300 dark:ci-text-gray-900' // as a person's initials
+const GRAY = 'ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950' // as a person's initials, as the CTI's
 const QUEUE_PREFIX = 'Queue - '
 
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
@@ -48,7 +48,7 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ${color}`}>
+    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ${color}`}>
       {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
     </div>
   )
