@@ -278,7 +278,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           {Icon.search}
         </Button>
         {/* Window menu, before minimize so the last button is the one that closes. */}
-        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu}>
+        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu} data-menu-toggle>
           {Icon.gear}
         </Button>
         {/* Minimize: the head stays in the dock. In a panel the heads have no X, so this one takes the chat out of the rail. */}
@@ -419,7 +419,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   )
 }
 
-/** The header menu; a click elsewhere closes it. */
+/** The header menu, above the panels it opens; a click elsewhere closes it. */
 function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
   const items = [...actions, ...(onSettings ? [{ label: t('Common.Group settings'), icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
@@ -427,12 +427,12 @@ function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean;
   const [dark, setDark] = useState(false)
   useLayoutEffect(() => setDark(!!box.current?.closest('.ci-dark')), [])
   useEffect(() => {
-    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[aria-label="Menu"]') && onClose()
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[data-menu-toggle]') && onClose()
     document.addEventListener('pointerdown', away, true)
     return () => document.removeEventListener('pointerdown', away, true)
   }, [onClose])
   return (
-    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-min-w-44 ci-w-max ci-whitespace-nowrap ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
+    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-40 ci-min-w-44 ci-w-max ci-whitespace-nowrap ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
       {items.map((it) => (
         <button
           key={it.label}
