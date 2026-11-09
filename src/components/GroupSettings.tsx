@@ -108,8 +108,8 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
   }
 
   return (
-    <div className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-bottom-3 ci-z-30 ci-flex ci-flex-col ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
-      <div className="ci-flex ci-items-center ci-justify-between ci-mx-4 ci-pt-3 ci-pb-2 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
+    <div className="ci-anim-drop ci-absolute ci-left-4 ci-right-4 ci-top-[4.5rem] ci-bottom-4 ci-z-30 ci-flex ci-flex-col ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-900 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
+      <div className="ci-flex ci-items-center ci-justify-between ci-mx-6 ci-pt-5 ci-pb-3 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
         <span className="ci-text-base ci-font-medium">{t('Common.Group settings')}</span>
         <Button variant="small" onClick={onClose} aria-label={t('Common.Close')} title={t('Common.Close')}>
           {Icon.close}
@@ -117,7 +117,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
       </div>
       <div className="ci-flex-1 ci-overflow-y-auto">
       {/* Picture and name */}
-      <div className="ci-flex ci-items-end ci-gap-3 ci-px-4 ci-pt-4 ci-pb-3">
+      <div className="ci-flex ci-items-end ci-gap-3 ci-px-6 ci-pt-5 ci-pb-4">
         <input ref={picture} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && shrink(e.target.files[0]).then((avatar) => run({ avatar })).catch(() => setError(t('Group.Picture not readable')))} />
         <button type="button" title={t('Group.Change picture')} aria-label={t('Group.Change picture')} disabled={busy} onClick={() => picture.current?.click()} className="ci-relative ci-shrink-0 ci-rounded-full ci-border-0 ci-p-0 ci-bg-transparent ci-group">
           <GroupAvatar peer={conv.peer} name={conv.name ?? conv.peer} size={48} avatar={conv.avatar} />
@@ -136,13 +136,13 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
           {t('Group.Save')}
         </Button>
       </div>
-      {error && <div className="ci-px-4 ci-pb-2 ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
+      {error && <div className="ci-px-6 ci-pb-2 ci-text-xs ci-text-phoneIslandClose dark:ci-text-phoneIslandCloseDark">{error}</div>}
       {(guest || onShare) && !adding && (() => {
         // The link only lets people in: closed (revoked or expired), who joined stays.
         const open = !!guest && !guest.revoked && guest.expires * 1000 > Date.now()
         const mine = !guest || guest.owner
         return (
-          <div className="ci-flex ci-flex-col ci-gap-2 ci-mx-4 ci-pb-4 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
+          <div className="ci-flex ci-flex-col ci-gap-2 ci-mx-6 ci-pb-5 ci-border-b ci-border-solid ci-border-0 ci-border-gray-300 dark:ci-border-gray-700">
             <div className="ci-flex ci-flex-col ci-gap-0.5">
               <span className="ci-font-medium ci-text-gray-700 dark:ci-text-gray-200">{t('Group.External link')}</span>
               <span className="ci-text-gray-500 dark:ci-text-gray-400">
@@ -184,16 +184,16 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
       {adding ? (
         // Operators to add: search, tick, add.
         <>
-          <div className="ci-px-4 ci-pt-3 ci-pb-2">
+          <div className="ci-px-6 ci-pt-3 ci-pb-2">
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Common.Search operators')} className="ci-w-full ci-box-border ci-h-9 ci-px-3 ci-rounded-md ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-outline-none focus:ci-border-accent-500 ci-bg-white dark:ci-bg-gray-950 ci-text-gray-900 dark:ci-text-white" />
           </div>
           <ul className="ci-m-0 ci-p-0 ci-list-none">
-            {candidates.length === 0 && <li className="ci-px-4 ci-py-4 ci-text-center ci-text-gray-500 dark:ci-text-gray-400">{t('Group.No operators to add')}</li>}
+            {candidates.length === 0 && <li className="ci-px-6 ci-py-4 ci-text-center ci-text-gray-500 dark:ci-text-gray-400">{t('Group.No operators to add')}</li>}
             {candidates.map((c) => {
               const on = picked.includes(c.username)
               return (
                 <li key={c.username}>
-                  <button type="button" onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.username) : [...p, c.username]))} className="ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-4 ci-py-1.5 ci-border-0 ci-bg-transparent ci-text-left ci-text-inherit hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700">
+                  <button type="button" onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.username) : [...p, c.username]))} className="ci-w-full ci-flex ci-items-center ci-gap-3 ci-px-6 ci-py-1.5 ci-border-0 ci-bg-transparent ci-text-left ci-text-inherit hover:ci-bg-gray-200 dark:hover:ci-bg-gray-700">
                     <Avatar contact={c} username={c.username} size={28} />
                     <span className="ci-flex-1 ci-truncate">{c.name}</span>
                     {/* As in New chat: the circled check when picked. */}
@@ -207,7 +207,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
       ) : (
         // Members, each one removable but me.
         <>
-          <div className="ci-flex ci-items-center ci-justify-between ci-gap-2 ci-px-4 ci-pt-4 ci-pb-2">
+          <div className="ci-flex ci-items-center ci-justify-between ci-gap-2 ci-px-6 ci-pt-5 ci-pb-2">
             <span className="ci-text-base ci-font-medium">
               {t('Group.Members')} <span className="ci-ml-1 ci-text-sm ci-font-normal ci-text-gray-500 dark:ci-text-gray-400">{members.length}</span>
             </span>
@@ -215,7 +215,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
               {Icon.userPlus} {t('Group.Add members')}
             </Button>
           </div>
-          <ul className="ci-m-0 ci-px-4 ci-pb-2 ci-list-none">
+          <ul className="ci-m-0 ci-px-6 ci-pb-4 ci-list-none">
             {members.map((u) => {
               // Who can go: anyone but me, a guest only when the link is mine.
               const removable = u !== me && (!isGuest(u) || !!guest?.owner)
@@ -253,7 +253,7 @@ export function GroupSettings({ conv, onEdit, onGuest, onShare, onClose }: { con
       )}
       </div>
       {adding && (
-        <div className="ci-flex ci-justify-end ci-gap-2 ci-px-4 ci-py-3 ci-border-0 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
+        <div className="ci-flex ci-justify-end ci-gap-2 ci-px-6 ci-py-3 ci-border-0 ci-border-t ci-border-solid ci-border-gray-300 dark:ci-border-gray-700">
           <Button variant="tertiary" className={text} onClick={() => (setAdding(false), setPicked([]), setQ(''))}>
             {t('Common.Cancel')}
           </Button>
