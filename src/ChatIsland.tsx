@@ -41,8 +41,6 @@ export interface ChatIslandProps {
   sound?: boolean
   /** The host has a side panel to pin the chat to (events chat-island-pin, chat-island-pin-target). */
   pinnable?: boolean
-  /** Colleagues without a picture show a headset, as in the CTI, instead of their initials. */
-  operatorIcon?: boolean
   /** The browser's own tooltips for the heads' names: for a host window sized to the dock (NethLink), where a drawn one is cut off. */
   nativeTooltips?: boolean
   /** 'it' or 'en'; default the browser's language, as in phone-island. */
@@ -135,7 +133,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
 
 useStore.setState({ lang: toLang() })
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, operatorIcon = false, nativeTooltips = false, accent, language, moveTo }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, moveTo }: ChatIslandProps) {
   // Every string follows the language: a change remounts the island in the new one.
   useLayoutEffect(() => useStore.setState({ lang: toLang(language) }), [language])
   const lang = useStore((st) => st.lang)
@@ -151,7 +149,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     soundRef.current = sound
     notificationsRef.current = notifications
   }, [cfg, sound, notifications])
-  useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable, nativeTooltips, headsets: operatorIcon }), [maxHeads, newChatButton, pinnable, nativeTooltips, operatorIcon])
+  useEffect(() => useStore.setState({ maxHeads, newChatButton, pinnable, nativeTooltips }), [maxHeads, newChatButton, pinnable, nativeTooltips])
   useEffect(() => useStore.setState({ moveTo }), [moveTo?.host, moveTo?.label]) // eslint-disable-line react-hooks/exhaustive-deps
   // A pinnable host tells where its rail and panel are; while the rail is there the heads live in it and nothing floats.
   useEffect(() => listen<{ el: HTMLElement | null }>('chat-island-rail-target', ({ el }) => useStore.setState({ rail: el ?? null })), [])
