@@ -98,6 +98,7 @@ The widget mounts on the `.chat-island` elements present when its script runs. A
 | `data-pinnable` | `true`: the host has a rail and a panel to pin the chat to |
 | `data-language` | `it` or `en` |
 | `data-max-heads` | chat heads in the dock |
+| `data-density` | `compact`: about 20% less spacing (font sizes stay), for a host in compact view |
 
 ### Base64 config token
 

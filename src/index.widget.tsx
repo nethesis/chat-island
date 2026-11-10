@@ -19,11 +19,12 @@ document.querySelectorAll<HTMLElement>('.chat-island').forEach((div) => {
         // Hosts without React (WebTop): the pinned panel, the language and the dock size.
         pinnable={d.pinnable === 'true'}
         language={d.language}
+        density={d.density === 'compact' ? 'compact' : undefined}
         maxHeads={Number(d.maxHeads) || undefined}
       />
     </React.StrictMode>,
   )
   render()
   // A new token in data-config reconnects the island in place.
-  new MutationObserver(render).observe(div, { attributes: true, attributeFilter: ['data-config', 'data-language'] })
+  new MutationObserver(render).observe(div, { attributes: true, attributeFilter: ['data-config', 'data-language', 'data-density'] })
 })

@@ -5,6 +5,8 @@
 /* Scoped reset: preflight is off, so the island resets only itself. Same font as phone-island. */
 .chat-island-root, .chat-island-root * { box-sizing: border-box; }
 .chat-island-root { font-family: 'Poppins', 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
+/* Compact density of the host (data-density="compact"): 20% less spacing, as My's */
+.chat-island-root[data-density='compact'] { --ci-spacing: 0.2rem; }
 /* Form controls: stronger than the host page's own button/input/textarea rules (0,0,2),
    weaker than the island's classes (0,1,0), so any page leaves them as the island draws them. */
 :where(.chat-island-root) button:not(z),

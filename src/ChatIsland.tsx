@@ -45,6 +45,8 @@ export interface ChatIslandProps {
   nativeTooltips?: boolean
   /** 'it' or 'en'; default the browser's language, as in phone-island. */
   language?: string
+  /** The host's density: 'compact' tightens the spacing (font sizes stay). Default 'standard'. */
+  density?: 'standard' | 'compact'
   /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
   accent?: 'emerald' | 'blue'
   /** The other app the chat windows can move to (NethLink and the CTI): a "Move to" item in each chat's menu.
@@ -134,7 +136,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
 
 useStore.setState({ lang: toLang() })
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, moveTo }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, density, moveTo }: ChatIslandProps) {
   // Every string follows the language: a change remounts the island in the new one.
   useLayoutEffect(() => useStore.setState({ lang: toLang(language) }), [language])
   const lang = useStore((st) => st.lang)
@@ -791,7 +793,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const flow = free ? 'ci-items-end' : `${place.y === 'down' ? 'ci-items-start' : 'ci-items-end'} ${place.x === 'right' ? 'ci-flex-row-reverse' : ''}`
   // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
   if (rail) {
-    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent}><Boundary key={lang}>{children}</Boundary></div>
+    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent} data-density={density}><Boundary key={lang}>{children}</Boundary></div>
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
@@ -807,6 +809,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ${flow} ci-gap-3 ci-font-sans ci-select-none`}
       data-status={status}
       data-accent={accent}
+      data-density={density}
     >
       <Boundary key={lang}>
         {shownPeer && (

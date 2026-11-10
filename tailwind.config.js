@@ -3,12 +3,20 @@
  * ci- prefix so the island never restyles its host page. Preflight is off for
  * the same reason.
  */
+import defaultTheme from 'tailwindcss/defaultTheme'
+
+// Spacing from one variable, as Tailwind v4 does: the host's compact density (data-density) lowers it, font sizes stay.
+const spacing = Object.fromEntries(
+  Object.entries(defaultTheme.spacing).map(([k, v]) => [k, k === 'px' || k === '0' ? v : `calc(var(--ci-spacing, 0.25rem) * ${k})`]),
+)
+
 export default {
   prefix: 'ci-',
   content: ['./src/**/*.{ts,tsx}', './dev/index.html'],
   darkMode: ['class', '.dark'],
   corePlugins: { preflight: false },
   theme: {
+    spacing,
     extend: {
       fontFamily: { sans: ['Poppins', 'Inter', 'system-ui', 'sans-serif'] },
       colors: {
