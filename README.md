@@ -121,7 +121,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 
 | Event | Direction | Detail |
 | --- | --- | --- |
-| `chat-island-open` | in | `{ username, search? }` operator or group address; `search: { query, id? }` opens it on a search, at that message |
+| `chat-island-open` | in | `{ username, search? }` operator or group address; `search: { query, id? }` opens it on a search, at that message; a `headless` island with `moveTo` opens it in the other app while that is connected, else moves the chats back here |
 | `chat-island-search` | in | `{ query }` search every conversation's archive (two characters at least) |
 | `chat-island-search-results` | out | `{ query, results }` messages containing it, newest first: `{ peer, id, ts, body, nick? }` |
 | `chat-island-close` | in | |
@@ -135,6 +135,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |
 | `chat-island-pin-target` | in | `{ el }` the host's panel for the open conversation while pinned |
+| `chat-island-logout` | in | the host is logging out: push for this browser is dropped, then `chat-island-logged-out`; wait for it before ending the session |
 | `chat-island-move` | in | `{ host, open? }` move the chat windows to `cti` or `nethlink`, opening `open` there |
 | `chat-island-conversations` | out | `{ conversations, ready }` newest first; `ready` once groups and recent messages are loaded |
 | `chat-island-unread` | out | `{ total }` |
@@ -142,6 +143,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-status` | out | `{ status }` connecting, online, offline, error, unauthorized |
 | `chat-island-error` | out | `{ scope, message }` |
 | `chat-island-push` | out | `{ enabled }` |
+| `chat-island-logged-out` | out | answer to `chat-island-logout` |
 | `chat-island-call` | out | `{ username, number }` |
 | `chat-island-pin` | out | `{ pinned }` the person asked to pin to, or unpin from, the host's panel |
 | `chat-island-window` | out | `{ open, picker }` what a pinned host should show: a conversation, the picker or nothing |

@@ -108,6 +108,8 @@ export class Chat {
   private refused = 0 // logins refused in a row: retried slowly, as a middleware outage is refused too
   private connected = false
   private online = new Map<string, Set<string>>() // user -> resources seen available
+  private self: string // my own full JID
+  private others = new Set<string>() // my other chat-island clients (the CTI, NethLink), not the gateway's sessions
   private cfg: Config
   private h: Handlers
 
@@ -117,12 +119,14 @@ export class Chat {
     this.domain = DOMAIN
     this.mucHost = `conference.${DOMAIN}`
     this.me = `${cfg.username}@${DOMAIN}`
+    const resource = 'chat-island.' + Math.random().toString(36).slice(2, 8)
+    this.self = `${this.me}/${resource}`
     this.xmpp = client({
       service: `wss://${cfg.host}/xmpp-websocket`,
       domain: DOMAIN,
       username: cfg.username,
       password: cfg.token,
-      resource: 'chat-island.' + Math.random().toString(36).slice(2, 8),
+      resource,
     })
     // The library's own reconnect retries every second forever; ours backs off.
     ;(this.xmpp as unknown as { reconnect?: { stop(): void } }).reconnect?.stop()
@@ -216,6 +220,7 @@ export class Chat {
   private forgetPresence() {
     for (const user of this.online.keys()) this.h.presence(user, false)
     this.online.clear()
+    this.others.clear()
   }
 
   /** Connect, or reconnect: a failure (network, or a token the server no longer accepts) schedules another try. */
@@ -312,6 +317,11 @@ export class Chat {
     await this.xmpp.send(
       xml('message', { to: group ? peer : `${peer}@${this.domain}`, type: group ? 'groupchat' : 'chat', id: crypto.randomUUID() }, xml('retract', { xmlns: NS.retract, id: ref }), xml('store', { xmlns: NS.hints })),
     )
+  }
+
+  /** Another chat-island of mine is connected: chats moved there can be opened there. */
+  hasOtherClient() {
+    return this.others.size > 0
   }
 
   /** My chat moved between NethLink and the CTI: tell my other clients, with the conversation to open there. */
@@ -603,6 +613,11 @@ export class Chat {
     if (st.is('presence')) {
       const full = st.attrs.from ?? ''
       const from = bare(full)
+      if (from === this.me && full !== this.self && full.slice(from.length + 1).startsWith('chat-island.')) {
+        if (st.attrs.type === 'unavailable') this.others.delete(full)
+        else if (!st.attrs.type) this.others.add(full)
+        return
+      }
       if (!from || from === this.me || from.endsWith('@' + this.mucHost) || st.attrs.type === 'error' || st.attrs.type?.startsWith('subscribe')) return
       const user = local(from)
       const resources = this.online.get(user) ?? new Set<string>()

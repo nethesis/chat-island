@@ -31,9 +31,9 @@ export interface WindowActions {
 }
 
 /** Someone outside the PBX, or (chat) a room with them. */
-export function ExternalBadge({ chat }: { chat?: boolean }) {
-  // Indigo, as the CTI's badges.
-  return <span className="ci-shrink-0 ci-inline-flex ci-items-center ci-whitespace-nowrap ci-rounded-full ci-px-2.5 ci-py-0.5 ci-text-xs ci-leading-4 ci-font-medium ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100">{t(chat ? 'Group.External chat' : 'Group.External')}</span>
+export function ExternalBadge({ chat, locked }: { chat?: boolean; locked?: boolean }) {
+  // Indigo, as the CTI's badges; a lock when its link no longer lets anyone in.
+  return <span className="ci-shrink-0 ci-inline-flex ci-items-center ci-gap-1 ci-whitespace-nowrap ci-rounded-full ci-px-2.5 ci-py-0.5 ci-text-xs ci-leading-4 ci-font-medium ci-bg-indigo-100 ci-text-indigo-800 dark:ci-bg-indigo-700 dark:ci-text-indigo-100">{locked && Icon.lockXs}{t(chat ? 'Group.External chat' : 'Group.External')}</span>
 }
 
 const EXPANDED = { width: 'min(44rem, var(--ci-max-w, calc(100vw - 6rem)))', height: 'min(45rem, var(--ci-max-h, calc(100vh - 3rem)))' }
@@ -82,6 +82,8 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   }, [showMembers])
   const [menu, setMenu] = useState(false)
   const [settings, setSettings] = useState(false)
+  // A room with people outside whose link no longer lets anyone in: a lock on its badge.
+  const locked = useStore((s) => !!s.locked[peer.split('@')[0]])
   // The message being answered, and a tick that puts the cursor in the composer.
   const [reply, setReply] = useState<Reply | null>(null)
   const [focusTick, setFocusTick] = useState(0)
@@ -101,6 +103,11 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   const target = useRef<string | undefined>(undefined) // the hit to start from, when the host opened us on one
   const nameOf = (u: string) => (u === me ? t('Common.You') : contacts[u]?.name ?? guests[u] ?? u)
   const members = [...(c?.members ?? [])].sort((a, b) => Number(isGuest(a)) - Number(isGuest(b)) || Number(a === me) - Number(b === me)) // colleagues, me last, then people outside
+
+  const sharedHere = c?.kind === 'group' && isShared(shared, peer)
+  useEffect(() => {
+    if (sharedHere && status === 'online') actions.guest(peer).catch(() => {})
+  }, [peer, sharedHere, status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Again once online: a chat restored by a reload mounts before the connection.
@@ -244,18 +251,18 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
             <PresenceDot online={online[peer]} presence={contact?.presence} mobile={mobile[peer]} />
           </span>
         )}
-        {c.kind === 'group' && !showMembers && (
+        {c.kind === 'group' && !showMembers && !settings && !menu && (
           <span role="tooltip" className="ci-pointer-events-none ci-absolute ci-left-0 ci-top-full ci-mt-2 ci-z-30 ci-hidden group-hover:ci-block ci-whitespace-nowrap ci-rounded ci-px-2.5 ci-py-1.5 ci-text-sm ci-font-normal ci-leading-5 ci-shadow-lg ci-bg-gray-800 ci-text-gray-50 dark:ci-bg-gray-100 dark:ci-text-gray-900">
             {t('Chat.Click to see the group details')}
             <span className="ci-absolute ci-left-4 ci--top-1 ci-rotate-45 ci-w-2 ci-h-2 ci-bg-gray-800 dark:ci-bg-gray-100" />
           </span>
         )}
-        <div className="ci-flex-1 ci-min-w-0">
+        <div className="ci-flex ci-flex-1 ci-min-w-0 ci-flex-col ci-gap-0.5">
           <div className="ci-flex ci-items-center ci-gap-2 ci-min-w-0">
-            <span className="ci-font-medium ci-truncate ci-text-sm">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
-            {isShared(shared, peer) && <ExternalBadge chat />}
+            <span className="ci-font-medium ci-truncate ci-text-sm ci-leading-5">{c.kind === 'group' ? c.name ?? peer : contact?.name ?? inactive[peer] ?? peer}</span>
+            {isShared(shared, peer) && <ExternalBadge chat locked={locked} />}
           </div>
-          <div className="ci-text-xs ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
+          <div className="ci-text-xs ci-leading-4 ci-text-gray-500 dark:ci-text-gray-400 ci-truncate">
             {gone
               ? t('Chat.No longer active')
               : status !== 'online'
@@ -278,7 +285,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           {Icon.search}
         </Button>
         {/* Window menu, before minimize so the last button is the one that closes. */}
-        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu}>
+        <Button variant="small" onClick={() => setMenu((v) => !v)} aria-label={t('Chat.Settings')} title={t('Chat.Settings')} aria-expanded={menu} data-menu-toggle>
           {Icon.gear}
         </Button>
         {/* Minimize: the head stays in the dock. In a panel the heads have no X, so this one takes the chat out of the rail. */}
@@ -304,7 +311,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
           ]}
         />
       )}
-      {settings && c.kind === 'group' && <GroupSettings conv={c} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer) : undefined} onClose={() => setSettings(false)} />}
+      {settings && c.kind === 'group' && <GroupSettings conv={c} wide={docked || expanded} onEdit={(change) => actions.editGroup(peer, change)} onGuest={isShared(shared, peer) ? (op, guest) => actions.guest(peer, op, guest) : undefined} onShare={guestsOn && c.owner && !isShared(shared, peer) && peer.startsWith('g-') ? () => actions.share(peer) : undefined} onClose={() => setSettings(false)} />}
       {showMembers && c.kind === 'group' && (
         <div ref={membersRef} className="ci-anim-drop ci-absolute ci-left-3 ci-right-3 ci-top-16 ci-z-10 ci-max-h-64 ci-overflow-y-auto ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-p-2">
           {members.map((m) => (
@@ -419,7 +426,7 @@ export function ChatWindow({ peer, actions, onDragStart, docked }: { peer: strin
   )
 }
 
-/** The header menu; a click elsewhere closes it. */
+/** The header menu, above the panels it opens; a click elsewhere closes it. */
 function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean; onClose: () => void; onSettings?: () => void; actions: { label: string; icon: React.ReactNode; run: () => void }[] }) {
   const items = [...actions, ...(onSettings ? [{ label: t('Common.Group settings'), icon: Icon.gear, run: onSettings }] : [])]
   const box = useRef<HTMLDivElement>(null)
@@ -427,12 +434,12 @@ function WindowMenu({ themes, onClose, onSettings, actions }: { themes: boolean;
   const [dark, setDark] = useState(false)
   useLayoutEffect(() => setDark(!!box.current?.closest('.ci-dark')), [])
   useEffect(() => {
-    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[aria-label="Menu"]') && onClose()
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && !(e.target as HTMLElement).closest('[data-menu-toggle]') && onClose()
     document.addEventListener('pointerdown', away, true)
     return () => document.removeEventListener('pointerdown', away, true)
   }, [onClose])
   return (
-    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-20 ci-min-w-44 ci-w-max ci-whitespace-nowrap ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
+    <div ref={box} role="menu" className="ci-anim-drop ci-absolute ci-right-3 ci-top-14 ci-z-40 ci-min-w-44 ci-w-max ci-whitespace-nowrap ci-py-2 ci-rounded-2xl ci-bg-gray-50 dark:ci-bg-gray-950 ci-shadow-2xl ci-border ci-border-solid ci-border-gray-300 dark:ci-border-gray-600 ci-text-sm">
       {items.map((it) => (
         <button
           key={it.label}

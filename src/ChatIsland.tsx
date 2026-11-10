@@ -6,8 +6,9 @@ import { Chat, DOMAIN } from './xmpp'
 import { noticeText } from './notice'
 import { chime } from './sound'
 import { isShared, peerOf, useStore } from './store'
+import type { GuestInfo } from './api'
 import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
-import { registerWebPush } from './push'
+import { dropWebPush, registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
 import { ChatWindow, type WindowActions } from './components/ChatWindow'
@@ -55,6 +56,9 @@ export interface ChatIslandProps {
   onDragStart?: (e: React.PointerEvent) => void
 }
 
+/** A link that no longer lets anyone in: made private, or expired. */
+const linkClosed = (g: GuestInfo) => g.revoked || g.expires * 1000 <= Date.now()
+
 function summarize(): ConversationSummary[] {
   const st = useStore.getState()
   return Object.values(st.conversations)
@@ -72,6 +76,7 @@ function summarize(): ConversationSummary[] {
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
+        locked: c.kind === 'group' && isShared(st.shared, c.peer) ? !!st.locked[c.peer.split('@')[0]] : undefined,
         guests: c.kind === 'group' && isShared(st.shared, c.peer) ? Object.fromEntries((c.members ?? []).filter(isGuest).map((u) => [u, st.guests[u] ?? ''])) : undefined,
         muted: !!st.muted[c.peer],
         last: m ? { body: m.notice ? noticeText(m.notice, (u) => st.contacts[u]?.name ?? u, st.me, m.mine ? st.me : m.nick ?? m.from) : plain(m.body), ts: m.ts, mine: m.mine, oob: m.oob, nick: m.nick && nickName(m.nick) } : undefined,
@@ -286,6 +291,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         if (!cfg) throw new Error('not connected')
         const g = op === 'remove' ? await removeGuest(cfg.host, cfg.token, room, guest) : await { get: getGuest, link: newGuestLink, revoke: revokeGuest }[op](cfg.host, cfg.token, room)
         g.guests.forEach((x) => useStore.getState().setGuest(x.id, nickName(x.nick)))
+        useStore.getState().setLocked(room.split('@')[0], linkClosed(g))
         // Private again: without anyone from outside left, the group loses its mark.
         if (op === 'revoke') listShared(cfg.host, cfg.token).then(useStore.getState().setShared).catch(() => {})
         return g
@@ -585,6 +591,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     // Closing the page: end the stream so the server sees us gone now, not after the resume window.
     const bye = () => c.stop()
     window.addEventListener('pagehide', bye)
+    // Logout: this browser must not be woken for this account any more, here or at the push service.
+    const dropPush = () => {
+      const p = pushNode.current
+      pushNode.current = null
+      return Promise.allSettled([p && c.disablePush(p.service, p.node), serviceWorker && dropWebPush(cfg, serviceWorker, p?.node)])
+    }
     c.start()
     // Who has the mobile app: refreshed now and then, it is not a live presence.
     const mobile = () => {
@@ -605,15 +617,19 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offGuests = useStore.subscribe((st) => {
       for (const c of Object.values(st.conversations)) {
         const unknown = c.kind === 'group' && isShared(st.shared, c.peer) ? (c.members ?? []).filter((u) => isGuest(u) && !st.guests[u]) : []
+        // Once per group open to people outside, and again when a guest is unknown: their names, and whether the link is closed.
         const key = c.peer + '|' + unknown.join(',')
-        if (!unknown.length || asked.has(key)) continue
+        if (!(c.kind === 'group' && isShared(st.shared, c.peer)) || asked.has(key)) continue
         asked.add(key)
-        getGuest(cfg.host, cfg.token, c.peer).then((g) => g.guests.forEach((x) => s.setGuest(x.id, nickName(x.nick)))).catch(() => {})
+        getGuest(cfg.host, cfg.token, c.peer).then((g) => (g.guests.forEach((x) => s.setGuest(x.id, nickName(x.nick))), s.setLocked(c.peer.split('@')[0], linkClosed(g)))).catch(() => {})
       }
     })
     // With a search: the window opens on it, at that message.
     const offOpen = listen<{ username: string; search?: { query: string; id?: string } }>('chat-island-open', ({ username, search }) => {
       if (!username) return
+      // Chats moved to the other app open there while it is connected; with it closed, they come back here.
+      const to = useStore.getState().moveTo
+      if (headlessRef.current && to) return void (c.hasOtherClient() ? c.tellHost(to.host, username).catch(() => {}) : actions.move(to.host === 'cti' ? 'nethlink' : 'cti', username))
       if (search?.query) useStore.setState({ find: { peer: username, ...search } })
       s.openChat(username)
     })
@@ -624,9 +640,11 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         .catch((e) => emit('chat-island-search-results', { query, results: [], error: (e as Error).message })),
     )
     const offClose = listen('chat-island-close', () => s.closeChat())
-    // The host moves the chat itself (NethLink opening a chat from its command bar takes it back).
+    // The host moves the chat itself (NethLink starting a new chat takes it back).
     const offMove = listen<{ host: 'cti' | 'nethlink'; open?: string }>('chat-island-move', ({ host, open }) => (host === 'cti' || host === 'nethlink') && actions.move(host, open))
     const offNew = listen('chat-island-new', () => s.setPicker(true))
+    // The host reloads right after logging out, before any unmount: it waits for the answer.
+    const offLogout = listen('chat-island-logout', () => dropPush().then(() => (c.stop(), emit('chat-island-logged-out', {}))))
     const offDelete = listen<{ username: string }>('chat-island-delete', ({ username }) => username && actions.remove(username))
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
     const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
@@ -663,6 +681,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offClose()
       offMove()
       offContacts()
+      offLogout()
       // Unmounting is a logout or an account change, never a page close (that is pagehide): stop waking this browser for this account.
       if (pushNode.current) c.disablePush(pushNode.current.service, pushNode.current.node).catch(() => {})
       pushNode.current = null
@@ -682,7 +701,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${(c.members ?? []).filter(isGuest).map((u) => st.guests[u] ?? '').join(',')}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + (st.synced ? '#synced' : ''),
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + '#' + Object.keys(st.locked).filter((r) => st.locked[r]).join(',') + (st.synced ? '#synced' : ''),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
 
