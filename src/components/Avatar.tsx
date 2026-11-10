@@ -1,4 +1,7 @@
 import type { Contact } from '../types'
+import { isGuest } from '../types'
+
+const HEADSET = 'M224 64c-79 0-144.7 57.3-157.7 132.7 9.3-3 19.3-4.7 29.7-4.7l16 0c26.5 0 48 21.5 48 48l0 96c0 26.5-21.5 48-48 48l-16 0c-53 0-96-43-96-96l0-64C0 100.3 100.3 0 224 0S448 100.3 448 224l0 168.1c0 66.3-53.8 120-120.1 120l-87.9-.1-32 0c-26.5 0-48-21.5-48-48s21.5-48 48-48l32 0c26.5 0 48 21.5 48 48l0 0 40 0c39.8 0 72-32.2 72-72l0-20.9c-14.1 8.2-30.5 12.8-48 12.8l-16 0c-26.5 0-48-21.5-48-48l0-96c0-26.5 21.5-48 48-48l16 0c10.4 0 20.3 1.6 29.7 4.7-13-75.3-78.6-132.7-157.7-132.7z'
 
 /** Initials on the phone-island neutral grays: the picture, when the CTI has one, wins. */
 // Words are letters and digits: "Coda - Assistenza" is CA, not C-.
@@ -16,8 +19,9 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
-      {initials(name)}
+    <div role="img" aria-label={name} style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal dark:ci-font-medium ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
+      {/* A colleague without a picture: the CTI's headset; people outside the PBX their initials. */}
+      {isGuest(username) ? initials(name) : <svg width={size / 2} height={size / 2} viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d={HEADSET} /></svg>}
     </div>
   )
 }
@@ -48,7 +52,7 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ${color}`}>
+    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal dark:ci-font-medium ${color}`}>
       {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
     </div>
   )
