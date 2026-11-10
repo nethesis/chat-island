@@ -30,6 +30,7 @@ interface State {
   expanded: boolean // the bigger chat window, remembered
   place: { x: 'left' | 'right'; y: 'up' | 'down' } // where panels open beside the dock
   pinnable: boolean // the host has a side panel for the chat
+  headsets: boolean // colleagues without a picture get the CTI's headset, not their initials
   nativeTooltips: boolean // the browser's tooltips on the heads, not drawn ones
   moveTo?: { host: 'cti' | 'nethlink'; label: string } // the other app the chat windows can move to
   rail: HTMLElement | null // the host's side rail: while set the heads live there, nothing floats
@@ -132,6 +133,7 @@ export const useStore = create<State>((set, get) => ({
   maxHeads: 5,
   newChatButton: true,
   pinnable: false,
+  headsets: false,
   muted: {},
   dnd: false,
   find: null,

@@ -46,6 +46,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI) or `'blue'` (NethLink) |
 | `language` | browser | `'it'` or `'en'`, as in phone-island; strings in `src/locales/{en,it}.json` |
 | `pinnable` | `false` | the host has a side rail and panel the chat can be pinned to (see below) |
+| `operatorIcon` | `false` | colleagues without a picture show a headset, as in the CTI, instead of their initials |
 | `moveTo` | | `{ host, label }`: the other app the chat windows can move to (NethLink and the CTI), a Move to item in each chat's menu |
 
 The expand button in a chat's header doubles its width (one and a half times its height), within the viewport: a host whose window follows the island, like NethLink, lifts that cap with `--ci-max-w` / `--ci-max-h` on `.chat-island-root`.
