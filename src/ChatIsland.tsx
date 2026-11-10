@@ -7,7 +7,7 @@ import { noticeText } from './notice'
 import { chime } from './sound'
 import { isShared, peerOf, useStore } from './store'
 import type { GuestInfo } from './api'
-import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
+import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchPresence, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
 import { dropWebPush, registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -73,6 +73,7 @@ function summarize(): ConversationSummary[] {
         avatar: c.kind === 'group' ? c.avatar : contact?.avatar,
         online: c.kind === 'group' ? false : !!st.online[c.peer],
         mobile: c.kind === 'group' ? false : !!st.mobile[c.peer],
+        presence: c.kind === 'group' ? undefined : contact?.presence,
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
@@ -609,6 +610,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       .then((r) => (setCanInvite(r.status !== 404), useStore.setState({ guestsOn: r.status !== 404 })))
       .catch(() => {})
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
+    // A host without a live presence (WebTop): the CTI's presence again every 30s, so the dot and the Call button follow the phone.
+    // The CTI sends its own with chat-island-contacts: from then on it is left to the host.
+    let hostContacts = false
+    const presenceTimer = window.setInterval(() => {
+      if (!hostContacts) fetchPresence(cfg.host, cfg.token, cfg.username).then((list) => !hostContacts && s.setContacts(list)).catch(() => {})
+    }, 30 * 1000)
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
       .then(s.setContacts)
       .catch((e) => emit('chat-island-error', { scope: 'contacts', message: (e as Error).message }))
@@ -661,11 +668,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
         })
         .catch((e) => emit('chat-island-guest-link', { id, error: (e as Error).message }))
     })
-    const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
+    const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && ((hostContacts = true), s.setContacts(contacts)))
     const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }))
     return () => {
       window.removeEventListener('pagehide', bye)
       window.clearInterval(mobileTimer)
+      window.clearInterval(presenceTimer)
       unsave()
       offList()
       offSearch()
@@ -701,7 +709,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${(c.members ?? []).filter(isGuest).map((u) => st.guests[u] ?? '').join(',')}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + '#' + Object.keys(st.locked).filter((r) => st.locked[r]).join(',') + (st.synced ? '#synced' : ''),
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.values(st.conversations).map((c) => st.contacts[c.peer]?.presence ?? '').join(',') + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + '#' + Object.keys(st.locked).filter((r) => st.locked[r]).join(',') + (st.synced ? '#synced' : ''),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
 

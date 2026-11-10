@@ -130,7 +130,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-send` | in | `{ username, text }` send a text to an operator or group |
 | `chat-island-group-create` | in | `{ name, members }` create a group with these usernames and open it |
 | `chat-island-guest-invite` | in | `{ id?, name, members? }` a chat with people outside: a group with these usernames (or just me) opened to guests; answered by `chat-island-guest-link` |
-| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one |
+| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one. Until a host sends it, the island reads the CTI presence again every 30s |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |

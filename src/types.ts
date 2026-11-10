@@ -91,6 +91,7 @@ export interface ConversationSummary {
   avatar?: string
   online: boolean
   mobile?: boolean
+  presence?: string // the CTI's main presence (online, busy, dnd...): hosts paint the dot as the island does
   inactive?: boolean // no longer in the CTI: read-only
   owner?: boolean // a group I created: deleting it removes it for everyone
   unread: number

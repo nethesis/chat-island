@@ -23,6 +23,12 @@ export async function fetchContacts(host: string, token: string, me: string, onM
   return contactsFromOperators(users, avatars, me).sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/** The operators' CTI presence and number only (no avatars): an entry without the avatar key keeps the one already known. */
+export async function fetchPresence(host: string, token: string, me: string): Promise<Contact[]> {
+  const users = await get<Record<string, { username: string }>>(host, token, '/user/endpoints/all')
+  return contactsFromOperators(users, undefined, me).map(({ avatar: _avatar, ...c }) => c)
+}
+
 /** Operators with the mobile app registered for push: a message reaches their phone even when they are not in the chat. */
 export async function fetchMobile(host: string, token: string): Promise<string[]> {
   const r = await fetch(`https://${host}/chat-gw/push/mobile`, { headers: { Authorization: `Bearer ${token}` } })
