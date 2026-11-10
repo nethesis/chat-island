@@ -19,7 +19,7 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div role="img" aria-label={name} style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
+    <div role="img" aria-label={name} style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal dark:ci-font-medium ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
       {/* A colleague without a picture: the CTI's headset; people outside the PBX their initials. */}
       {isGuest(username) ? initials(name) : <svg width={size / 2} height={size / 2} viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d={HEADSET} /></svg>}
     </div>
@@ -52,7 +52,7 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ${color}`}>
+    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal dark:ci-font-medium ${color}`}>
       {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
     </div>
   )
