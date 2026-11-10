@@ -16,7 +16,7 @@ export function Avatar({ contact, username, size = 40 }: { contact?: Contact; us
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
+    <div style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
       {initials(name)}
     </div>
   )
@@ -48,7 +48,7 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
   const face = avatar ? (
     <img src={avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
-    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal ${color}`}>
+    <div role="img" aria-label={name} style={style} className={`ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-medium ${color}`}>
       {words.length === 1 ? words[0].slice(0, 2).toUpperCase() : initials(words.join(' ') || 'G')}
     </div>
   )
