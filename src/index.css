@@ -5,6 +5,8 @@
 /* Scoped reset: preflight is off, so the island resets only itself. Same font as phone-island. */
 .chat-island-root, .chat-island-root * { box-sizing: border-box; }
 .chat-island-root { font-family: 'Poppins', 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.4; }
+/* Compact density of the host (data-density="compact"): 20% less spacing, as My's */
+.chat-island-root[data-density='compact'] { --ci-spacing: 0.2rem; }
 /* Form controls: stronger than the host page's own button/input/textarea rules (0,0,2),
    weaker than the island's classes (0,1,0), so any page leaves them as the island draws them. */
 :where(.chat-island-root) button:not(z),
@@ -50,3 +52,6 @@
 
 .chat-island-root { --ci-accent-50: 236 253 245; --ci-accent-300: 110 231 183; --ci-accent-400: 52 211 153; --ci-accent-500: 16 185 129; --ci-accent-600: 5 150 105; --ci-accent-700: 4 120 87; --ci-accent-950: 2 44 34; }
 .chat-island-root[data-accent='blue'] { --ci-accent-50: 239 246 255; --ci-accent-300: 147 197 253; --ci-accent-400: 96 165 250; --ci-accent-500: 59 130 246; --ci-accent-600: 37 99 235; --ci-accent-700: 29 78 216; --ci-accent-950: 23 37 84; }
+/* NethService (WebTop): Nebula's tokens, active #c2410c (hover #9a3412), focus #f97316; in dark active #f97316 (hover #fdba74), focus #fed7aa */
+.chat-island-root[data-accent='orange'] { --ci-accent-50: 255 247 237; --ci-accent-300: 253 186 116; --ci-accent-400: 251 146 60; --ci-accent-500: 249 115 22; --ci-accent-600: 154 52 18; --ci-accent-700: 194 65 12; --ci-accent-950: 67 20 7; }
+.chat-island-root.ci-dark[data-accent='orange'] { --ci-accent-300: 254 215 170; --ci-accent-400: 253 186 116; --ci-accent-500: 249 115 22; --ci-accent-600: 249 115 22; --ci-accent-700: 234 88 12; }
