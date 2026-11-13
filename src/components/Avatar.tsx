@@ -13,12 +13,12 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
 
-/** A size in spacing units (its px at the default 0.25rem): avatars follow the host's density as the Tailwind classes do. */
+/** A size in spacing units (its px at the default 0.25rem): avatars follow the host's density as the Tailwind classes do; the initials keep their font size, as all text. */
 const scaled = (n: number) => `calc(var(--ci-spacing, 0.25rem) * ${n / 4})`
 
 export function Avatar({ contact, username, size = 40 }: { contact?: Contact; username: string; size?: number }) {
   const name = contact?.name || username
-  const style = { width: scaled(size), height: scaled(size), fontSize: scaled(size / 2.5) }
+  const style = { width: scaled(size), height: scaled(size), fontSize: size / 2.5 }
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
@@ -47,7 +47,7 @@ const QUEUE_PREFIX = 'Queue - '
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
  *  Its initials (two letters of a one-word name) everywhere; head: a chat head, the icon small in the corner too. */
 export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }: { peer?: string; name: string; size?: number; avatar?: string; head?: boolean }) {
-  const style = { width: scaled(size), height: scaled(size), fontSize: scaled(size / 2.5) } // 14px at 36, 16px at 40, as in the mockup
+  const style = { width: scaled(size), height: scaled(size), fontSize: size / 2.5 } // 14px at 36, 16px at 40, as in the mockup
   const queue = name.startsWith(QUEUE_PREFIX)
   const color = peer.startsWith('cti-') ? BLUE : queue ? INDIGO : GRAY
   const icon = queue ? QUEUE_ICON : GROUP_ICON
