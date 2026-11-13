@@ -47,8 +47,8 @@ export interface ChatIslandProps {
   language?: string
   /** The host's density: 'compact' tightens the spacing (font sizes stay). Default 'standard'. */
   density?: 'standard' | 'compact'
-  /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
-  accent?: 'emerald' | 'blue'
+  /** The host's accent color: 'emerald' (default, the CTI), 'blue' (NethLink) or 'orange' (WebTop, NethService). */
+  accent?: 'emerald' | 'blue' | 'orange'
   /** The other app the chat windows can move to (NethLink and the CTI): a "Move to" item in each chat's menu.
    *  Where they live is the person's choice, kept on the server; told to the host as chat-island-host. */
   moveTo?: { host: 'cti' | 'nethlink'; label: string }

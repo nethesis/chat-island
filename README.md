@@ -43,7 +43,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
 | `nativeTooltips` | `false` | the browser's tooltips for the heads' names, for a host window sized to the dock (NethLink) |
-| `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI) or `'blue'` (NethLink) |
+| `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI), `'blue'` (NethLink) or `'orange'` (WebTop) |
 | `language` | browser | `'it'` or `'en'`, as in phone-island; strings in `src/locales/{en,it}.json` |
 | `pinnable` | `false` | the host has a side rail and panel the chat can be pinned to (see below) |
 | `moveTo` | | `{ host, label }`: the other app the chat windows can move to (NethLink and the CTI), a Move to item in each chat's menu |
@@ -99,6 +99,7 @@ The widget mounts on the `.chat-island` elements present when its script runs. A
 | `data-language` | `it` or `en` |
 | `data-max-heads` | chat heads in the dock |
 | `data-density` | `compact`: about 20% less spacing (font sizes stay), for a host in compact view |
+| `data-accent` | `blue` or `orange`: the host's accent color, as the `accent` prop |
 
 ### Base64 config token
 
