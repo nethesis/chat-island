@@ -13,15 +13,18 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
 
+/** A size in spacing units (its px at the default 0.25rem): avatars follow the host's density as the Tailwind classes do; the initials keep their font size, as all text. */
+const scaled = (n: number) => `calc(var(--ci-spacing, 0.25rem) * ${n / 4})`
+
 export function Avatar({ contact, username, size = 40 }: { contact?: Contact; username: string; size?: number }) {
   const name = contact?.name || username
-  const style = { width: size, height: size, fontSize: size / 2.5 }
+  const style = { width: scaled(size), height: scaled(size), fontSize: size / 2.5 }
   return contact?.avatar ? (
     <img src={contact.avatar} alt={name} style={style} draggable={false} className="ci-rounded-full ci-object-cover ci-shrink-0" />
   ) : (
     <div role="img" aria-label={name} style={style} className="ci-rounded-full ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-font-normal dark:ci-font-medium ci-bg-gray-700 ci-text-white dark:ci-bg-gray-200 dark:ci-text-gray-950">
       {/* A colleague without a picture: the CTI's headset; people outside the PBX their initials. */}
-      {isGuest(username) ? initials(name) : <svg width={size / 2} height={size / 2} viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d={HEADSET} /></svg>}
+      {isGuest(username) ? initials(name) : <svg style={{ width: scaled(size / 2), height: scaled(size / 2) }} viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d={HEADSET} /></svg>}
     </div>
   )
 }
@@ -44,7 +47,7 @@ const QUEUE_PREFIX = 'Queue - '
 /** A group: a CTI operator group (cti-…) blue like its badge, a queue's chat ("Queue - …", with the Queues icon) indigo, the ones people create gray.
  *  Its initials (two letters of a one-word name) everywhere; head: a chat head, the icon small in the corner too. */
 export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }: { peer?: string; name: string; size?: number; avatar?: string; head?: boolean }) {
-  const style = { width: size, height: size, fontSize: size / 2.5 } // 14px at 36, 16px at 40, as in the mockup
+  const style = { width: scaled(size), height: scaled(size), fontSize: size / 2.5 } // 14px at 36, 16px at 40, as in the mockup
   const queue = name.startsWith(QUEUE_PREFIX)
   const color = peer.startsWith('cti-') ? BLUE : queue ? INDIGO : GRAY
   const icon = queue ? QUEUE_ICON : GROUP_ICON
@@ -61,8 +64,8 @@ export function GroupAvatar({ peer = '', name, size = 40, avatar, head = false }
     <span className="ci-relative ci-block">
       {face}
       {/* As in the mockup, in proportion to the head (14px and an 8px icon at 32): the face's colour, a thin ring of the page's background between them. */}
-      <span style={{ width: Math.round(size * 0.44), height: Math.round(size * 0.44) }} className={`ci-absolute ci-bottom-0 ci-right-0 ci-box-border ci-rounded-full ci-flex ci-items-center ci-justify-center ci-border-[1.5px] ci-border-solid ci-border-white dark:ci-border-gray-950 ${color}`}>
-        <svg width={Math.round(size / 4)} height={Math.round(size / 4)} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
+      <span style={{ width: scaled(Math.round(size * 0.44)), height: scaled(Math.round(size * 0.44)) }} className={`ci-absolute ci-bottom-0 ci-right-0 ci-box-border ci-rounded-full ci-flex ci-items-center ci-justify-center ci-border-[1.5px] ci-border-solid ci-border-white dark:ci-border-gray-950 ${color}`}>
+        <svg style={{ width: scaled(Math.round(size / 4)), height: scaled(Math.round(size / 4)) }} viewBox={icon.box} fill="currentColor" aria-hidden="true"><path d={icon.d} /></svg>
       </span>
     </span>
   )

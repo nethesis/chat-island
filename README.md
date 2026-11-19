@@ -43,7 +43,7 @@ import '@nethesis/chat-island/dist/index.css'
 | `headless` | `false` | connected but invisible: events only, no sound, notifications, push or read receipts |
 | `drag` / `onDragStart` | `true` | off, or the host moves its own window (NethLink) |
 | `nativeTooltips` | `false` | the browser's tooltips for the heads' names, for a host window sized to the dock (NethLink) |
-| `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI) or `'blue'` (NethLink) |
+| `accent` | `'emerald'` | the host's accent color, `'emerald'` (CTI), `'blue'` (NethLink) or `'orange'` (WebTop) |
 | `language` | browser | `'it'` or `'en'`, as in phone-island; strings in `src/locales/{en,it}.json` |
 | `pinnable` | `false` | the host has a side rail and panel the chat can be pinned to (see below) |
 | `moveTo` | | `{ host, label }`: the other app the chat windows can move to (NethLink and the CTI), a Move to item in each chat's menu |
@@ -95,6 +95,11 @@ The widget mounts on the `.chat-island` elements present when its script runs. A
 | `data-service-worker` | URL of `chat-island-sw.js`, served by your site (same origin) |
 | `data-notifications` | `auto` to ask for permission once online |
 | `data-new-chat-button` | `false` to hide the new chat button |
+| `data-pinnable` | `true`: the host has a rail and a panel to pin the chat to |
+| `data-language` | `it` or `en` |
+| `data-max-heads` | chat heads in the dock |
+| `data-density` | `compact`: about 20% less spacing (font sizes stay), for a host in compact view |
+| `data-accent` | `blue` or `orange`: the host's accent color, as the `accent` prop |
 
 ### Base64 config token
 
@@ -126,7 +131,8 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-delete` | in | `{ username }` purge a conversation, leave or destroy a group |
 | `chat-island-send` | in | `{ username, text }` send a text to an operator or group |
 | `chat-island-group-create` | in | `{ name, members }` create a group with these usernames and open it |
-| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one |
+| `chat-island-guest-invite` | in | `{ id?, name, members? }` a chat with people outside: a group with these usernames (or just me) opened to guests; answered by `chat-island-guest-link` |
+| `chat-island-contacts` | in | `{ contacts }` names, avatars, presence, number; an entry without `avatar` keeps the known one. Until a host sends it, the island reads the CTI presence again every 30s |
 | `chat-island-conversations-request` | in | ask for the list |
 | `chat-island-theme-change` | in | `{ theme }` light, dark or system, remembered |
 | `chat-island-rail-target` | in | `{ el }` the host's rail slot for the heads while pinned; `null` to unpin |
@@ -144,6 +150,7 @@ A complete example page is in `widget-example/`; the live demo is `index.html`.
 | `chat-island-pin` | out | `{ pinned }` the person asked to pin to, or unpin from, the host's panel |
 | `chat-island-window` | out | `{ open, picker }` what a pinned host should show: a conversation, the picker or nothing |
 | `chat-island-host` | out | `{ host }` where the person keeps the chat windows while NethLink runs: `nethlink` (default) or `cti`; on start and on every move, from any of their clients |
+| `chat-island-guest-link` | out | `{ id, room, link, expires }` the invite link of a `chat-island-guest-invite` (shown only now: the server keeps its hash), or `{ id, error }` |
 | `chat-island-notify` | out | `{ peer, name, body, kind, author, text, attachment, avatar, ts }` message not in view |
 
 ## Integrate in an existing app

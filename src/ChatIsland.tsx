@@ -7,7 +7,7 @@ import { noticeText } from './notice'
 import { chime } from './sound'
 import { isShared, peerOf, useStore } from './store'
 import type { GuestInfo } from './api'
-import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
+import { chatHost, deleteHistory, fetchContacts, fetchConversations, fetchPresence, fetchInactive, fetchMobile, getGuest, inviteGuest, listShared, newGuestLink, shareGroup, removeGuest, revokeGuest, searchMessages } from './api'
 import { dropWebPush, registerWebPush } from './push'
 import { emit, listen, type ContactsEvent } from './events'
 import { Dock } from './components/Dock'
@@ -45,8 +45,10 @@ export interface ChatIslandProps {
   nativeTooltips?: boolean
   /** 'it' or 'en'; default the browser's language, as in phone-island. */
   language?: string
-  /** The host's accent color: 'emerald' (default, the CTI) or 'blue' (NethLink). */
-  accent?: 'emerald' | 'blue'
+  /** The host's density: 'compact' tightens the spacing (font sizes stay). Default 'standard'. */
+  density?: 'standard' | 'compact'
+  /** The host's accent color: 'emerald' (default, the CTI), 'blue' (NethLink) or 'orange' (WebTop, NethService). */
+  accent?: 'emerald' | 'blue' | 'orange'
   /** The other app the chat windows can move to (NethLink and the CTI): a "Move to" item in each chat's menu.
    *  Where they live is the person's choice, kept on the server; told to the host as chat-island-host. */
   moveTo?: { host: 'cti' | 'nethlink'; label: string }
@@ -73,6 +75,7 @@ function summarize(): ConversationSummary[] {
         avatar: c.kind === 'group' ? c.avatar : contact?.avatar,
         online: c.kind === 'group' ? false : !!st.online[c.peer],
         mobile: c.kind === 'group' ? false : !!st.mobile[c.peer],
+        presence: c.kind === 'group' ? undefined : contact?.presence,
         owner: c.kind === 'group' ? !!c.owner : undefined,
         unread: c.unread,
         members: c.members,
@@ -133,7 +136,7 @@ function useExit<T>(value: T, skip = false): [T, boolean, (e: React.AnimationEve
 
 useStore.setState({ lang: toLang() })
 
-export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, moveTo }: ChatIslandProps) {
+export function ChatIsland({ dataConfig, position = 'bottom-right', theme, serviceWorker, maxHeads = 5, newChatButton = true, notifications = 'click', sound = true, drag: draggable = true, onDragStart, headless = false, pinnable = false, nativeTooltips = false, accent, language, density, moveTo }: ChatIslandProps) {
   // Every string follows the language: a change remounts the island in the new one.
   useLayoutEffect(() => useStore.setState({ lang: toLang(language) }), [language])
   const lang = useStore((st) => st.lang)
@@ -609,6 +612,12 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       .then((r) => (setCanInvite(r.status !== 404), useStore.setState({ guestsOn: r.status !== 404 })))
       .catch(() => {})
     const mobileTimer = window.setInterval(mobile, 2 * 60 * 1000)
+    // A host without a live presence (WebTop): the CTI's presence again every 30s, so the dot and the Call button follow the phone.
+    // The CTI sends its own with chat-island-contacts: from then on it is left to the host.
+    let hostContacts = false
+    const presenceTimer = window.setInterval(() => {
+      if (!hostContacts) fetchPresence(cfg.host, cfg.token, cfg.username).then((list) => !hostContacts && s.setContacts(list)).catch(() => {})
+    }, 30 * 1000)
     fetchContacts(cfg.host, cfg.token, cfg.username, (myName) => useStore.setState({ myName }))
       .then(s.setContacts)
       .catch((e) => emit('chat-island-error', { scope: 'contacts', message: (e as Error).message }))
@@ -649,11 +658,24 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
     const offSend = listen<{ username: string; text: string }>('chat-island-send', ({ username, text }) => username && text && actions.send(username, text).catch(() => {}))
     const offMute = listen<{ peer: string; muted: boolean }>('chat-island-mute', ({ peer, muted }) => peer && useStore.getState().setMuted(peer, !!muted))
     const offGroup = listen<{ name: string; members: string[] }>('chat-island-group-create', ({ name, members }) => name && members?.length && actions.createGroup(name, members))
-    const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && s.setContacts(contacts))
+    // The host invites people outside (an email thread): a room with these members, opened to guests; the link goes back to the host.
+    const offGuest = listen<{ id?: string; name: string; members?: string[] }>('chat-island-guest-invite', ({ id, name, members }) => {
+      if (!name) return
+      const run = members?.length ? actions.createGroup(name, members, undefined, true) : actions.inviteGuest(name)
+      Promise.resolve(run)
+        .then((g) => {
+          if (!g) throw new Error('no link')
+          emit('chat-island-guest-link', { id, room: g.room, link: g.link, expires: g.expires })
+          useStore.getState().openChat(g.room)
+        })
+        .catch((e) => emit('chat-island-guest-link', { id, error: (e as Error).message }))
+    })
+    const offContacts = listen<ContactsEvent>('chat-island-contacts', ({ contacts }) => contacts && ((hostContacts = true), s.setContacts(contacts)))
     const offList = listen('chat-island-conversations-request', () => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }))
     return () => {
       window.removeEventListener('pagehide', bye)
       window.clearInterval(mobileTimer)
+      window.clearInterval(presenceTimer)
       unsave()
       offList()
       offSearch()
@@ -661,6 +683,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       offDelete()
       offSend()
       offGroup()
+      offGuest()
       offMute()
       unsaveMuted()
       offOpen()
@@ -688,7 +711,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const listKey = useStore((st) =>
     Object.values(st.conversations)
       .map((c) => `${c.peer}:${c.kind}:${c.owner ? 1 : 0}:${c.name ?? ''}:${(c.members ?? []).length}:${(c.members ?? []).filter(isGuest).map((u) => st.guests[u] ?? '').join(',')}:${c.unread}:${c.messages[c.messages.length - 1]?.id ?? ''}`)
-      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + '#' + Object.keys(st.locked).filter((r) => st.locked[r]).join(',') + (st.synced ? '#synced' : ''),
+      .join('|') + '#' + Object.keys(st.contacts).length + '#' + Object.values(st.online).filter(Boolean).length + '#' + Object.values(st.conversations).map((c) => st.contacts[c.peer]?.presence ?? '').join(',') + '#' + Object.keys(st.inactive).length + '#' + Object.keys(st.muted).join(',') + '#' + Object.keys(st.shared).join(',') + '#' + Object.keys(st.locked).filter((r) => st.locked[r]).join(',') + (st.synced ? '#synced' : ''),
   )
   useEffect(() => emit('chat-island-conversations', { conversations: summarize(), ready: useStore.getState().synced }), [listKey])
 
@@ -770,7 +793,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
   const flow = free ? 'ci-items-end' : `${place.y === 'down' ? 'ci-items-start' : 'ci-items-end'} ${place.x === 'right' ? 'ci-flex-row-reverse' : ''}`
   // Pinned: the heads sit in the host's rail, the open conversation (or the picker) fills its panel.
   if (rail) {
-    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent}><Boundary key={lang}>{children}</Boundary></div>
+    const root = (cls: string, children: ReactNode) => <div className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-font-sans ${cls}`} data-status={status} data-accent={accent} data-density={density}><Boundary key={lang}>{children}</Boundary></div>
     return (
       <>
         {createPortal(root('', <Dock rail />), rail)}
@@ -786,6 +809,7 @@ export function ChatIsland({ dataConfig, position = 'bottom-right', theme, servi
       className={`chat-island-root ${dark ? 'ci-dark' : ''} ci-fixed ${side} ci-z-[9999] ci-flex ${flow} ci-gap-3 ci-font-sans ci-select-none`}
       data-status={status}
       data-accent={accent}
+      data-density={density}
     >
       <Boundary key={lang}>
         {shownPeer && (

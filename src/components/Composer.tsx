@@ -320,8 +320,13 @@ export function Composer({ onSend, onTyping, onFile, disabled, disabledText, foc
                 submit()
               }
             }}
-            className={`${disabled ? 'ci-overflow-hidden' : ''} ci-block ci-flex-1 ci-min-w-0 ci-resize-none ci-max-h-32 ci-px-1 ci-py-1.5 ci-border-0 ci-bg-transparent ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none ci-text-sm`}
-            style={{ height: Math.min(128, 32 + 20 * (text.split('\n').length - 1)) }}
+            className={`${disabled ? 'ci-overflow-hidden' : ''} ci-block ci-flex-1 ci-min-w-0 ci-resize-none ci-max-h-32 ci-px-1 ci-border-0 ci-bg-transparent ci-text-gray-900 dark:ci-text-white placeholder:ci-text-gray-500 dark:placeholder:ci-text-gray-400 ci-outline-none ci-text-sm`}
+            // One line as tall as the buttons (8 spacing units, 32px by default), 20px more per line: the text stays centred on the icons in any density
+            style={{
+              height: `min(128px, calc(var(--ci-spacing, 0.25rem) * 8 + ${20 * (Math.min(6, text.split('\n').length) - 1)}px))`,
+              paddingTop: 'calc((var(--ci-spacing, 0.25rem) * 8 - 20px) / 2)',
+              paddingBottom: 'calc((var(--ci-spacing, 0.25rem) * 8 - 20px) / 2)',
+            }}
           />
         {text.trim() || files.length || busy ? (
           <button type="button" disabled={disabled || busy} onClick={submit} title={t('Composer.Send')} aria-label={t('Composer.Send')} className="ci-h-8 ci-w-8 ci-shrink-0 ci-flex ci-items-center ci-justify-center ci-rounded-full ci-border-0 ci-bg-transparent ci-cursor-pointer ci-text-accent-700 dark:ci-text-accent-500 hover:ci-bg-gray-300/70 dark:hover:ci-bg-gray-700/30 disabled:ci-opacity-40 disabled:ci-cursor-default">
